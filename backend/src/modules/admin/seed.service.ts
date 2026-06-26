@@ -6,7 +6,7 @@ import { OrderStatus } from '@prisma/client';
 
 @Injectable()
 export class SeedService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async seed() {
     // ═══════════════════════════════════════════════
@@ -137,6 +137,13 @@ export class SeedService {
         name: 'Dimas Prasetya (Kurir)',
         phone: '081500000002',
         role: 'COURIER' as const,
+      },
+      {
+        email: 'pakbud@gmail.com',
+        password: defaultPassword,
+        name: 'Pak Budi (UMKM Mandiri)',
+        phone: '081400000004',
+        role: 'UMKM' as const,
       },
     ];
 
