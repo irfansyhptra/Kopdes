@@ -39,23 +39,56 @@ final dioProvider = Provider<Dio>((ref) {
   // 1. Live Request/Response Logger & Debug Screen Interceptor
   dio.interceptors.add(
     InterceptorsWrapper(
-      onRequest: (options, handler) {
+      onRequest: (options, handler) async {
+        options.extra['start_time'] = DateTime.now().millisecondsSinceEpoch;
+        final token = await storage.read(key: AppConstants.tokenKey);
+        
         final requestStr =
-            'METHOD: ${options.method}\nURL: ${options.uri}\nBODY: ${options.data}';
+            'METHOD: ${options.method}\n'
+            'URL: ${options.uri}\n'
+            'HEADERS: ${options.headers}\n'
+            'JWT TOKEN: ${token ?? "No Token"}\n'
+            'BODY: ${options.data}';
+            
         logger.i('--> HTTP REQUEST\n$requestStr');
         ref.read(debugLogProvider.notifier).logRequest(requestStr);
         return handler.next(options);
       },
       onResponse: (response, handler) {
+        final startTime = response.requestOptions.extra['start_time'] as int?;
+        final responseTime = startTime != null
+            ? '${DateTime.now().millisecondsSinceEpoch - startTime}ms'
+            : 'Unknown';
+        final jwtToken = response.requestOptions.headers['Authorization'] ?? 'No Token';
+        
         final responseStr =
-            'STATUS: ${response.statusCode}\nBODY: ${response.data}';
+            'METHOD: ${response.requestOptions.method}\n'
+            'URL: ${response.requestOptions.uri}\n'
+            'STATUS CODE: ${response.statusCode}\n'
+            'RESPONSE TIME: $responseTime\n'
+            'JWT TOKEN: $jwtToken\n'
+            'RESPONSE BODY: ${response.data}';
+            
         logger.i('<-- HTTP RESPONSE\n$responseStr');
         ref.read(debugLogProvider.notifier).logResponse(responseStr);
         return handler.next(response);
       },
       onError: (DioException error, handler) {
+        final startTime = error.requestOptions.extra['start_time'] as int?;
+        final responseTime = startTime != null
+            ? '${DateTime.now().millisecondsSinceEpoch - startTime}ms'
+            : 'Unknown';
+        final jwtToken = error.requestOptions.headers['Authorization'] ?? 'No Token';
+        
         final errorStr =
-            'STATUS: ${error.response?.statusCode}\nERROR: ${error.message}\nRESPONSE BODY: ${error.response?.data}';
+            'METHOD: ${error.requestOptions.method}\n'
+            'URL: ${error.requestOptions.uri}\n'
+            'STATUS CODE: ${error.response?.statusCode}\n'
+            'RESPONSE TIME: $responseTime\n'
+            'JWT TOKEN: $jwtToken\n'
+            'ERROR: ${error.message}\n'
+            'RESPONSE BODY: ${error.response?.data}';
+            
         logger.e('<-- HTTP ERROR\n$errorStr');
         ref.read(debugLogProvider.notifier).logResponse(errorStr);
         return handler.next(error);

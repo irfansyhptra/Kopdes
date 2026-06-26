@@ -1,6 +1,10 @@
+import 'dart:async';
+import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:dio/dio.dart';
+import '../../../../core/network/dio_client.dart';
 import '../../../../core/theme/theme.dart';
 import '../../../../localization/app_localizations.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
@@ -20,6 +24,7 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> with Tick
   bool _isTyping = false;
   bool _isListening = false;
   String _activeMode = 'Konsumen'; // 'Konsumen' | 'UMKM' | 'Gudang'
+  String _typingMessage = 'Menganalisis pertanyaan...';
 
   @override
   void initState() {
@@ -30,109 +35,167 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> with Tick
     )..repeat();
   }
 
-  void _sendMessage(String text) {
+  Future<void> _sendMessage(String text) async {
     if (text.trim().isEmpty) return;
+    if (_isTyping) return;
 
     setState(() {
       _messages.add({'isUser': true, 'text': text});
       _isTyping = true;
+      _typingMessage = 'Menganalisis pertanyaan...';
     });
     _textController.clear();
     _scrollToBottom();
 
-    // Simulated AI response based on Mode and Input
-    Future.delayed(const Duration(milliseconds: 1500), () {
-      if (!mounted) return;
+    // Dynamic thinking/loading state rotation
+    int loadingStep = 0;
+    final List<String> loadingPhrases = [
+      'Menganalisis pertanyaan...',
+      'Mencari informasi...',
+      'Menyiapkan jawaban...',
+    ];
+    
+    final timer = Timer.periodic(const Duration(seconds: 3), (t) {
+      if (!mounted || !_isTyping) {
+        t.cancel();
+        return;
+      }
+      loadingStep = (loadingStep + 1) % loadingPhrases.length;
+      setState(() {
+        _typingMessage = loadingPhrases[loadingStep];
+      });
+    });
+
+    final startTime = DateTime.now();
+    debugPrint('🤖 AI ASSISTANT [FRONTEND]: Question: "$text"');
+    debugPrint('🤖 AI ASSISTANT [FRONTEND]: Request Start at $startTime');
+
+    try {
+      String endpoint = '/ai/chat';
+      Map<String, dynamic> body = {'message': text};
+      bool isPostWithBody = true;
+
+      if (_activeMode == 'Gudang') {
+        final lowerText = text.toLowerCase();
+        if (lowerText.contains('komunitas') || lowerText.contains('usulan') || lowerText.contains('permintaan') || lowerText.contains('demand')) {
+          endpoint = '/ai/community';
+          isPostWithBody = false;
+        } else if (lowerText.contains('pengadaan') || lowerText.contains('restok') || lowerText.contains('stok kritis') || lowerText.contains('stoknya hampir habis')) {
+          endpoint = '/ai/inventory';
+          isPostWithBody = false;
+        } else if (lowerText.contains('anomali') || lowerText.contains('audit') || lowerText.contains('mencurigakan') || lowerText.contains('anomaly')) {
+          endpoint = '/ai/anomaly';
+          isPostWithBody = false;
+        } else {
+          endpoint = '/ai/management';
+        }
+      }
+
+      debugPrint('🤖 AI ASSISTANT [FRONTEND]: Target Endpoint = $endpoint');
+
+      final dio = ref.read(dioProvider);
+      final response = await dio.post(
+        endpoint,
+        data: isPostWithBody ? body : null,
+        options: Options(
+          connectTimeout: const Duration(seconds: 20),
+          receiveTimeout: const Duration(seconds: 20),
+        ),
+      );
+
+      final endTime = DateTime.now();
+      final duration = endTime.difference(startTime).inMilliseconds;
+      debugPrint('🤖 AI ASSISTANT [FRONTEND]: Request End at $endTime');
+      debugPrint('🤖 AI ASSISTANT [FRONTEND]: Duration: ${duration}ms');
+      debugPrint('🤖 AI ASSISTANT [FRONTEND]: HTTP status: ${response.statusCode}');
 
       String aiResponse = '';
-      final lowerText = text.toLowerCase();
+      if (response.data != null) {
+        final Map<String, dynamic> responseMap = response.data as Map<String, dynamic>;
+        aiResponse = responseMap['response'] ?? responseMap['data'] ?? '';
+      }
 
-      if (_activeMode == 'Konsumen') {
-        aiResponse =
-            'Halo! Saya adalah Asisten KOPDES Merah Putih. Anda dapat menanyakan tentang produk terlaris, promo minggu ini, rekomendasi produk UMKM, status pesanan, atau kebutuhan stok inventaris koperasi.';
-        
-        if (lowerText.contains('terlaris')) {
-          aiResponse =
-              'Berikut adalah produk terlaris warga di KOPDES minggu ini:\n\n'
-              '• **Madu Hutan Alami Lestari** — Rp 85.000 (Madu hutan liar asli Sinduadi)\n'
-              '• **Beras Pandan Wangi Cianjur** — Rp 72.000 (Beras premium aromatik kelompok tani)\n'
-              '• **Sabun Herbal Serai Wangi** — Rp 15.000 (Sabun alami wangi segar minyak atsiri)';
-        } else if (lowerText.contains('promo') || lowerText.contains('diskon')) {
-          aiResponse =
-              'Berikut adalah promo dan diskon spesial KOPDES hari ini:\n\n'
-              '• **Kopi Robusta Bubuk Desa** — Rp 38.000 (Diskon 15% dari Rp 45.000)\n'
-              '• **Minyak Kelapa Murni (VCO)** — Rp 40.000 (Diskon 11% dari Rp 45.000)\n'
-              '• **Teh Rosella Merah Lokal** — Rp 22.000 (Beli 2 Gratis 1)';
-        } else if (lowerText.contains('status') || lowerText.contains('pesanan')) {
-          aiResponse =
-              'Pesanan aktif Anda:\n\n'
-              '• **Madu Hutan Alami Lestari** x1\n'
-              'Status: **Dalam Pengiriman**\n'
-              'Kurir KOPDES sedang menuju lokasi Anda. Estimasi sampai: 15 menit.';
-        } else if (lowerText.contains('rekomendasi') && !lowerText.contains('usaha')) {
-          aiResponse =
-              'Rekomendasi belanja sehat KOPDES untuk keluarga Anda:\n\n'
-              '• **Minyak Kelapa Murni (VCO)** — Rp 45.000 (Bagus untuk kesehatan jantung)\n'
-              '• **Madu Hutan Alami Lestari** — Rp 85.000 (Meningkatkan daya tahan tubuh)\n'
-              '• **Teh Rosella Merah Lokal** — Rp 25.000 (Kaya antioksidan alami)';
-        } else if (lowerText.contains('stok') || lowerText.contains('habis') || lowerText.contains('kritis')) {
-          aiResponse =
-              'Laporan Stok Kritis Gudang Koperasi:\n\n'
-              '• **Madu Hutan Alami Lestari** — Sisa 3 unit (Kategori: Madu)\n'
-              '• **Teh Rosella Merah Lokal** — Sisa 5 unit (Kategori: Minuman)\n'
-              '• **Beras Pandan Wangi Cianjur** — Sisa 12 unit (Kategori: Sembako)\n\n'
-              'Disarankan membuat Purchase Order (PO) restok hari ini.';
-        } else if (lowerText.contains('usaha') || lowerText.contains('warung') || lowerText.contains('kelontong') || lowerText.contains('analisis') || lowerText.contains('pasar')) {
-          aiResponse =
-              'Berikut analisis pasar & rekomendasi untuk usaha Anda:\n\n'
-              '• **Keripik Tempe Rejeki** — Rp 12.000 (Margin tinggi 20%)\n'
-              '• **Sabun Herbal Serai Wangi** — Rp 15.000 (Peminat tinggi kalangan ibu rumah tangga)\n'
-              '• **Kopi Robusta Bubuk Desa** — Rp 45.000 (Konsumsi harian warga desa)\n\n'
-              'Tren pasar desa Lamteh menunjukkan permintaan produk pokok naik 8% menjelang hari raya desa.';
+      if (aiResponse.isEmpty) {
+        aiResponse = 'Maaf, layanan AI tidak mengembalikan jawaban. Silakan coba kembali beberapa saat lagi.';
+      }
+
+      // Add a blank AI message first, then simulate typing/streaming effect
+      setState(() {
+        _isTyping = false;
+        _messages.add({'isUser': false, 'text': ''});
+      });
+      _scrollToBottom();
+
+      final int messageIndex = _messages.length - 1;
+      int charIndex = 0;
+      Timer.periodic(const Duration(milliseconds: 15), (t) {
+        if (!mounted) {
+          t.cancel();
+          return;
         }
-      } else if (_activeMode == 'UMKM') {
-        aiResponse =
-            'Halo Mitra UMKM! Saya siap membantu menganalisis pasar desa, menyusun rekomendasi usaha kelontong, atau membantu administrasi toko Anda.';
-        
-        if (lowerText.contains('usaha') || lowerText.contains('rekomendasi') || lowerText.contains('kelontong')) {
-          aiResponse =
-              'Berdasarkan penjualan warga minggu ini, berikut produk UMKM rekomendasi tinggi untuk usaha warung Anda:\n\n'
-              '• **Keripik Tempe Rejeki** — Rp 12.000 (Margin tinggi 20%, paling disukai anak-anak)\n'
-              '• **Sabun Herbal Serai Wangi** — Rp 15.000 (Peminat tinggi kalangan ibu rumah tangga)\n'
-              '• **Kopi Robusta Bubuk Desa** — Rp 45.000 (Konsumsi harian warga desa)';
-        } else if (lowerText.contains('analisis') || lowerText.contains('pasar')) {
-          aiResponse =
-              'Analisis pasar desa Lamteh minggu ini:\n'
-              '1. Permintaan produk pokok (beras, minyak) naik 8% karena menjelang hari raya desa.\n'
-              '2. Minat produk herbal (madu, VCO) konsisten stabil.\n'
-              '3. Disarankan menyetok makanan ringan lokal seperti Keripik Tempe di rak depan warung.';
+        charIndex += 4; // Add 4 characters at a time for smooth but snappy typing
+        if (charIndex >= aiResponse.length) {
+          charIndex = aiResponse.length;
+          t.cancel();
         }
-      } else { // Gudang / Pengurus
-        aiResponse =
-            'Selamat datang Pengurus Gudang! Saya siap memantau stok kritis, pencatatan transaksi masuk/keluar, dan status stok inventaris.';
-        
-        if (lowerText.contains('stok') || lowerText.contains('habis') || lowerText.contains('kritis')) {
-          aiResponse =
-              'Laporan Stok Kritis Gudang Koperasi:\n\n'
-              '• **Madu Hutan Alami Lestari** — Sisa 3 unit (Kategori: Madu)\n'
-              '• **Teh Rosella Merah Lokal** — Sisa 5 unit (Kategori: Minuman)\n'
-              '• **Beras Pandan Wangi Cianjur** — Sisa 12 unit (Kategori: Sembako)\n\n'
-              'Disarankan membuat Purchase Order (PO) restok hari ini.';
-        } else if (lowerText.contains('penjualan') || lowerText.contains('laporan')) {
-          aiResponse =
-              'Laporan Ringkas Inventaris Masuk/Keluar:\n'
-              '• Barang Keluar: 142 unit (didominasi Beras dan Minyak Goreng).\n'
-              '• Barang Masuk: 50 unit (restok Kopi Robusta).\n'
-              '• Kondisi Gudang: Aman dan kapasitas tersisa 35%.';
-        }
+        setState(() {
+          _messages[messageIndex] = {
+            'isUser': false,
+            'text': aiResponse.substring(0, charIndex),
+          };
+        });
+        _scrollToBottom();
+      });
+    } on DioException catch (e) {
+      final endTime = DateTime.now();
+      final duration = endTime.difference(startTime).inMilliseconds;
+      debugPrint('🤖 AI ASSISTANT [FRONTEND]: Request Failed with DioException at $endTime');
+      debugPrint('🤖 AI ASSISTANT [FRONTEND]: Duration: ${duration}ms');
+      debugPrint('🤖 AI ASSISTANT [FRONTEND]: Exception Type: ${e.type}');
+      debugPrint('🤖 AI ASSISTANT [FRONTEND]: Status Code: ${e.response?.statusCode}');
+      debugPrint('🤖 AI ASSISTANT [FRONTEND]: Error Message: ${e.message}');
+      debugPrint('🤖 AI ASSISTANT [FRONTEND]: Response Body: ${e.response?.data}');
+
+      String errorMessage = 'Maaf, layanan AI sedang mengalami gangguan. Silakan coba kembali beberapa saat lagi.';
+      
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.sendTimeout ||
+          e.type == DioExceptionType.receiveTimeout) {
+        errorMessage = 'AI sedang sibuk. Silakan coba beberapa saat lagi.';
+      } else if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
+        errorMessage = 'Akses ditolak. Silakan periksa kembali login akun Anda.';
+      } else if (e.response?.statusCode == 429) {
+        errorMessage = 'Terlalu banyak permintaan. Silakan tunggu beberapa saat lagi.';
+      } else if (e.response?.statusCode == 404) {
+        errorMessage = 'Layanan AI tidak ditemukan. Silakan hubungi admin.';
+      } else if (e.response?.statusCode == 500 || e.response?.statusCode == 503) {
+        errorMessage = 'Maaf, layanan AI sedang mengalami gangguan. Silakan coba kembali beberapa saat lagi.';
+      } else if (e.error is SocketException) {
+        errorMessage = 'Koneksi internet terputus. Harap periksa jaringan Anda.';
       }
 
       setState(() {
         _isTyping = false;
-        _messages.add({'isUser': false, 'text': aiResponse});
+        _messages.add({'isUser': false, 'text': errorMessage});
       });
       _scrollToBottom();
-    });
+    } catch (e) {
+      final endTime = DateTime.now();
+      final duration = endTime.difference(startTime).inMilliseconds;
+      debugPrint('🤖 AI ASSISTANT [FRONTEND]: Request Failed with Generic Exception: $e');
+      debugPrint('🤖 AI ASSISTANT [FRONTEND]: Duration: ${duration}ms');
+
+      setState(() {
+        _isTyping = false;
+        _messages.add({
+          'isUser': false,
+          'text': 'Maaf, layanan AI sedang mengalami gangguan. Silakan coba kembali beberapa saat lagi.'
+        });
+      });
+      _scrollToBottom();
+    } finally {
+      timer.cancel();
+    }
   }
 
   void _scrollToBottom() {
@@ -241,7 +304,7 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> with Tick
                         _TypingDots(),
                         const SizedBox(width: AppSpacing.sm),
                         Text(
-                          'Kopdes AI sedang merumuskan jawaban...',
+                          _typingMessage,
                           style: AppTypography.captionSmall.copyWith(
                             color: const Color(0xFF6B7280),
                             fontWeight: FontWeight.w600,
@@ -1499,10 +1562,31 @@ class _MessageRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (isUser) {
-      return _buildUserBubble(context);
-    } else {
-      return _buildAIBubble(context);
+    debugPrint('🤖 AI ASSISTANT [UI]: _MessageRow build. isUser: $isUser, text: "$text"');
+    try {
+      if (isUser) {
+        return _buildUserBubble(context);
+      } else {
+        return _buildAIBubble(context);
+      }
+    } catch (e, stack) {
+      debugPrint('❌ AI ASSISTANT [UI]: Error building _MessageRow: $e\n$stack');
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 12, right: 30),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.red.shade50,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.red.shade200),
+          ),
+          child: Text(
+            'Layout Error: $e',
+            style: TextStyle(color: Colors.red.shade900, fontSize: 12),
+          ),
+        ),
+      );
     }
   }
 
@@ -1549,6 +1633,13 @@ class _MessageRow extends StatelessWidget {
     // 1. Detect if the message contains list items that can be parsed as products
     final List<Map<String, String>> parsedProducts = _parseProducts(text);
     final String cleanText = _stripProductLines(text);
+    
+    final bool isError = cleanText.contains('gangguan') || 
+                         cleanText.contains('terputus') || 
+                         cleanText.contains('ditolak') || 
+                         cleanText.contains('sibuk') ||
+                         cleanText.contains('tidak ditemukan') ||
+                         cleanText.contains('Layout Error');
 
     return Align(
       alignment: Alignment.centerLeft,
@@ -1590,18 +1681,18 @@ class _MessageRow extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.88),
+                      color: isError ? const Color(0xFFFEF2F2) : const Color(0xFFF3F4F6),
                       borderRadius: const BorderRadius.only(
                         topLeft: Radius.circular(2),
                         topRight: Radius.circular(16),
                         bottomLeft: Radius.circular(16),
                         bottomRight: Radius.circular(16),
                       ),
-                      border: const Border(
-                        left: BorderSide(color: AppColors.primary, width: 3.5),
-                        top: BorderSide(color: Color(0xFFE5E7EB), width: 0.6),
-                        right: BorderSide(color: Color(0xFFE5E7EB), width: 0.6),
-                        bottom: BorderSide(color: Color(0xFFE5E7EB), width: 0.6),
+                      border: Border(
+                        left: BorderSide(color: isError ? const Color(0xFFEF4444) : AppColors.primary, width: 3.5),
+                        top: const BorderSide(color: Color(0xFFE5E7EB), width: 0.6),
+                        right: const BorderSide(color: Color(0xFFE5E7EB), width: 0.6),
+                        bottom: const BorderSide(color: Color(0xFFE5E7EB), width: 0.6),
                       ),
                       boxShadow: [
                         BoxShadow(
@@ -1613,8 +1704,8 @@ class _MessageRow extends StatelessWidget {
                     ),
                     child: Text(
                       cleanText,
-                      style: const TextStyle(
-                        color: Color(0xFF1F2937),
+                      style: TextStyle(
+                        color: isError ? const Color(0xFF991B1B) : const Color(0xFF1F2937),
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                         height: 1.5,

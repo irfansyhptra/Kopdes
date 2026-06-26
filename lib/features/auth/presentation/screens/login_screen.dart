@@ -34,13 +34,55 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
+  void _showLoadingDialog(BuildContext context, String message) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        content: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
+          child: Row(
+            children: [
+              const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 3,
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(width: 20),
+              Expanded(
+                child: Text(
+                  message,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.ink,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void _submit() async {
     if (_formKey.currentState!.validate()) {
+      _showLoadingDialog(context, 'Sedang masuk ke akun Anda...');
+
       await ref
           .read(authProvider.notifier)
           .login(_emailController.text.trim(), _passwordController.text);
 
       if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop(); // Dismiss loading popup
+
       final state = ref.read(authProvider);
       if (state.errorMessage != null) {
         ScaffoldMessenger.of(context).showSnackBar(

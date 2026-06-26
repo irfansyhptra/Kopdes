@@ -23,7 +23,13 @@ import '../../features/order/presentation/screens/order_success_screen.dart';
 import '../../features/order/presentation/screens/order_history_screen.dart';
 import '../../features/order/presentation/screens/order_detail_screen.dart';
 import '../../features/delivery/presentation/screens/tracking_screen.dart';
-import '../../features/umkm/presentation/screens/umkm_dashboard_screen.dart';
+import '../../features/umkm/presentation/screens/seller_dashboard_screen.dart';
+import '../../features/umkm/presentation/screens/product_screen.dart';
+import '../../features/umkm/presentation/screens/product_detail_screen.dart' as seller_view;
+import '../../features/umkm/presentation/screens/product_form_screen.dart';
+import '../../features/umkm/presentation/screens/order_screen.dart';
+import '../../features/umkm/presentation/screens/inventory_screen.dart';
+import '../../features/umkm/presentation/screens/store_profile_screen.dart';
 import '../../features/ai_assistant/presentation/screens/ai_assistant_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
 import '../../features/admin/presentation/screens/admin_dashboard_screen.dart';
@@ -267,7 +273,43 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/umkm',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const UMKMDashboardScreen(),
+        builder: (context, state) => const SellerDashboardScreen(),
+        routes: [
+          GoRoute(
+            path: 'products',
+            builder: (context, state) => const ProductScreen(),
+          ),
+          GoRoute(
+            path: 'products/new',
+            builder: (context, state) => const ProductFormScreen(),
+          ),
+          GoRoute(
+            path: 'products/edit/:id',
+            builder: (context, state) {
+              final id = state.pathParameters['id'] ?? '';
+              return ProductFormScreen(productId: id);
+            },
+          ),
+          GoRoute(
+            path: 'products/detail/:id',
+            builder: (context, state) {
+              final id = state.pathParameters['id'] ?? '';
+              return seller_view.ProductDetailScreen(productId: id);
+            },
+          ),
+          GoRoute(
+            path: 'orders',
+            builder: (context, state) => const OrderScreen(),
+          ),
+          GoRoute(
+            path: 'inventory',
+            builder: (context, state) => const InventoryScreen(),
+          ),
+          GoRoute(
+            path: 'profile',
+            builder: (context, state) => const StoreProfileScreen(),
+          ),
+        ],
       ),
       GoRoute(
         path: '/checkout',
