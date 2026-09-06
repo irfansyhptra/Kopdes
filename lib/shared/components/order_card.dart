@@ -63,7 +63,9 @@ class OrderCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final statusColor = _getStatusColor(order.status);
     final statusLabel = _getStatusLabel(order.status);
-    final formattedDate = DateFormat('dd MMM yyyy, HH:mm').format(order.createdAt);
+    final formattedDate = DateFormat(
+      'dd MMM yyyy, HH:mm',
+    ).format(order.createdAt);
 
     return GestureDetector(
       onTap: onTap,
@@ -93,10 +95,7 @@ class OrderCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 2),
-                    Text(
-                      formattedDate,
-                      style: AppTypography.captionSmall,
-                    ),
+                    Text(formattedDate, style: AppTypography.captionSmall),
                   ],
                 ),
                 Container(
@@ -124,7 +123,11 @@ class OrderCard extends StatelessWidget {
             // Customer Name & Shipping Info
             Row(
               children: [
-                const Icon(Icons.person_outline_rounded, size: 16, color: AppColors.muted),
+                const Icon(
+                  Icons.person_outline_rounded,
+                  size: 16,
+                  color: AppColors.muted,
+                ),
                 const SizedBox(width: AppSpacing.xs),
                 Text(
                   order.customer.name,
@@ -138,12 +141,18 @@ class OrderCard extends StatelessWidget {
             const SizedBox(height: 6),
             Row(
               children: [
-                const Icon(Icons.location_on_outlined, size: 16, color: AppColors.muted),
+                const Icon(
+                  Icons.location_on_outlined,
+                  size: 16,
+                  color: AppColors.muted,
+                ),
                 const SizedBox(width: AppSpacing.xs),
                 Expanded(
                   child: Text(
                     '${order.deliveryAddress.street}, ${order.deliveryAddress.city}',
-                    style: AppTypography.captionSmall.copyWith(color: AppColors.muted),
+                    style: AppTypography.captionSmall.copyWith(
+                      color: AppColors.muted,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -223,7 +232,8 @@ class OrderCard extends StatelessWidget {
 
             // Action Buttons
             if (onUpdateStatus != null) ...[
-              if (order.status.toUpperCase() == 'PENDING' || order.status.toUpperCase() == 'PAID') ...[
+              if (order.status.toUpperCase() == 'PENDING' ||
+                  order.status.toUpperCase() == 'PAID') ...[
                 const SizedBox(height: AppSpacing.md),
                 SizedBox(
                   width: double.infinity,

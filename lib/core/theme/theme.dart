@@ -12,6 +12,17 @@ class AppColors {
   static const Color primarySoft = Color(0xFFFFCDD2);
   static const Color primaryTint = Color(0xFFFFEBEE);
 
+  // Gradien header beranda. Aksen produk tetap [primary]; dua warna ini hanya
+  // titik awal/akhir gradien, bukan aksen kedua.
+  static const Color darkRed = Color(0xFF79000D);
+  static const Color brightRed = Color(0xFFED102D);
+
+  /// Badge terverifikasi & sorotan pada banner.
+  static const Color yellowAccent = Color(0xFFFFC400);
+
+  /// Isian indikator terpilih (12% aksen) — const, jadi tak perlu withOpacity.
+  static const Color primaryFaint = Color(0x1FD32F2F);
+
   // Neutrals
   static const Color ink = Color(0xFF222222);
   static const Color body = Color(0xFF3F3F3F);
@@ -84,12 +95,45 @@ class AppElevation {
     ),
   ];
 
+  /// Hairline + bayangan sangat halus — default kartu konten (Apple-inspired).
+  static const List<BoxShadow> hairline = [
+    BoxShadow(color: Color(0x0D000000), offset: Offset(0, 1), blurRadius: 2),
+    BoxShadow(color: Color(0x0A000000), offset: Offset(0, 6), blurRadius: 16),
+  ];
+
   static const List<BoxShadow> soft = [
     BoxShadow(
       color: Color.fromRGBO(0, 0, 0, 0.04),
       offset: Offset(0, 1),
       blurRadius: 4,
     ),
+  ];
+}
+
+/// Material "liquid glass" — hanya untuk lapisan yang benar-benar mengambang di
+/// atas konten (bottom nav, floating bar, overlay chip). Bukan untuk kartu isi.
+/// Selalu punya fallback solid bila blur tidak tersedia.
+class AppGlass {
+  static const double blur = 16.0;
+  static const double blurSubtle = 12.0;
+
+  // Light
+  static const Color fill = Color(0xF0FFFFFF); // 94% putih
+  static const Color fillSolid = Color(0xFFFFFFFF);
+
+  /// Isian translusen tanpa blur — untuk kontrol kecil di atas media.
+  static const Color fillSolidSoft = Color(0xF2FFFFFF);
+  static const Color stroke = Color(0x33FFFFFF);
+  static const Color hairline = Color(0x1F3C3C43); // separator iOS
+
+  // Dark
+  static const Color fillDark = Color(0xCC1C1C1E);
+  static const Color fillDarkSolid = Color(0xFF1C1C1E);
+  static const Color strokeDark = Color(0x1FFFFFFF);
+
+  /// Elevasi tunggal untuk material mengambang.
+  static const List<BoxShadow> lift = [
+    BoxShadow(color: Color(0x1F000000), offset: Offset(0, 8), blurRadius: 28),
   ];
 }
 
@@ -211,6 +255,34 @@ class AppTypography {
 }
 
 // ─────────────────────────────────────────────────────────
+// AppScrollBehavior
+//
+// Android + Material 3 memasang StretchingOverscrollIndicator di setiap
+// scrollable. Saat halaman ditarik ke paling atas, indikator itu meregangkan
+// piksel teratas — yang di Beranda & Marketplace kebetulan gradien merah header
+// — sehingga tampak seperti kilatan merah. Menyetel ClampingScrollPhysics per
+// layar tidak menolongnya: peregangan datang dari indikator, bukan dari physics.
+//
+// Dimatikan sekali di sini agar berlaku untuk seluruh aplikasi; RefreshIndicator
+// tetap jadi satu-satunya umpan balik tarik-ke-bawah.
+// ─────────────────────────────────────────────────────────
+
+class AppScrollBehavior extends MaterialScrollBehavior {
+  const AppScrollBehavior();
+
+  @override
+  Widget buildOverscrollIndicator(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) => child;
+
+  @override
+  ScrollPhysics getScrollPhysics(BuildContext context) =>
+      const AlwaysScrollableScrollPhysics(parent: ClampingScrollPhysics());
+}
+
+// ─────────────────────────────────────────────────────────
 // AppTheme — Material ThemeData wired to design tokens
 // ─────────────────────────────────────────────────────────
 
@@ -307,7 +379,10 @@ class AppTheme {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppRadius.button),
-        borderSide: const BorderSide(color: AppColors.primaryActive, width: 2.0),
+        borderSide: const BorderSide(
+          color: AppColors.primaryActive,
+          width: 2.0,
+        ),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppRadius.button),
@@ -319,7 +394,9 @@ class AppTheme {
       ),
       hintStyle: AppTypography.bodyMedium.copyWith(color: AppColors.mutedSoft),
       labelStyle: AppTypography.caption.copyWith(color: AppColors.muted),
-      floatingLabelStyle: AppTypography.caption.copyWith(color: AppColors.primary),
+      floatingLabelStyle: AppTypography.caption.copyWith(
+        color: AppColors.primary,
+      ),
     ),
     chipTheme: ChipThemeData(
       backgroundColor: AppColors.surfaceSoft,
@@ -354,8 +431,14 @@ class AppTheme {
       backgroundColor: AppColors.canvas,
       elevation: 0,
       indicatorColor: AppColors.primaryTint,
-      selectedIconTheme: const IconThemeData(color: AppColors.primary, size: 24),
-      unselectedIconTheme: const IconThemeData(color: AppColors.muted, size: 24),
+      selectedIconTheme: const IconThemeData(
+        color: AppColors.primary,
+        size: 24,
+      ),
+      unselectedIconTheme: const IconThemeData(
+        color: AppColors.muted,
+        size: 24,
+      ),
       selectedLabelTextStyle: AppTypography.captionSmall.copyWith(
         color: AppColors.primary,
         fontWeight: FontWeight.w600,
@@ -447,7 +530,10 @@ class AppTheme {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppRadius.button),
-        borderSide: const BorderSide(color: AppColors.primaryActive, width: 2.0),
+        borderSide: const BorderSide(
+          color: AppColors.primaryActive,
+          width: 2.0,
+        ),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppRadius.button),
@@ -459,7 +545,9 @@ class AppTheme {
       ),
       hintStyle: AppTypography.bodyMedium.copyWith(color: AppColors.mutedSoft),
       labelStyle: AppTypography.caption.copyWith(color: AppColors.muted),
-      floatingLabelStyle: AppTypography.caption.copyWith(color: AppColors.primary),
+      floatingLabelStyle: AppTypography.caption.copyWith(
+        color: AppColors.primary,
+      ),
     ),
     navigationBarTheme: NavigationBarThemeData(
       backgroundColor: AppColors.darkBg,

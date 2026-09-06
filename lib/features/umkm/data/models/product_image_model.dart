@@ -18,10 +18,6 @@ class ProductImageModel {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'url': url,
-      'isPrimary': isPrimary,
-    };
+    return {'id': id, 'url': url, 'isPrimary': isPrimary};
   }
 }

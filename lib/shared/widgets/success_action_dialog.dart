@@ -40,10 +40,7 @@ class SuccessActionDialog extends StatelessWidget {
         builder: (context, value, child) {
           return Transform.scale(
             scale: value,
-            child: Opacity(
-              opacity: value.clamp(0.0, 1.0),
-              child: child,
-            ),
+            child: Opacity(opacity: value.clamp(0.0, 1.0), child: child),
           );
         },
         child: Container(
@@ -168,13 +165,28 @@ class _AnimatedSuccessIconState extends State<_AnimatedSuccessIcon>
       duration: const Duration(milliseconds: 800),
     );
 
-    _scaleAnimation = TweenSequence<double>([
-      TweenSequenceItem(tween: Tween<double>(begin: 0.0, end: 1.2), weight: 60),
-      TweenSequenceItem(tween: Tween<double>(begin: 1.2, end: 1.0), weight: 40),
-    ]).animate(CurvedAnimation(parent: _controller, curve: const Interval(0.0, 0.6, curve: Curves.easeInOut)));
+    _scaleAnimation =
+        TweenSequence<double>([
+          TweenSequenceItem(
+            tween: Tween<double>(begin: 0.0, end: 1.2),
+            weight: 60,
+          ),
+          TweenSequenceItem(
+            tween: Tween<double>(begin: 1.2, end: 1.0),
+            weight: 40,
+          ),
+        ]).animate(
+          CurvedAnimation(
+            parent: _controller,
+            curve: const Interval(0.0, 0.6, curve: Curves.easeInOut),
+          ),
+        );
 
     _ringAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: const Interval(0.3, 1.0, curve: Curves.easeOut)),
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.3, 1.0, curve: Curves.easeOut),
+      ),
     );
 
     _controller.forward();
@@ -204,7 +216,9 @@ class _AnimatedSuccessIconState extends State<_AnimatedSuccessIcon>
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: const Color(0xFF22C55E).withValues(alpha: 0.3 * (1.0 - _ringAnimation.value)),
+                      color: const Color(
+                        0xFF22C55E,
+                      ).withValues(alpha: 0.3 * (1.0 - _ringAnimation.value)),
                       width: 2.0,
                     ),
                   ),

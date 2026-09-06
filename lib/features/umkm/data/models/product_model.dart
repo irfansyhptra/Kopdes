@@ -44,7 +44,9 @@ class ProductModel {
       stock: json['stock'] as int? ?? 0,
       categoryId: json['categoryId'] as String,
       category: json['category'] != null
-          ? ProductCategoryModel.fromJson(json['category'] as Map<String, dynamic>)
+          ? ProductCategoryModel.fromJson(
+              json['category'] as Map<String, dynamic>,
+            )
           : null,
       images: parsedImages,
       isApproved: json['isApproved'] as bool? ?? false,

@@ -13,5 +13,6 @@ class OrderRepositoryImpl implements OrderRepository {
   Future<OrderModel> getOrderDetail(String id) => service.getOrderDetail(id);
 
   @override
-  Future<OrderModel> updateOrderStatus(String id, String status) => service.updateOrderStatus(id, status);
+  Future<OrderModel> updateOrderStatus(String id, String status) =>
+      service.updateOrderStatus(id, status);
 }

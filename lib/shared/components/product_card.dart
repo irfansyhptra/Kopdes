@@ -1,8 +1,15 @@
 import 'package:flutter/material.dart';
+
 import '../../core/theme/theme.dart';
 import '../../features/umkm/data/models/product_model.dart';
+import '../widgets/apple_ui.dart';
 import '../widgets/product_image_loader.dart';
 
+/// Card item produk untuk konsol penjual/admin.
+///
+/// Berbagi kerangka [AppleCard] dengan katalog pelanggan; yang berbeda hanya
+/// baris kontrol pengelolaan di bawah — konteksnya kerja, bukan belanja, jadi
+/// tidak ada glass dan tidak ada dekorasi tambahan.
 class ProductCard extends StatelessWidget {
   final ProductModel product;
   final VoidCallback? onEdit;
@@ -21,175 +28,157 @@ class ProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasImage = product.images.isNotEmpty;
-    final imageUrl = hasImage ? product.images.first.url : '';
-    final isLowStock = product.stock <= 5;
-    final statusColor = product.isApproved ? AppColors.success : AppColors.warning;
-    final statusText = product.isApproved ? 'Disetujui' : 'Menunggu Approval';
+    final imageUrl = product.images.isNotEmpty ? product.images.first.url : '';
+    final isLowStock = product.stock > 0 && product.stock <= 5;
+    final isOut = product.stock <= 0;
 
-    return GestureDetector(
+    final (Color stockColor, String stockLabel) = isOut
+        ? (AppColors.errorText, 'Stok habis')
+        : isLowStock
+        ? (AppColors.warning, 'Sisa ${product.stock}')
+        : (AppColors.muted, 'Stok ${product.stock}');
+
+    return AppleCard(
       onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.canvas,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: AppColors.hairlineSoft),
-          boxShadow: AppElevation.card,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Image Stack
-            Stack(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Stack(
+            children: [
+              Container(
+                height: 132,
+                width: double.infinity,
+                color: AppColors.surfaceSoft,
+                child: ProductImageLoader(imageUrl: imageUrl),
+              ),
+              Positioned(
+                top: AppSpacing.sm,
+                left: AppSpacing.sm,
+                child: AppleBadge(
+                  label: product.isApproved ? 'Tayang' : 'Menunggu verifikasi',
+                  color: product.isApproved
+                      ? AppColors.success
+                      : AppColors.warning,
+                ),
+              ),
+            ],
+          ),
+          Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                ProductImageLoader(
-                  imageUrl: imageUrl,
-                  height: 140,
-                  width: double.infinity,
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(24),
+                Text(
+                  product.category?.name ?? 'Tanpa kategori',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.captionSmall.copyWith(fontSize: 11.5),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  product.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.bodyMedium.copyWith(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.ink,
                   ),
                 ),
-                // Status Approval
-                Positioned(
-                  top: AppSpacing.sm,
-                  left: AppSpacing.sm,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.sm,
-                      vertical: AppSpacing.xs,
-                    ),
-                    decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.9),
-                      borderRadius: BorderRadius.circular(AppRadius.pill),
-                    ),
-                    child: Text(
-                      statusText,
-                      style: AppTypography.badge.copyWith(
-                        color: AppColors.onDark,
-                        fontSize: 9,
-                      ),
-                    ),
-                  ),
-                ),
-                // Quick Stock Warning
-                if (isLowStock)
-                  Positioned(
-                    top: AppSpacing.sm,
-                    right: AppSpacing.sm,
-                    child: Container(
-                      padding: const EdgeInsets.all(AppSpacing.xs),
-                      decoration: const BoxDecoration(
-                        color: AppColors.error,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.warning_amber_rounded,
-                        color: AppColors.onDark,
-                        size: 14,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-
-            // Content
-            Padding(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    product.category?.name ?? 'Kategori',
-                    style: AppTypography.captionSmall.copyWith(
-                      color: AppColors.muted,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    product.name,
-                    style: AppTypography.bodyMedium.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.ink,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    'Rp ${product.price.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
-                    style: AppTypography.bodyLarge.copyWith(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        product.stock > 0 ? 'Stok: ${product.stock}' : 'Habis',
-                        style: AppTypography.captionSmall.copyWith(
-                          color: product.stock > 0
-                              ? (isLowStock ? AppColors.warning : AppColors.muted)
-                              : AppColors.error,
+                const SizedBox(height: AppSpacing.xs),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        formatRupiah(product.price),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.bodyLarge.copyWith(
+                          fontSize: 16,
                           fontWeight: FontWeight.w600,
+                          letterSpacing: -0.3,
                         ),
                       ),
-                      Row(
-                        children: [
-                          if (onEdit != null)
-                            IconButton(
-                              icon: const Icon(Icons.edit_outlined, size: 18),
-                              color: AppColors.muted,
-                              constraints: const BoxConstraints(),
-                              padding: const EdgeInsets.all(4),
-                              onPressed: onEdit,
-                            ),
-                          if (onDelete != null)
-                            IconButton(
-                              icon: const Icon(Icons.delete_outline_rounded, size: 18),
-                              color: AppColors.errorText,
-                              constraints: const BoxConstraints(),
-                              padding: const EdgeInsets.all(4),
-                              onPressed: onDelete,
-                            ),
-                        ],
+                    ),
+                    // Peringatan stok pakai teks + warna, bukan warna saja.
+                    Text(
+                      stockLabel,
+                      style: AppTypography.captionSmall.copyWith(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: stockColor,
                       ),
-                    ],
-                  ),
-                  if (onToggleActive != null) ...[
-                    const Divider(height: AppSpacing.md),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          product.isActive ? 'Aktif' : 'Nonaktif',
-                          style: AppTypography.captionSmall.copyWith(
-                            color: product.isActive ? AppColors.success : AppColors.muted,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        SizedBox(
-                          height: 24,
-                          width: 40,
-                          child: Switch(
-                            value: product.isActive,
-                            onChanged: onToggleActive,
-                            activeColor: AppColors.primary,
-                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                        ),
-                      ],
                     ),
                   ],
+                ),
+
+                if (onEdit != null ||
+                    onDelete != null ||
+                    onToggleActive != null) ...[
+                  const Divider(height: AppSpacing.lg),
+                  Row(
+                    children: [
+                      if (onToggleActive != null) ...[
+                        Expanded(
+                          child: Text(
+                            product.isActive ? 'Aktif' : 'Nonaktif',
+                            style: AppTypography.captionSmall.copyWith(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w500,
+                              color: product.isActive
+                                  ? AppColors.ink
+                                  : AppColors.muted,
+                            ),
+                          ),
+                        ),
+                        Switch.adaptive(
+                          value: product.isActive,
+                          onChanged: onToggleActive,
+                          activeThumbColor: AppColors.primary,
+                          materialTapTargetSize:
+                              MaterialTapTargetSize.shrinkWrap,
+                        ),
+                      ] else
+                        const Spacer(),
+                      if (onEdit != null)
+                        _iconAction(
+                          Icons.edit_outlined,
+                          AppColors.muted,
+                          'Ubah produk',
+                          onEdit!,
+                        ),
+                      if (onDelete != null)
+                        _iconAction(
+                          Icons.delete_outline_rounded,
+                          AppColors.errorText,
+                          'Hapus produk',
+                          onDelete!,
+                        ),
+                    ],
+                  ),
                 ],
-              ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
+    );
+  }
+
+  /// Target sentuh 44×44 walau ikonnya 20px — batas minimum Apple HIG.
+  Widget _iconAction(
+    IconData icon,
+    Color color,
+    String tooltip,
+    VoidCallback onPressed,
+  ) {
+    return IconButton(
+      icon: Icon(icon, size: 20),
+      color: color,
+      tooltip: tooltip,
+      onPressed: onPressed,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints.tightFor(width: 44, height: 44),
     );
   }
 }

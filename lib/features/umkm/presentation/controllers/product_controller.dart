@@ -37,13 +37,17 @@ final sellerProductQueryProvider = StateProvider<ProductSearchQuery>((ref) {
   return const ProductSearchQuery();
 });
 
-final sellerCategoriesProvider = FutureProvider<List<ProductCategoryModel>>((ref) async {
+final sellerCategoriesProvider = FutureProvider<List<ProductCategoryModel>>((
+  ref,
+) async {
   return ref.watch(productRepositoryProvider).getCategories();
 });
 
 final sellerProductsProvider = FutureProvider<List<ProductModel>>((ref) async {
   final query = ref.watch(sellerProductQueryProvider);
-  return ref.watch(productRepositoryProvider).getProducts(
+  return ref
+      .watch(productRepositoryProvider)
+      .getProducts(
         search: query.search.isEmpty ? null : query.search,
         categoryId: query.categoryId.isEmpty ? null : query.categoryId,
         page: query.page,
@@ -55,12 +59,10 @@ class ProductController extends StateNotifier<AsyncValue<void>> {
   final ProductRepository _repository;
   final Ref _ref;
 
-  ProductController({
-    required ProductRepository repository,
-    required Ref ref,
-  })  : _repository = repository,
-        _ref = ref,
-        super(const AsyncValue.data(null));
+  ProductController({required ProductRepository repository, required Ref ref})
+    : _repository = repository,
+      _ref = ref,
+      super(const AsyncValue.data(null));
 
   Future<bool> createProduct({
     required String name,
@@ -139,9 +141,10 @@ class ProductController extends StateNotifier<AsyncValue<void>> {
   }
 }
 
-final productControllerProvider = StateNotifierProvider<ProductController, AsyncValue<void>>((ref) {
-  return ProductController(
-    repository: ref.watch(productRepositoryProvider),
-    ref: ref,
-  );
-});
+final productControllerProvider =
+    StateNotifierProvider<ProductController, AsyncValue<void>>((ref) {
+      return ProductController(
+        repository: ref.watch(productRepositoryProvider),
+        ref: ref,
+      );
+    });

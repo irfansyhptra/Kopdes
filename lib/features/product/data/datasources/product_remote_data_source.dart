@@ -3,23 +3,29 @@ import 'package:image_picker/image_picker.dart';
 import '../models/product_model.dart';
 import '../models/category_model.dart';
 
+/// Metode baca mengembalikan JSON mentah, bukan model.
+///
+/// Cache menyimpan payload apa adanya, jadi data dari jaringan dan data dari
+/// cache melewati fungsi `fromJson` yang sama persis. Kalau data source
+/// men-decode lebih dulu, cache butuh jalur pemetaannya sendiri — dan jalur
+/// kedua itulah yang dulu diam-diam membuang `categoryId` dan `isActive`.
 abstract class ProductRemoteDataSource {
-  Future<List<ProductModel>> getProducts({
+  Future<Map<String, dynamic>> fetchProducts({
     String? search,
     String? categoryId,
     double? minPrice,
     double? maxPrice,
     bool? inStock,
     int page = 1,
-    int limit = 10,
+    int limit = 20,
     String sortBy = 'createdAt',
     String sortOrder = 'desc',
     bool? isActive,
   });
 
-  Future<ProductModel> getProductDetail(String id);
+  Future<Map<String, dynamic>> fetchProductDetail(String id);
 
-  Future<List<CategoryModel>> getCategories();
+  Future<List<dynamic>> fetchCategories();
 
   // Admin CRUD
   Future<ProductModel> createProduct({
@@ -56,14 +62,14 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
   ProductRemoteDataSourceImpl({required this.dio});
 
   @override
-  Future<List<ProductModel>> getProducts({
+  Future<Map<String, dynamic>> fetchProducts({
     String? search,
     String? categoryId,
     double? minPrice,
     double? maxPrice,
     bool? inStock,
     int page = 1,
-    int limit = 10,
+    int limit = 20,
     String sortBy = 'createdAt',
     String sortOrder = 'desc',
     bool? isActive,
@@ -101,32 +107,35 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
 
     final responseMap = response.data as Map<String, dynamic>;
     final dataMap = responseMap['data'] as Map<String, dynamic>? ?? responseMap;
-    final productsList = dataMap['products'] as List? ?? [];
-
-    return productsList
-        .map((p) => ProductModel.fromJson(p as Map<String, dynamic>))
-        .toList();
+    // Backend mengirim total/page/limit/totalPages DATAR di dalam `data`,
+    // bukan bersarang di `meta`. Versi sebelumnya membaca `dataMap['meta']`
+    // yang selalu null, sehingga Paginated jatuh ke totalPages = 1 dan
+    // halaman kedua katalog tidak pernah dimuat.
+    return {
+      'products': dataMap['products'] ?? const [],
+      'meta': {
+        'total': dataMap['total'] ?? 0,
+        'page': dataMap['page'] ?? 1,
+        'limit': dataMap['limit'] ?? 20,
+        'totalPages': dataMap['totalPages'] ?? 1,
+      },
+    };
   }
 
   @override
-  Future<ProductModel> getProductDetail(String id) async {
+  Future<Map<String, dynamic>> fetchProductDetail(String id) async {
     final response = await dio.get('/products/$id');
     final responseMap = response.data as Map<String, dynamic>;
-    final dataMap = responseMap['data'] as Map<String, dynamic>? ?? responseMap;
-    return ProductModel.fromJson(dataMap);
+    return responseMap['data'] as Map<String, dynamic>? ?? responseMap;
   }
 
   @override
-  Future<List<CategoryModel>> getCategories() async {
+  Future<List<dynamic>> fetchCategories() async {
     final response = await dio.get('/categories');
     final responseMap = response.data as Map<String, dynamic>;
-    final categoriesList =
-        responseMap['data'] as List? ??
+    return responseMap['data'] as List? ??
         responseMap['categories'] as List? ??
-        [];
-    return categoriesList
-        .map((c) => CategoryModel.fromJson(c as Map<String, dynamic>))
-        .toList();
+        const [];
   }
 
   @override

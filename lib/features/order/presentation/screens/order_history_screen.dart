@@ -50,7 +50,11 @@ class OrderHistoryScreen extends ConsumerWidget {
             child: IconButton(
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
-              icon: const Icon(Icons.chevron_left_rounded, color: Colors.white, size: 24),
+              icon: const Icon(
+                Icons.chevron_left_rounded,
+                color: Colors.white,
+                size: 24,
+              ),
               onPressed: () => context.pop(),
             ),
           ),

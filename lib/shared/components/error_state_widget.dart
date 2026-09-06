@@ -44,15 +44,16 @@ class ErrorStateWidget extends StatelessWidget {
             const SizedBox(height: AppSpacing.sm),
             Text(
               errorMessage,
-              style: AppTypography.bodyMedium.copyWith(
-                color: AppColors.muted,
-              ),
+              style: AppTypography.bodyMedium.copyWith(color: AppColors.muted),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: AppSpacing.xl),
             ElevatedButton.icon(
               onPressed: onRetry,
-              icon: const Icon(Icons.refresh_rounded, color: AppColors.onPrimary),
+              icon: const Icon(
+                Icons.refresh_rounded,
+                color: AppColors.onPrimary,
+              ),
               label: Text(
                 'Coba Lagi',
                 style: AppTypography.buttonSm.copyWith(

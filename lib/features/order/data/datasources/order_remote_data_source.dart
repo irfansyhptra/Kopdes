@@ -19,6 +19,7 @@ abstract class OrderRemoteDataSource {
   Future<OrderModel> checkoutCart({
     required String deliveryAddressId,
     required String paymentMethod,
+    List<String>? cartItemIds,
   });
   Future<OrderModel> createDirectOrder({
     required List<Map<String, dynamic>> items,
@@ -101,12 +102,16 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
   Future<OrderModel> checkoutCart({
     required String deliveryAddressId,
     required String paymentMethod,
+    List<String>? cartItemIds,
   }) async {
     final response = await dio.post(
       '/orders/checkout',
       data: {
         'deliveryAddressId': deliveryAddressId,
         'paymentMethod': paymentMethod,
+        // Dihilangkan berarti seluruh keranjang, sesuai perilaku lama server.
+        if (cartItemIds != null && cartItemIds.isNotEmpty)
+          'cartItemIds': cartItemIds,
       },
     );
     return OrderModel.fromJson(response.data['order'] as Map<String, dynamic>);

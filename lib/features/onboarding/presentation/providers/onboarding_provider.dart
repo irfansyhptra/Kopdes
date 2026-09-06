@@ -2,9 +2,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../../../core/network/dio_client.dart';
 
-final onboardingCompletedProvider = StateNotifierProvider<OnboardingCompletedNotifier, bool>((ref) {
-  return OnboardingCompletedNotifier(ref.watch(secureStorageProvider));
-});
+final onboardingCompletedProvider =
+    StateNotifierProvider<OnboardingCompletedNotifier, bool>((ref) {
+      return OnboardingCompletedNotifier(ref.watch(secureStorageProvider));
+    });
 
 class OnboardingCompletedNotifier extends StateNotifier<bool> {
   final FlutterSecureStorage _secureStorage;

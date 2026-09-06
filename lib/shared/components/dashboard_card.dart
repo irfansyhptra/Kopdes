@@ -21,7 +21,8 @@ class DashboardCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDarkBg = bgColor != AppColors.canvas && bgColor != AppColors.surfaceSoft;
+    final isDarkBg =
+        bgColor != AppColors.canvas && bgColor != AppColors.surfaceSoft;
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.base),
@@ -40,14 +41,18 @@ class DashboardCard extends StatelessWidget {
               Text(
                 title,
                 style: AppTypography.captionSmall.copyWith(
-                  color: isDarkBg ? AppColors.onDark.withOpacity(0.7) : AppColors.muted,
+                  color: isDarkBg
+                      ? AppColors.onDark.withOpacity(0.7)
+                      : AppColors.muted,
                   fontWeight: FontWeight.w600,
                 ),
               ),
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: isDarkBg ? AppColors.canvas.withOpacity(0.12) : iconColor.withOpacity(0.08),
+                  color: isDarkBg
+                      ? AppColors.canvas.withOpacity(0.12)
+                      : iconColor.withOpacity(0.08),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -72,7 +77,9 @@ class DashboardCard extends StatelessWidget {
             Text(
               subtitle!,
               style: AppTypography.captionSmall.copyWith(
-                color: isDarkBg ? AppColors.onDark.withOpacity(0.5) : AppColors.mutedSoft,
+                color: isDarkBg
+                    ? AppColors.onDark.withOpacity(0.5)
+                    : AppColors.mutedSoft,
                 fontSize: 11,
               ),
             ),

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app/app.dart';
@@ -9,7 +10,7 @@ void main() async {
   try {
     await IsarService.initialize();
   } catch (e) {
-    debugPrint('Failed to initialize Isar database: $e');
+    if (kDebugMode) debugPrint('Failed to initialize Isar database: $e');
   }
 
   runApp(const ProviderScope(child: KopdesApp()));

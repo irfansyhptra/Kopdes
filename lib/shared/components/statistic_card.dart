@@ -5,11 +5,7 @@ class StatisticCard extends StatelessWidget {
   final List<dynamic> data;
   final String title;
 
-  const StatisticCard({
-    super.key,
-    required this.data,
-    required this.title,
-  });
+  const StatisticCard({super.key, required this.data, required this.title});
 
   @override
   Widget build(BuildContext context) {
@@ -46,7 +42,8 @@ class StatisticCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: data.map((item) {
-                final double revenue = (item['revenue'] as num?)?.toDouble() ?? 0.0;
+                final double revenue =
+                    (item['revenue'] as num?)?.toDouble() ?? 0.0;
                 final String day = item['day']?.toString() ?? '';
                 final double percentage = revenue / maxRevenue;
 
@@ -69,7 +66,10 @@ class StatisticCard extends StatelessWidget {
                         margin: const EdgeInsets.symmetric(horizontal: 6),
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
-                            colors: [AppColors.primary, AppColors.primaryActive],
+                            colors: [
+                              AppColors.primary,
+                              AppColors.primaryActive,
+                            ],
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
                           ),

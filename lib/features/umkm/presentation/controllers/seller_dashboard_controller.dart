@@ -31,9 +31,11 @@ class SellerDashboardNotifier extends StateNotifier<AsyncValue<SellerModel>> {
 }
 
 final sellerDashboardControllerProvider =
-    StateNotifierProvider<SellerDashboardNotifier, AsyncValue<SellerModel>>((ref) {
-  return SellerDashboardNotifier(ref);
-});
+    StateNotifierProvider<SellerDashboardNotifier, AsyncValue<SellerModel>>((
+      ref,
+    ) {
+      return SellerDashboardNotifier(ref);
+    });
 
 final sellerStatsProvider = FutureProvider<List<dynamic>>((ref) async {
   return ref.watch(sellerRepositoryProvider).getStatistics();

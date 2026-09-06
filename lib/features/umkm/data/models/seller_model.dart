@@ -93,7 +93,9 @@ class SellerModel {
 
     return SellerModel(
       storeInfo: StoreModel.fromJson(json['storeInfo'] as Map<String, dynamic>),
-      stats: SellerDashboardStats.fromJson(json['stats'] as Map<String, dynamic>),
+      stats: SellerDashboardStats.fromJson(
+        json['stats'] as Map<String, dynamic>,
+      ),
       lowStockProducts: parsedLowStock,
       recentActivities: parsedActivities,
     );

@@ -77,7 +77,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     if (!_agreeToTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Anda harus menyetujui syarat dan ketentuan untuk mendaftar.'),
+          content: const Text(
+            'Anda harus menyetujui syarat dan ketentuan untuk mendaftar.',
+          ),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
@@ -91,7 +93,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     if (_formKey.currentState!.validate()) {
       _showLoadingDialog(context, 'Sedang mendaftarkan akun Anda...');
 
-      await ref.read(authProvider.notifier).register(
+      await ref
+          .read(authProvider.notifier)
+          .register(
             name: _nameController.text.trim(),
             email: _emailController.text.trim(),
             phone: _phoneController.text.trim(),
@@ -121,12 +125,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   void _showComingSoon(String method) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Daftar dengan $method segera hadir. Silakan gunakan form pendaftaran.'),
+        content: Text(
+          'Daftar dengan $method segera hadir. Silakan gunakan form pendaftaran.',
+        ),
         backgroundColor: AppColors.primary,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
@@ -142,7 +146,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         elevation: 0,
         scrolledUnderElevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.ink, size: 20),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: AppColors.ink,
+            size: 20,
+          ),
           onPressed: () => context.go('/login'),
         ),
       ),
@@ -150,7 +158,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         child: Center(
           child: SingleChildScrollView(
             physics: const ClampingScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.lg),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              0,
+              AppSpacing.lg,
+              AppSpacing.lg,
+            ),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 420),
               child: Form(
@@ -208,7 +221,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     // Inputs list
                     TextFormField(
                       controller: _nameController,
-                      style: const TextStyle(color: AppColors.ink, fontSize: 15),
+                      style: const TextStyle(
+                        color: AppColors.ink,
+                        fontSize: 15,
+                      ),
                       decoration: _buildInputDecoration(
                         label: 'Nama Lengkap',
                         icon: Icons.person_outline_rounded,
@@ -225,7 +241,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     TextFormField(
                       controller: _phoneController,
                       keyboardType: TextInputType.phone,
-                      style: const TextStyle(color: AppColors.ink, fontSize: 15),
+                      style: const TextStyle(
+                        color: AppColors.ink,
+                        fontSize: 15,
+                      ),
                       decoration: _buildInputDecoration(
                         label: 'Nomor HP',
                         icon: Icons.phone_outlined,
@@ -242,7 +261,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     TextFormField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
-                      style: const TextStyle(color: AppColors.ink, fontSize: 15),
+                      style: const TextStyle(
+                        color: AppColors.ink,
+                        fontSize: 15,
+                      ),
                       decoration: _buildInputDecoration(
                         label: 'Email',
                         icon: Icons.mail_outline_rounded,
@@ -262,26 +284,30 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     TextFormField(
                       controller: _passwordController,
                       obscureText: _obscurePassword,
-                      style: const TextStyle(color: AppColors.ink, fontSize: 15),
-                      decoration: _buildInputDecoration(
-                        label: 'Kata Sandi',
-                        icon: Icons.lock_outline_rounded,
-                      ).copyWith(
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _obscurePassword
-                                ? Icons.visibility_outlined
-                                : Icons.visibility_off_outlined,
-                            size: 20,
-                            color: AppColors.muted,
-                          ),
-                          onPressed: () {
-                            setState(() {
-                              _obscurePassword = !_obscurePassword;
-                            });
-                          },
-                        ),
+                      style: const TextStyle(
+                        color: AppColors.ink,
+                        fontSize: 15,
                       ),
+                      decoration:
+                          _buildInputDecoration(
+                            label: 'Kata Sandi',
+                            icon: Icons.lock_outline_rounded,
+                          ).copyWith(
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscurePassword
+                                    ? Icons.visibility_outlined
+                                    : Icons.visibility_off_outlined,
+                                size: 20,
+                                color: AppColors.muted,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _obscurePassword = !_obscurePassword;
+                                });
+                              },
+                            ),
+                          ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Kata sandi tidak boleh kosong';
@@ -297,26 +323,31 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     TextFormField(
                       controller: _confirmPasswordController,
                       obscureText: _obscureConfirmPassword,
-                      style: const TextStyle(color: AppColors.ink, fontSize: 15),
-                      decoration: _buildInputDecoration(
-                        label: 'Konfirmasi Kata Sandi',
-                        icon: Icons.lock_outline_rounded,
-                      ).copyWith(
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _obscureConfirmPassword
-                                ? Icons.visibility_outlined
-                                : Icons.visibility_off_outlined,
-                            size: 20,
-                            color: AppColors.muted,
-                          ),
-                          onPressed: () {
-                            setState(() {
-                              _obscureConfirmPassword = !_obscureConfirmPassword;
-                            });
-                          },
-                        ),
+                      style: const TextStyle(
+                        color: AppColors.ink,
+                        fontSize: 15,
                       ),
+                      decoration:
+                          _buildInputDecoration(
+                            label: 'Konfirmasi Kata Sandi',
+                            icon: Icons.lock_outline_rounded,
+                          ).copyWith(
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscureConfirmPassword
+                                    ? Icons.visibility_outlined
+                                    : Icons.visibility_off_outlined,
+                                size: 20,
+                                color: AppColors.muted,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _obscureConfirmPassword =
+                                      !_obscureConfirmPassword;
+                                });
+                              },
+                            ),
+                          ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Konfirmasi kata sandi tidak boleh kosong';
@@ -332,7 +363,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     // Role selection field (required for backend integration)
                     DropdownButtonFormField<String>(
                       value: _selectedRole,
-                      style: const TextStyle(color: AppColors.ink, fontSize: 15),
+                      style: const TextStyle(
+                        color: AppColors.ink,
+                        fontSize: 15,
+                      ),
                       dropdownColor: Colors.white,
                       decoration: _buildInputDecoration(
                         label: 'Daftar Sebagai',
@@ -380,7 +414,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         Expanded(
                           child: Text(
                             'Saya menyetujui syarat dan ketentuan',
-                            style: AppTypography.bodyMedium.copyWith(color: AppColors.muted),
+                            style: AppTypography.bodyMedium.copyWith(
+                              color: AppColors.muted,
+                            ),
                           ),
                         ),
                       ],
@@ -408,7 +444,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           foregroundColor: AppColors.onPrimary,
                           elevation: 0,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(24), // Pill rounded
+                            borderRadius: BorderRadius.circular(
+                              24,
+                            ), // Pill rounded
                           ),
                         ),
                         child: authState.status == AuthStatus.loading
@@ -435,7 +473,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     Center(
                       child: Text(
                         'Atau daftar dengan',
-                        style: AppTypography.caption.copyWith(color: AppColors.mutedSoft),
+                        style: AppTypography.caption.copyWith(
+                          color: AppColors.mutedSoft,
+                        ),
                       ),
                     ),
                     const SizedBox(height: AppSpacing.base),
@@ -451,12 +491,30 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                   fontFamily: AppTypography.fontFamily,
                                 ),
                                 children: [
-                                  TextSpan(text: 'G', style: TextStyle(color: Color(0xFF4285F4))),
-                                  TextSpan(text: 'o', style: TextStyle(color: Color(0xFFEA4335))),
-                                  TextSpan(text: 'o', style: TextStyle(color: Color(0xFFFBBC05))),
-                                  TextSpan(text: 'g', style: TextStyle(color: Color(0xFF4285F4))),
-                                  TextSpan(text: 'l', style: TextStyle(color: Color(0xFF34A853))),
-                                  TextSpan(text: 'e', style: TextStyle(color: Color(0xFFEA4335))),
+                                  TextSpan(
+                                    text: 'G',
+                                    style: TextStyle(color: Color(0xFF4285F4)),
+                                  ),
+                                  TextSpan(
+                                    text: 'o',
+                                    style: TextStyle(color: Color(0xFFEA4335)),
+                                  ),
+                                  TextSpan(
+                                    text: 'o',
+                                    style: TextStyle(color: Color(0xFFFBBC05)),
+                                  ),
+                                  TextSpan(
+                                    text: 'g',
+                                    style: TextStyle(color: Color(0xFF4285F4)),
+                                  ),
+                                  TextSpan(
+                                    text: 'l',
+                                    style: TextStyle(color: Color(0xFF34A853)),
+                                  ),
+                                  TextSpan(
+                                    text: 'e',
+                                    style: TextStyle(color: Color(0xFFEA4335)),
+                                  ),
                                 ],
                               ),
                             ),
@@ -469,7 +527,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                             logo: const Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.facebook_rounded, color: Color(0xFF1877F2), size: 18),
+                                Icon(
+                                  Icons.facebook_rounded,
+                                  color: Color(0xFF1877F2),
+                                  size: 18,
+                                ),
                                 SizedBox(width: 6),
                                 Text(
                                   'Facebook',
@@ -494,7 +556,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       children: [
                         Text(
                           'Sudah memiliki akun? ',
-                          style: AppTypography.bodyMedium.copyWith(color: AppColors.muted),
+                          style: AppTypography.bodyMedium.copyWith(
+                            color: AppColors.muted,
+                          ),
                         ),
                         GestureDetector(
                           onTap: () => context.go('/login'),
@@ -519,11 +583,17 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 
   // Premium custom input decoration with rounded 16px, light gray border, and red focus state
-  InputDecoration _buildInputDecoration({required String label, required IconData icon}) {
+  InputDecoration _buildInputDecoration({
+    required String label,
+    required IconData icon,
+  }) {
     return InputDecoration(
       labelText: label,
       labelStyle: const TextStyle(color: Color(0xFF6B7280), fontSize: 14),
-      floatingLabelStyle: const TextStyle(color: AppColors.primary, fontSize: 14),
+      floatingLabelStyle: const TextStyle(
+        color: AppColors.primary,
+        fontSize: 14,
+      ),
       prefixIcon: Icon(icon, color: const Color(0xFF6B7280), size: 20),
       filled: true,
       fillColor: Colors.white,
@@ -552,7 +622,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 
   // Social register buttons style
-  Widget _buildSocialRegisterButton({required Widget logo, required VoidCallback onPressed}) {
+  Widget _buildSocialRegisterButton({
+    required Widget logo,
+    required VoidCallback onPressed,
+  }) {
     return OutlinedButton(
       onPressed: onPressed,
       style: OutlinedButton.styleFrom(
@@ -560,9 +633,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         backgroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(vertical: 14),
         side: const BorderSide(color: Color(0xFFEBEBEB), width: 1.2),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
       child: Center(child: logo),
     );

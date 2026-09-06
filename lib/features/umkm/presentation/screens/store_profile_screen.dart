@@ -50,7 +50,9 @@ class _StoreProfileScreenState extends ConsumerState<StoreProfileScreen> {
       _isSaving = true;
     });
 
-    final success = await ref.read(storeControllerProvider.notifier).updateStoreProfile(
+    final success = await ref
+        .read(storeControllerProvider.notifier)
+        .updateStoreProfile(
           businessName: _nameController.text.trim(),
           description: _descController.text.trim(),
           address: _addressController.text.trim(),
@@ -105,7 +107,9 @@ class _StoreProfileScreenState extends ConsumerState<StoreProfileScreen> {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('Permintaan penarikan saldo berhasil dikirim. Proses verifikasi 1-2 hari kerja.'),
+                    content: Text(
+                      'Permintaan penarikan saldo berhasil dikirim. Proses verifikasi 1-2 hari kerja.',
+                    ),
                     backgroundColor: AppColors.success,
                   ),
                 );
@@ -156,7 +160,9 @@ class _StoreProfileScreenState extends ConsumerState<StoreProfileScreen> {
             ],
           ),
           body: profileState.when(
-            loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
+            loading: () => const Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            ),
             error: (error, stack) => ErrorStateWidget(
               errorMessage: error.toString(),
               onRetry: () => ref.invalidate(storeProfileProvider),
@@ -183,7 +189,10 @@ class _StoreProfileScreenState extends ConsumerState<StoreProfileScreen> {
                                 decoration: BoxDecoration(
                                   color: AppColors.primaryTint,
                                   shape: BoxShape.circle,
-                                  border: Border.all(color: AppColors.primary, width: 2),
+                                  border: Border.all(
+                                    color: AppColors.primary,
+                                    width: 2,
+                                  ),
                                 ),
                                 child: const Icon(
                                   Icons.storefront_rounded,
@@ -224,12 +233,18 @@ class _StoreProfileScreenState extends ConsumerState<StoreProfileScreen> {
                               color: isVerified
                                   ? AppColors.success.withOpacity(0.08)
                                   : AppColors.warning.withOpacity(0.08),
-                              borderRadius: BorderRadius.circular(AppRadius.pill),
+                              borderRadius: BorderRadius.circular(
+                                AppRadius.pill,
+                              ),
                             ),
                             child: Text(
-                              isVerified ? 'Toko Terverifikasi ✓' : 'Verifikasi Pending ⌛',
+                              isVerified
+                                  ? 'Toko Terverifikasi ✓'
+                                  : 'Verifikasi Pending ⌛',
                               style: AppTypography.badge.copyWith(
-                                color: isVerified ? AppColors.success : AppColors.warning,
+                                color: isVerified
+                                    ? AppColors.success
+                                    : AppColors.warning,
                                 fontSize: 10,
                               ),
                             ),
@@ -279,10 +294,15 @@ class _StoreProfileScreenState extends ConsumerState<StoreProfileScreen> {
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: AppColors.primary,
                                   foregroundColor: AppColors.onPrimary,
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 8,
+                                  ),
                                   minimumSize: Size.zero,
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(AppRadius.button),
+                                    borderRadius: BorderRadius.circular(
+                                      AppRadius.button,
+                                    ),
                                   ),
                                 ),
                                 child: Text(
@@ -303,22 +323,28 @@ class _StoreProfileScreenState extends ConsumerState<StoreProfileScreen> {
                     // Store Profile Form Fields
                     Text(
                       'Nama Usaha / Toko',
-                      style: AppTypography.caption.copyWith(fontWeight: FontWeight.bold, color: AppColors.ink),
+                      style: AppTypography.caption.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.ink,
+                      ),
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     TextFormField(
                       controller: _nameController,
                       enabled: _isEditing,
-                      decoration: const InputDecoration(
-                        hintText: 'Nama Usaha',
-                      ),
-                      validator: (val) => val == null || val.trim().isEmpty ? 'Nama usaha wajib diisi' : null,
+                      decoration: const InputDecoration(hintText: 'Nama Usaha'),
+                      validator: (val) => val == null || val.trim().isEmpty
+                          ? 'Nama usaha wajib diisi'
+                          : null,
                     ),
                     const SizedBox(height: AppSpacing.md),
 
                     Text(
                       'Deskripsi Usaha',
-                      style: AppTypography.caption.copyWith(fontWeight: FontWeight.bold, color: AppColors.ink),
+                      style: AppTypography.caption.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.ink,
+                      ),
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     TextFormField(
@@ -333,7 +359,10 @@ class _StoreProfileScreenState extends ConsumerState<StoreProfileScreen> {
 
                     Text(
                       'Alamat Toko',
-                      style: AppTypography.caption.copyWith(fontWeight: FontWeight.bold, color: AppColors.ink),
+                      style: AppTypography.caption.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.ink,
+                      ),
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     TextFormField(
@@ -348,7 +377,10 @@ class _StoreProfileScreenState extends ConsumerState<StoreProfileScreen> {
 
                     Text(
                       'Nomor Telepon Toko',
-                      style: AppTypography.caption.copyWith(fontWeight: FontWeight.bold, color: AppColors.ink),
+                      style: AppTypography.caption.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.ink,
+                      ),
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     TextFormField(
@@ -358,9 +390,11 @@ class _StoreProfileScreenState extends ConsumerState<StoreProfileScreen> {
                       decoration: const InputDecoration(
                         hintText: 'Nomor HP/WA Toko',
                       ),
-                      validator: (val) => val == null || val.trim().isEmpty ? 'Nomor telepon wajib diisi' : null,
+                      validator: (val) => val == null || val.trim().isEmpty
+                          ? 'Nomor telepon wajib diisi'
+                          : null,
                     ),
-                    
+
                     if (_isEditing) ...[
                       const SizedBox(height: AppSpacing.lg),
                       ElevatedButton(
@@ -370,7 +404,9 @@ class _StoreProfileScreenState extends ConsumerState<StoreProfileScreen> {
                           foregroundColor: AppColors.onPrimary,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(AppRadius.button),
+                            borderRadius: BorderRadius.circular(
+                              AppRadius.button,
+                            ),
                           ),
                         ),
                         child: Text(
@@ -382,7 +418,7 @@ class _StoreProfileScreenState extends ConsumerState<StoreProfileScreen> {
                         ),
                       ),
                     ],
-                    
+
                     const SizedBox(height: AppSpacing.lg),
                     const Divider(),
                     const SizedBox(height: AppSpacing.lg),
@@ -394,7 +430,11 @@ class _StoreProfileScreenState extends ConsumerState<StoreProfileScreen> {
                       subtitle: 'Atur kurir lokal KOPDES atau mandiri',
                       onTap: () {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Fitur Pengiriman dikelola oleh KOPDES Admin & Kurir secara otomatis.')),
+                          const SnackBar(
+                            content: Text(
+                              'Fitur Pengiriman dikelola oleh KOPDES Admin & Kurir secara otomatis.',
+                            ),
+                          ),
                         );
                       },
                     ),
@@ -405,7 +445,11 @@ class _StoreProfileScreenState extends ConsumerState<StoreProfileScreen> {
                       subtitle: 'Hubungi administrator koperasi',
                       onTap: () {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Silakan hubungi admin di support@kopdes.co')),
+                          const SnackBar(
+                            content: Text(
+                              'Silakan hubungi admin di support@kopdes.co',
+                            ),
+                          ),
                         );
                       },
                     ),
@@ -459,11 +503,11 @@ class _StoreProfileScreenState extends ConsumerState<StoreProfileScreen> {
             color: titleColor ?? AppColors.ink,
           ),
         ),
-        subtitle: Text(
-          subtitle,
-          style: AppTypography.captionSmall,
+        subtitle: Text(subtitle, style: AppTypography.captionSmall),
+        trailing: const Icon(
+          Icons.chevron_right_rounded,
+          color: AppColors.muted,
         ),
-        trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.muted),
         onTap: onTap,
       ),
     );

@@ -52,9 +52,27 @@ class SplashSequenceManager extends ChangeNotifier {
     notifyListeners();
     final stopwatch = Stopwatch()..start();
 
+    // Langkah 1-3 dijalankan BERSAMAAN, bukan berantai.
+    //
+    // Ketiganya tidak saling bergantung: health check, pengambilan kategori,
+    // dan pembacaan token dari secure storage bisa berjalan sendiri-sendiri.
+    // Sebelumnya masing-masing menunggu yang sebelumnya selesai, sehingga
+    // total waktunya adalah PENJUMLAHAN — sekarang yang TERLAMA saja.
+    //
+    // Urutan pesan di layar tidak berubah sedikit pun: tiap `await` di bawah
+    // langsung kembali kalau future-nya sudah selesai duluan.
+    //
+    // `.ignore()` wajib di sini. Kalau health gagal, kita melempar sebelum
+    // sempat meng-await dua future lainnya; tanpa penanda ini error mereka
+    // dianggap tidak tertangani dan mematikan zone. `ignore()` hanya menandai
+    // error sebagai sudah ditangani — `await` di bawah tetap menerimanya.
+    final healthFuture = checkHealth()..ignore();
+    final villageFuture = loadVillageData()..ignore();
+    final sessionFuture = checkSession()..ignore();
+
     try {
       // 1. Menghubungkan Koperasi...
-      final isHealthy = await checkHealth();
+      final isHealthy = await healthFuture;
       if (!isHealthy) {
         throw Exception("Backend is unhealthy or connection failed");
       }
@@ -62,12 +80,12 @@ class SplashSequenceManager extends ChangeNotifier {
       // 2. Memuat Data Desa...
       _state = SplashLoadingState.loadingVillageData;
       notifyListeners();
-      await loadVillageData();
+      await villageFuture;
 
       // 3. Memeriksa Sesi Pengguna...
       _state = SplashLoadingState.checkingUserSession;
       notifyListeners();
-      await checkSession();
+      await sessionFuture;
 
       // 4. Menghubungkan AI Assistant...
       _state = SplashLoadingState.connectingAiAssistant;
@@ -90,7 +108,7 @@ class SplashSequenceManager extends ChangeNotifier {
       }
       _complete();
     } catch (error, stack) {
-      debugPrint("Bootstrap error: $error\n$stack");
+      if (kDebugMode) debugPrint("Bootstrap error: $error\n$stack");
       _state = SplashLoadingState.unreachable;
       notifyListeners();
       // Do not call _complete() to prevent navigation.

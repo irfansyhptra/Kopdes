@@ -12,4 +12,3 @@ abstract class SellerRepository {
     required String phone,
   });
 }
-

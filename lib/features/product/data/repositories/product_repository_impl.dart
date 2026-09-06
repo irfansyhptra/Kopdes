@@ -1,33 +1,54 @@
+import '../../../../core/network/paginated.dart';
+import '../../../../core/storage/api_cache.dart';
 import '../../domain/entities/product.dart';
 import '../../domain/entities/category.dart';
 import '../../domain/repositories/product_repository.dart';
-import '../datasources/product_local_data_source.dart';
 import '../datasources/product_remote_data_source.dart';
+import '../models/category_model.dart';
+import '../models/product_model.dart';
 
 class ProductRepositoryImpl implements ProductRepository {
   final ProductRemoteDataSource remoteDataSource;
-  final ProductLocalDataSource localDataSource;
+  final ApiCache cache;
 
-  ProductRepositoryImpl({
-    required this.remoteDataSource,
-    required this.localDataSource,
-  });
+  ProductRepositoryImpl({required this.remoteDataSource, required this.cache});
 
   @override
-  Future<List<Product>> getProducts({
+  Future<Paginated<Product>> getProducts({
     String? search,
     String? categoryId,
     double? minPrice,
     double? maxPrice,
     bool? inStock,
     int page = 1,
-    int limit = 10,
+    int limit = 20,
     String sortBy = 'createdAt',
     String sortOrder = 'desc',
     bool? isActive,
-  }) async {
-    try {
-      final remoteProducts = await remoteDataSource.getProducts(
+    bool forceRefresh = false,
+  }) {
+    // Kunci cache harus mencerminkan SETIAP filter, kalau tidak hasil
+    // pencarian "beras" bisa tersaji untuk pencarian "gula".
+    final key = CacheKeys.productList(
+      [
+        'p=$page',
+        'l=$limit',
+        's=${search ?? ''}',
+        'c=${categoryId ?? ''}',
+        'min=${minPrice ?? ''}',
+        'max=${maxPrice ?? ''}',
+        'stock=${inStock ?? ''}',
+        'active=${isActive ?? ''}',
+        'sort=$sortBy.$sortOrder',
+      ].join('&'),
+    );
+
+    return cachedFetch(
+      cache: cache,
+      key: key,
+      ttl: CacheTtl.short,
+      forceRefresh: forceRefresh,
+      fetch: () => remoteDataSource.fetchProducts(
         search: search,
         categoryId: categoryId,
         minPrice: minPrice,
@@ -38,50 +59,44 @@ class ProductRepositoryImpl implements ProductRepository {
         sortBy: sortBy,
         sortOrder: sortOrder,
         isActive: isActive,
-      );
-
-      // Cache products locally (only on page 1 to keep cache fresh and clean)
-      if (page == 1 &&
-          (search == null || search.isEmpty) &&
-          (categoryId == null || categoryId.isEmpty)) {
-        await localDataSource.cacheProducts(remoteProducts);
-      }
-
-      return remoteProducts.map((p) => p.toEntity()).toList();
-    } catch (_) {
-      // Offline fallback: load from local cache
-      final cached = await localDataSource.getCachedProducts();
-      if (cached.isNotEmpty) {
-        return cached.map((p) => p.toEntity()).toList();
-      }
-      rethrow; // If no cache exists, propagate error
-    }
+      ),
+      decode: (json) => Paginated.fromJson(
+        json,
+        'products',
+        ProductModel.fromJson,
+      ).map((m) => m.toEntity()),
+    );
   }
 
   @override
-  Future<Product> getProductDetail(String id) async {
-    try {
-      final remoteProduct = await remoteDataSource.getProductDetail(id);
-      await localDataSource.cacheProductDetail(remoteProduct);
-      return remoteProduct.toEntity();
-    } catch (e) {
-      final cached = await localDataSource.getCachedProductDetail(id);
-      if (cached != null) {
-        return cached.toEntity();
-      }
-      rethrow;
-    }
+  Future<Product> getProductDetail(String id, {bool forceRefresh = false}) {
+    return cachedFetch(
+      cache: cache,
+      key: CacheKeys.productDetail(id),
+      ttl: CacheTtl.short,
+      forceRefresh: forceRefresh,
+      fetch: () => remoteDataSource.fetchProductDetail(id),
+      decode: (json) =>
+          ProductModel.fromJson(json as Map<String, dynamic>).toEntity(),
+    );
   }
 
   @override
-  Future<List<Category>> getCategories() async {
-    try {
-      final remoteCategories = await remoteDataSource.getCategories();
-      return remoteCategories.map((c) => c.toEntity()).toList();
-    } catch (_) {
-      // If offline, return a fallback empty list or allow UI to handle
-      return [];
-    }
+  Future<List<Category>> getCategories({bool forceRefresh = false}) {
+    // Kategori hampir tidak pernah berubah — TTL panjang, dan tidak lagi
+    // mengembalikan daftar kosong saat gagal (dulu itu membuat kegagalan
+    // jaringan tampak seperti "koperasi ini memang tidak punya kategori").
+    return cachedFetch(
+      cache: cache,
+      key: CacheKeys.categories,
+      ttl: CacheTtl.long,
+      forceRefresh: forceRefresh,
+      fetch: () => remoteDataSource.fetchCategories(),
+      decode: (json) => (json as List)
+          .whereType<Map<String, dynamic>>()
+          .map((c) => CategoryModel.fromJson(c).toEntity())
+          .toList(growable: false),
+    );
   }
 
   @override
@@ -101,6 +116,7 @@ class ProductRepositoryImpl implements ProductRepository {
       categoryId: categoryId,
       images: images,
     );
+    await _invalidateProductCaches();
     return product.toEntity();
   }
 
@@ -125,12 +141,21 @@ class ProductRepositoryImpl implements ProductRepository {
       isActive: isActive,
       newImages: newImages,
     );
+    await _invalidateProductCaches(id);
     return product.toEntity();
   }
 
   @override
   Future<void> deleteProduct(String id) async {
     await remoteDataSource.deleteProduct(id);
+    await _invalidateProductCaches(id);
+  }
+
+  /// Setiap tulis harus membatalkan cache baca yang terdampak, kalau tidak
+  /// pengguna melihat data lamanya sendiri selama TTL masih berjalan.
+  Future<void> _invalidateProductCaches([String? id]) async {
+    await cache.invalidatePrefix(CacheKeys.productListPrefix);
+    if (id != null) await cache.invalidate(CacheKeys.productDetail(id));
   }
 
   @override
@@ -142,6 +167,7 @@ class ProductRepositoryImpl implements ProductRepository {
       name: name,
       description: description,
     );
+    await cache.invalidate(CacheKeys.categories);
     return category.toEntity();
   }
 }

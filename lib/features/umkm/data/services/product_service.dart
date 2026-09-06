@@ -7,19 +7,25 @@ class ProductService {
   final Dio dio;
   ProductService({required this.dio});
 
-  Future<List<ProductModel>> getProducts({String? search, String? categoryId, int page = 1, int limit = 10}) async {
-    final params = <String, dynamic>{
-      'page': page,
-      'limit': limit,
-    };
+  Future<List<ProductModel>> getProducts({
+    String? search,
+    String? categoryId,
+    int page = 1,
+    int limit = 10,
+  }) async {
+    final params = <String, dynamic>{'page': page, 'limit': limit};
     if (search != null && search.isNotEmpty) params['search'] = search;
-    if (categoryId != null && categoryId.isNotEmpty) params['categoryId'] = categoryId;
+    if (categoryId != null && categoryId.isNotEmpty) {
+      params['categoryId'] = categoryId;
+    }
 
     final response = await dio.get('/seller/products', queryParameters: params);
     final responseMap = response.data as Map<String, dynamic>;
     final dataMap = responseMap['data'] as Map<String, dynamic>;
     final list = dataMap['products'] as List? ?? [];
-    return list.map((p) => ProductModel.fromJson(p as Map<String, dynamic>)).toList();
+    return list
+        .map((p) => ProductModel.fromJson(p as Map<String, dynamic>))
+        .toList();
   }
 
   Future<ProductModel> createProduct({
@@ -70,11 +76,17 @@ class ProductService {
   }) async {
     final formData = FormData();
     if (name != null) formData.fields.add(MapEntry('name', name));
-    if (description != null) formData.fields.add(MapEntry('description', description));
+    if (description != null) {
+      formData.fields.add(MapEntry('description', description));
+    }
     if (price != null) formData.fields.add(MapEntry('price', price.toString()));
     if (stock != null) formData.fields.add(MapEntry('stock', stock.toString()));
-    if (categoryId != null) formData.fields.add(MapEntry('categoryId', categoryId));
-    if (isActive != null) formData.fields.add(MapEntry('isActive', isActive.toString()));
+    if (categoryId != null) {
+      formData.fields.add(MapEntry('categoryId', categoryId));
+    }
+    if (isActive != null) {
+      formData.fields.add(MapEntry('isActive', isActive.toString()));
+    }
 
     if (newImages != null) {
       for (var file in newImages) {
@@ -103,6 +115,8 @@ class ProductService {
     final response = await dio.get('/categories');
     final responseMap = response.data as Map<String, dynamic>;
     final list = responseMap['data'] as List? ?? [];
-    return list.map((c) => ProductCategoryModel.fromJson(c as Map<String, dynamic>)).toList();
+    return list
+        .map((c) => ProductCategoryModel.fromJson(c as Map<String, dynamic>))
+        .toList();
   }
 }

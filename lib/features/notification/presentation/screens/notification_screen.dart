@@ -31,7 +31,8 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
 
   void _onScroll() async {
     // Detect bottom reach for infinite scroll simulation
-    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 100) {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 100) {
       final isLoadingMore = ref.read(isNotificationsLoadingMoreProvider);
       if (!isLoadingMore) {
         ref.read(isNotificationsLoadingMoreProvider.notifier).state = true;
@@ -92,7 +93,11 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
                   child: IconButton(
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
-                    icon: const Icon(Icons.chevron_left_rounded, color: Colors.white, size: 24),
+                    icon: const Icon(
+                      Icons.chevron_left_rounded,
+                      color: Colors.white,
+                      size: 24,
+                    ),
                     onPressed: () {
                       if (Navigator.of(context).canPop()) {
                         Navigator.of(context).pop();
@@ -115,7 +120,11 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
                 ),
                 _buildHeaderButton(
                   child: PopupMenuButton<String>(
-                    icon: const Icon(Icons.more_vert_rounded, color: Colors.white, size: 20),
+                    icon: const Icon(
+                      Icons.more_vert_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
                     shape: RoundedRectangleBorder(
@@ -123,7 +132,9 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
                     ),
                     onSelected: (value) {
                       if (value == 'read_all') {
-                        ref.read(notificationsProvider.notifier).markAllAsRead();
+                        ref
+                            .read(notificationsProvider.notifier)
+                            .markAllAsRead();
                       } else if (value == 'clear_all') {
                         ref.read(notificationsProvider.notifier).clearAll();
                       } else if (value == 'reset') {
@@ -135,9 +146,16 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
                         value: 'read_all',
                         child: Row(
                           children: [
-                            Icon(Icons.done_all_rounded, size: 18, color: AppColors.muted),
+                            Icon(
+                              Icons.done_all_rounded,
+                              size: 18,
+                              color: AppColors.muted,
+                            ),
                             SizedBox(width: 10),
-                            Text('Tandai Semua Dibaca', style: TextStyle(fontSize: 14)),
+                            Text(
+                              'Tandai Semua Dibaca',
+                              style: TextStyle(fontSize: 14),
+                            ),
                           ],
                         ),
                       ),
@@ -145,9 +163,19 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
                         value: 'clear_all',
                         child: Row(
                           children: [
-                            Icon(Icons.delete_outline_rounded, size: 18, color: AppColors.error),
+                            Icon(
+                              Icons.delete_outline_rounded,
+                              size: 18,
+                              color: AppColors.error,
+                            ),
                             SizedBox(width: 10),
-                            Text('Hapus Semua', style: TextStyle(fontSize: 14, color: AppColors.error)),
+                            Text(
+                              'Hapus Semua',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: AppColors.error,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -155,9 +183,16 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
                         value: 'reset',
                         child: Row(
                           children: [
-                            Icon(Icons.refresh_rounded, size: 18, color: AppColors.muted),
+                            Icon(
+                              Icons.refresh_rounded,
+                              size: 18,
+                              color: AppColors.muted,
+                            ),
                             SizedBox(width: 10),
-                            Text('Setel Ulang Contoh', style: TextStyle(fontSize: 14)),
+                            Text(
+                              'Setel Ulang Contoh',
+                              style: TextStyle(fontSize: 14),
+                            ),
                           ],
                         ),
                       ),
@@ -170,31 +205,35 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
           Expanded(
             child: RefreshIndicator(
               color: AppColors.primary,
-              onRefresh: () => ref.read(notificationsProvider.notifier).refreshNotifications(),
-        child: notifications.isEmpty
-            ? const NotificationEmptyState()
-            : ListView.separated(
-                controller: _scrollController,
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.only(bottom: 24),
-                itemCount: notifications.length + (isLoadingMore ? 1 : 0),
-                separatorBuilder: (context, index) => const SizedBox(height: 24), // 24px spacing between items
-                itemBuilder: (context, index) {
-                  if (index == notifications.length) {
-                    return const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 16),
-                      child: Center(
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.5,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    );
-                  }
-                  final item = notifications[index];
-                  return NotificationCard(item: item);
-                },
-              ),
+              onRefresh: () => ref
+                  .read(notificationsProvider.notifier)
+                  .refreshNotifications(),
+              child: notifications.isEmpty
+                  ? const NotificationEmptyState()
+                  : ListView.separated(
+                      controller: _scrollController,
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.only(bottom: 24),
+                      itemCount: notifications.length + (isLoadingMore ? 1 : 0),
+                      separatorBuilder: (context, index) => const SizedBox(
+                        height: 24,
+                      ), // 24px spacing between items
+                      itemBuilder: (context, index) {
+                        if (index == notifications.length) {
+                          return const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          );
+                        }
+                        final item = notifications[index];
+                        return NotificationCard(item: item);
+                      },
+                    ),
             ),
           ),
         ],

@@ -1,4 +1,5 @@
 import '../../domain/entities/order.dart';
+import '../../domain/entities/seller_ref.dart';
 import '../../../product/data/models/product_model.dart';
 import 'address_model.dart';
 import 'invoice_model.dart';
@@ -13,10 +14,12 @@ class OrderItemModel extends OrderItem {
     super.umkmProduct,
     required super.quantity,
     required super.price,
+    super.seller,
   });
 
   factory OrderItemModel.fromJson(Map<String, dynamic> json) {
     return OrderItemModel(
+      seller: SellerRef.fromItemJson(json),
       id: json['id'] as String,
       orderId: json['orderId'] as String? ?? '',
       productId: json['productId'] as String?,
@@ -55,6 +58,7 @@ class OrderItemModel extends OrderItem {
       umkmProduct: umkmProduct,
       quantity: quantity,
       price: price,
+      seller: seller,
     );
   }
 }

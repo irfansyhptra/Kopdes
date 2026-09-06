@@ -113,7 +113,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   ),
                   _buildPage(
                     context,
-                    imagePath: 'assets/images/onboarding/smart_distribution.png',
+                    imagePath:
+                        'assets/images/onboarding/smart_distribution.png',
                     title: 'Distribusi dan Monitoring',
                     description:
                         'Pantau pengiriman barang dengan validasi dua arah antara kurir dan penerima secara real-time.',
@@ -126,7 +127,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
             // Bottom Navigation Area
             Container(
-              padding: EdgeInsets.all(screenWidth < 360 ? AppSpacing.md : AppSpacing.lg),
+              padding: EdgeInsets.all(
+                screenWidth < 360 ? AppSpacing.md : AppSpacing.lg,
+              ),
               child: isWelcome
                   ? _buildWelcomeAction(screenHeight)
                   : _buildStepAction(screenHeight, screenWidth),
@@ -160,7 +163,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             // Illustration container with soft shadow and high quality rounded layout
             Container(
               height: imageHeight,
-              margin: EdgeInsets.only(bottom: screenHeight < 600 ? AppSpacing.md : AppSpacing.xl),
+              margin: EdgeInsets.only(
+                bottom: screenHeight < 600 ? AppSpacing.md : AppSpacing.xl,
+              ),
               decoration: BoxDecoration(
                 color: AppColors.canvas,
                 borderRadius: BorderRadius.circular(24),
@@ -174,10 +179,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(24),
-                child: Image.asset(
-                  imagePath,
-                  fit: BoxFit.contain,
-                ),
+                child: Image.asset(imagePath, fit: BoxFit.contain),
               ),
             ),
 
@@ -196,10 +198,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             Text(
               description,
               textAlign: TextAlign.center,
-              style: (screenHeight < 600 ? AppTypography.bodyMedium : AppTypography.bodyLarge).copyWith(
-                color: AppColors.muted,
-                height: 1.45,
-              ),
+              style:
+                  (screenHeight < 600
+                          ? AppTypography.bodyMedium
+                          : AppTypography.bodyLarge)
+                      .copyWith(color: AppColors.muted, height: 1.45),
             ),
             // Extra spacing at the bottom
             const SizedBox(height: AppSpacing.lg),
@@ -248,7 +251,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   // Stepper bottom layout with "Step X of 3", dot indicators, and buttons
   Widget _buildStepAction(double screenHeight, double screenWidth) {
     // Current step offset (1 to 3)
-    final int stepIndex = _currentPage; // Welcome is index 0. Page 1, 2, 3 are step 1, 2, 3.
+    final int stepIndex =
+        _currentPage; // Welcome is index 0. Page 1, 2, 3 are step 1, 2, 3.
     final String stepLabel = 'Step $stepIndex of 3';
     final bool isLastStep = _currentPage == 3;
 
@@ -281,9 +285,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   height: 8,
                   width: isDotActive ? 18 : 8,
                   decoration: BoxDecoration(
-                    color: isDotActive
-                        ? AppColors.primary
-                        : AppColors.hairline,
+                    color: isDotActive ? AppColors.primary : AppColors.hairline,
                     borderRadius: BorderRadius.circular(4),
                   ),
                 );

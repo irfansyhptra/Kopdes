@@ -63,7 +63,9 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
             borderRadius: BorderRadius.circular(20),
           ),
           title: const Text('Hapus Produk?'),
-          content: Text('Apakah Anda yakin ingin menghapus "$productName"? Tindakan ini tidak dapat dibatalkan.'),
+          content: Text(
+            'Apakah Anda yakin ingin menghapus "$productName"? Tindakan ini tidak dapat dibatalkan.',
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
@@ -112,10 +114,7 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.canvas,
-      appBar: AppBar(
-        title: const Text('Kelola Produk'),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text('Kelola Produk'), centerTitle: true),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push('/umkm/products/new'),
         backgroundColor: AppColors.primary,
@@ -138,13 +137,18 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
               onChanged: _onSearchChanged,
               decoration: InputDecoration(
                 hintText: 'Cari nama produk...',
-                prefixIcon: const Icon(Icons.search_rounded, color: AppColors.muted),
+                prefixIcon: const Icon(
+                  Icons.search_rounded,
+                  color: AppColors.muted,
+                ),
                 suffixIcon: _searchController.text.isNotEmpty
                     ? IconButton(
                         icon: const Icon(Icons.clear_rounded),
                         onPressed: () {
                           _searchController.clear();
-                          ref.read(sellerProductQueryProvider.notifier).update((state) {
+                          ref.read(sellerProductQueryProvider.notifier).update((
+                            state,
+                          ) {
                             return state.copyWith(search: '', page: 1);
                           });
                         },
@@ -163,7 +167,10 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(AppRadius.button),
-                  borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                  borderSide: const BorderSide(
+                    color: AppColors.primary,
+                    width: 1.5,
+                  ),
                 ),
               ),
             ),
@@ -177,7 +184,9 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
                 height: 48,
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.base),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.base,
+                  ),
                   itemCount: categories.length,
                   itemBuilder: (context, index) {
                     final cat = categories[index];
@@ -193,13 +202,17 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
                         checkmarkColor: AppColors.primary,
                         labelStyle: AppTypography.caption.copyWith(
                           color: isSelected ? AppColors.primary : AppColors.ink,
-                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                          fontWeight: isSelected
+                              ? FontWeight.w700
+                              : FontWeight.w500,
                         ),
                         backgroundColor: AppColors.surfaceSoft,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(AppRadius.pill),
                           side: BorderSide(
-                            color: isSelected ? AppColors.primary : Colors.transparent,
+                            color: isSelected
+                                ? AppColors.primary
+                                : Colors.transparent,
                             width: 1,
                           ),
                         ),
@@ -215,7 +228,10 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
                 child: SizedBox(
                   width: 20,
                   height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppColors.primary,
+                  ),
                 ),
               ),
             ),
@@ -239,13 +255,21 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
                     description: query.search.isNotEmpty
                         ? 'Tidak ada produk yang cocok dengan pencarian Anda.'
                         : 'Mulai pasarkan produk UMKM Anda dengan menambahkan produk baru!',
-                    actionLabel: query.search.isNotEmpty ? 'Reset Pencarian' : null,
+                    actionLabel: query.search.isNotEmpty
+                        ? 'Reset Pencarian'
+                        : null,
                     onAction: query.search.isNotEmpty
                         ? () {
                             _searchController.clear();
-                            ref.read(sellerProductQueryProvider.notifier).update((state) {
-                              return state.copyWith(search: '', categoryId: '', page: 1);
-                            });
+                            ref
+                                .read(sellerProductQueryProvider.notifier)
+                                .update((state) {
+                                  return state.copyWith(
+                                    search: '',
+                                    categoryId: '',
+                                    page: 1,
+                                  );
+                                });
                           }
                         : null,
                   );
@@ -262,14 +286,17 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
                     crossAxisCount: 2,
                     crossAxisSpacing: AppSpacing.md,
                     mainAxisSpacing: AppSpacing.md,
-                    childAspectRatio: 0.65,
+                    // Kartu penjual punya baris kontrol tambahan; rasio ini
+                    // memberi ruang untuk target sentuh 44px tanpa overflow.
+                    childAspectRatio: 0.58,
                   ),
                   itemCount: products.length,
                   itemBuilder: (context, index) {
                     final product = products[index];
                     return ProductCard(
                       product: product,
-                      onEdit: () => context.push('/umkm/products/edit/${product.id}'),
+                      onEdit: () =>
+                          context.push('/umkm/products/edit/${product.id}'),
                       onDelete: () => _confirmDelete(product.id, product.name),
                       onToggleActive: (val) async {
                         final success = await ref
@@ -278,13 +305,16 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
                         if (mounted && !success) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text('Gagal mengubah status aktif produk'),
+                              content: Text(
+                                'Gagal mengubah status aktif produk',
+                              ),
                               backgroundColor: AppColors.error,
                             ),
                           );
                         }
                       },
-                      onTap: () => context.push('/umkm/products/detail/${product.id}'),
+                      onTap: () =>
+                          context.push('/umkm/products/detail/${product.id}'),
                     );
                   },
                 );

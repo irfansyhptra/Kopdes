@@ -5,7 +5,9 @@ import 'providers.dart';
 import 'seller_dashboard_controller.dart';
 import 'product_controller.dart';
 
-final sellerInventoryProvider = FutureProvider<List<InventoryModel>>((ref) async {
+final sellerInventoryProvider = FutureProvider<List<InventoryModel>>((
+  ref,
+) async {
   return ref.watch(inventoryRepositoryProvider).getInventoryList();
 });
 
@@ -16,9 +18,9 @@ class InventoryController extends StateNotifier<AsyncValue<void>> {
   InventoryController({
     required InventoryRepository repository,
     required Ref ref,
-  })  : _repository = repository,
-        _ref = ref,
-        super(const AsyncValue.data(null));
+  }) : _repository = repository,
+       _ref = ref,
+       super(const AsyncValue.data(null));
 
   Future<bool> updateStock(String productId, int newStock) async {
     state = const AsyncValue.loading();
@@ -36,9 +38,10 @@ class InventoryController extends StateNotifier<AsyncValue<void>> {
   }
 }
 
-final inventoryControllerProvider = StateNotifierProvider<InventoryController, AsyncValue<void>>((ref) {
-  return InventoryController(
-    repository: ref.watch(inventoryRepositoryProvider),
-    ref: ref,
-  );
-});
+final inventoryControllerProvider =
+    StateNotifierProvider<InventoryController, AsyncValue<void>>((ref) {
+      return InventoryController(
+        repository: ref.watch(inventoryRepositoryProvider),
+        ref: ref,
+      );
+    });

@@ -11,6 +11,7 @@ class OrderActionNotifier extends StateNotifier<AsyncValue<Order?>> {
   Future<Order?> checkout({
     required String deliveryAddressId,
     required String paymentMethod,
+    List<String>? cartItemIds,
   }) async {
     state = const AsyncValue.loading();
     try {
@@ -18,6 +19,7 @@ class OrderActionNotifier extends StateNotifier<AsyncValue<Order?>> {
       final order = await repo.checkoutCart(
         deliveryAddressId: deliveryAddressId,
         paymentMethod: paymentMethod,
+        cartItemIds: cartItemIds,
       );
       state = AsyncValue.data(order);
       // Invalidate cart state since it has been cleared on backend
@@ -109,5 +111,6 @@ class DirectCheckoutData {
   });
 }
 
-final directCheckoutProvider = StateProvider<DirectCheckoutData?>((ref) => null);
-
+final directCheckoutProvider = StateProvider<DirectCheckoutData?>(
+  (ref) => null,
+);

@@ -16,7 +16,8 @@ class OrderScreen extends ConsumerStatefulWidget {
   ConsumerState<OrderScreen> createState() => _OrderScreenState();
 }
 
-class _OrderScreenState extends ConsumerState<OrderScreen> with SingleTickerProviderStateMixin {
+class _OrderScreenState extends ConsumerState<OrderScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   bool _isUpdating = false;
 
@@ -68,18 +69,28 @@ class _OrderScreenState extends ConsumerState<OrderScreen> with SingleTickerProv
     switch (tabIndex) {
       case 0: // Pesanan Baru
         return orders
-            .where((o) => o.status.toUpperCase() == 'PENDING' || o.status.toUpperCase() == 'PAID')
+            .where(
+              (o) =>
+                  o.status.toUpperCase() == 'PENDING' ||
+                  o.status.toUpperCase() == 'PAID',
+            )
             .toList();
       case 1: // Diproses
-        return orders.where((o) => o.status.toUpperCase() == 'PROCESSING').toList();
+        return orders
+            .where((o) => o.status.toUpperCase() == 'PROCESSING')
+            .toList();
       case 2: // Siap Kirim
-        return orders.where((o) => o.status.toUpperCase() == 'READY_FOR_DELIVERY').toList();
+        return orders
+            .where((o) => o.status.toUpperCase() == 'READY_FOR_DELIVERY')
+            .toList();
       case 3: // Selesai / Batal
         return orders
-            .where((o) =>
-                o.status.toUpperCase() == 'DELIVERED' ||
-                o.status.toUpperCase() == 'COMPLETED' ||
-                o.status.toUpperCase() == 'CANCELLED')
+            .where(
+              (o) =>
+                  o.status.toUpperCase() == 'DELIVERED' ||
+                  o.status.toUpperCase() == 'COMPLETED' ||
+                  o.status.toUpperCase() == 'CANCELLED',
+            )
             .toList();
       default:
         return [];
@@ -112,7 +123,9 @@ class _OrderScreenState extends ConsumerState<OrderScreen> with SingleTickerProv
             ),
           ),
           body: ordersState.when(
-            loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
+            loading: () => const Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            ),
             error: (error, stack) => ErrorStateWidget(
               errorMessage: error.toString(),
               onRetry: () => ref.invalidate(sellerOrdersProvider),
@@ -144,7 +157,8 @@ class _OrderScreenState extends ConsumerState<OrderScreen> with SingleTickerProv
                           padding: const EdgeInsets.only(bottom: AppSpacing.md),
                           child: OrderCard(
                             order: order,
-                            onUpdateStatus: (newStatus) => _handleUpdateStatus(order.id, newStatus),
+                            onUpdateStatus: (newStatus) =>
+                                _handleUpdateStatus(order.id, newStatus),
                             onTap: () {
                               // We can navigate to details or show a modal sheet
                               _showOrderDetailsSheet(order);
@@ -198,11 +212,7 @@ class _OrderScreenState extends ConsumerState<OrderScreen> with SingleTickerProv
         break;
     }
 
-    return EmptyStateWidget(
-      icon: icon,
-      title: title,
-      description: desc,
-    );
+    return EmptyStateWidget(icon: icon, title: title, description: desc);
   }
 
   void _showOrderDetailsSheet(OrderModel order) {
@@ -235,10 +245,12 @@ class _OrderScreenState extends ConsumerState<OrderScreen> with SingleTickerProv
                 const SizedBox(height: AppSpacing.lg),
                 Text(
                   'Rincian Pesanan Lengkap',
-                  style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.bold),
+                  style: AppTypography.titleMedium.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const Divider(height: AppSpacing.lg),
-                
+
                 // Info Customer
                 _buildInfoRow('Nama Pembeli', order.customer.name),
                 _buildInfoRow('Email', order.customer.email),
@@ -248,7 +260,9 @@ class _OrderScreenState extends ConsumerState<OrderScreen> with SingleTickerProv
                 // Alamat Pengiriman
                 Text(
                   'Alamat Pengiriman',
-                  style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.bold),
+                  style: AppTypography.bodyMedium.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: AppSpacing.xs),
                 Text(
@@ -262,10 +276,16 @@ class _OrderScreenState extends ConsumerState<OrderScreen> with SingleTickerProv
                 const Divider(height: AppSpacing.lg),
 
                 // Metode pembayaran
-                _buildInfoRow('Metode Pembayaran', order.paymentMethod.toUpperCase()),
-                _buildInfoRow('Status Pembayaran', order.paymentStatus.toUpperCase()),
+                _buildInfoRow(
+                  'Metode Pembayaran',
+                  order.paymentMethod.toUpperCase(),
+                ),
+                _buildInfoRow(
+                  'Status Pembayaran',
+                  order.paymentStatus.toUpperCase(),
+                ),
                 const SizedBox(height: AppSpacing.xl),
-                
+
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton(
@@ -293,8 +313,16 @@ class _OrderScreenState extends ConsumerState<OrderScreen> with SingleTickerProv
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: AppTypography.bodyMedium.copyWith(color: AppColors.muted)),
-          Text(value, style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.bold)),
+          Text(
+            label,
+            style: AppTypography.bodyMedium.copyWith(color: AppColors.muted),
+          ),
+          Text(
+            value,
+            style: AppTypography.bodyMedium.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ],
       ),
     );

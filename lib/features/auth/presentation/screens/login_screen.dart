@@ -102,12 +102,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void _showComingSoon(String method) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Masuk dengan $method segera hadir. Silakan gunakan Email.'),
+        content: Text(
+          'Masuk dengan $method segera hadir. Silakan gunakan Email.',
+        ),
         backgroundColor: AppColors.primary,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
@@ -125,7 +125,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         elevation: 0,
         scrolledUnderElevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.ink, size: 20),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: AppColors.ink,
+            size: 20,
+          ),
           onPressed: () => context.go('/onboarding'),
         ),
         actions: [
@@ -143,7 +147,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         child: Center(
           child: SingleChildScrollView(
             physics: const ClampingScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.lg),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              0,
+              AppSpacing.lg,
+              AppSpacing.lg,
+            ),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 420),
               child: Form(
@@ -226,12 +235,30 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             fontFamily: AppTypography.fontFamily,
                           ),
                           children: [
-                            TextSpan(text: 'G', style: TextStyle(color: Color(0xFF4285F4))),
-                            TextSpan(text: 'o', style: TextStyle(color: Color(0xFFEA4335))),
-                            TextSpan(text: 'o', style: TextStyle(color: Color(0xFFFBBC05))),
-                            TextSpan(text: 'g', style: TextStyle(color: Color(0xFF4285F4))),
-                            TextSpan(text: 'l', style: TextStyle(color: Color(0xFF34A853))),
-                            TextSpan(text: 'e', style: TextStyle(color: Color(0xFFEA4335))),
+                            TextSpan(
+                              text: 'G',
+                              style: TextStyle(color: Color(0xFF4285F4)),
+                            ),
+                            TextSpan(
+                              text: 'o',
+                              style: TextStyle(color: Color(0xFFEA4335)),
+                            ),
+                            TextSpan(
+                              text: 'o',
+                              style: TextStyle(color: Color(0xFFFBBC05)),
+                            ),
+                            TextSpan(
+                              text: 'g',
+                              style: TextStyle(color: Color(0xFF4285F4)),
+                            ),
+                            TextSpan(
+                              text: 'l',
+                              style: TextStyle(color: Color(0xFF34A853)),
+                            ),
+                            TextSpan(
+                              text: 'e',
+                              style: TextStyle(color: Color(0xFFEA4335)),
+                            ),
                           ],
                         ),
                       ),
@@ -240,13 +267,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     _buildSocialButton(
-                      logo: const Icon(Icons.phone_iphone_rounded, color: Color(0xFF6B7280), size: 18),
+                      logo: const Icon(
+                        Icons.phone_iphone_rounded,
+                        color: Color(0xFF6B7280),
+                        size: 18,
+                      ),
                       label: 'Masuk dengan Nomor HP',
                       onPressed: () => _showComingSoon('Nomor HP'),
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     _buildSocialButton(
-                      logo: const Icon(Icons.mail_outline_rounded, color: Color(0xFF6B7280), size: 18),
+                      logo: const Icon(
+                        Icons.mail_outline_rounded,
+                        color: Color(0xFF6B7280),
+                        size: 18,
+                      ),
                       label: 'Masuk dengan Email',
                       onPressed: () {
                         // Tapping "Masuk dengan Email" focuses on the email input field
@@ -257,15 +292,29 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     // Divider "atau"
                     Row(
                       children: [
-                        const Expanded(child: Divider(color: Color(0xFFEBEBEB), thickness: 1)),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.base),
-                          child: Text(
-                            'atau',
-                            style: AppTypography.caption.copyWith(color: AppColors.mutedSoft),
+                        const Expanded(
+                          child: Divider(
+                            color: Color(0xFFEBEBEB),
+                            thickness: 1,
                           ),
                         ),
-                        const Expanded(child: Divider(color: Color(0xFFEBEBEB), thickness: 1)),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.base,
+                          ),
+                          child: Text(
+                            'atau',
+                            style: AppTypography.caption.copyWith(
+                              color: AppColors.mutedSoft,
+                            ),
+                          ),
+                        ),
+                        const Expanded(
+                          child: Divider(
+                            color: Color(0xFFEBEBEB),
+                            thickness: 1,
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: AppSpacing.base),
@@ -275,7 +324,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       controller: _emailController,
                       enabled: !isServerDown,
                       keyboardType: TextInputType.emailAddress,
-                      style: const TextStyle(color: AppColors.ink, fontSize: 15),
+                      style: const TextStyle(
+                        color: AppColors.ink,
+                        fontSize: 15,
+                      ),
                       decoration: _buildInputDecoration(
                         label: 'Email',
                         icon: Icons.mail_outline_rounded,
@@ -296,26 +348,30 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       controller: _passwordController,
                       enabled: !isServerDown,
                       obscureText: _obscurePassword,
-                      style: const TextStyle(color: AppColors.ink, fontSize: 15),
-                      decoration: _buildInputDecoration(
-                        label: 'Kata Sandi',
-                        icon: Icons.lock_outline_rounded,
-                      ).copyWith(
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _obscurePassword
-                                ? Icons.visibility_outlined
-                                : Icons.visibility_off_outlined,
-                            size: 20,
-                            color: AppColors.muted,
-                          ),
-                          onPressed: () {
-                            setState(() {
-                              _obscurePassword = !_obscurePassword;
-                            });
-                          },
-                        ),
+                      style: const TextStyle(
+                        color: AppColors.ink,
+                        fontSize: 15,
                       ),
+                      decoration:
+                          _buildInputDecoration(
+                            label: 'Kata Sandi',
+                            icon: Icons.lock_outline_rounded,
+                          ).copyWith(
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscurePassword
+                                    ? Icons.visibility_outlined
+                                    : Icons.visibility_off_outlined,
+                                size: 20,
+                                color: AppColors.muted,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _obscurePassword = !_obscurePassword;
+                                });
+                              },
+                            ),
+                          ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Kata sandi tidak boleh kosong';
@@ -360,7 +416,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ],
                       ),
                       child: ElevatedButton(
-                        onPressed: (authState.status == AuthStatus.loading || isServerDown)
+                        onPressed:
+                            (authState.status == AuthStatus.loading ||
+                                isServerDown)
                             ? null
                             : _submit,
                         style: ElevatedButton.styleFrom(
@@ -368,7 +426,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           foregroundColor: AppColors.onPrimary,
                           elevation: 0,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(24), // Rounded 24px
+                            borderRadius: BorderRadius.circular(
+                              24,
+                            ), // Rounded 24px
                           ),
                         ),
                         child: authState.status == AuthStatus.loading
@@ -397,7 +457,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       children: [
                         Text(
                           'Belum memiliki akun? ',
-                          style: AppTypography.bodyMedium.copyWith(color: AppColors.muted),
+                          style: AppTypography.bodyMedium.copyWith(
+                            color: AppColors.muted,
+                          ),
                         ),
                         GestureDetector(
                           onTap: isServerDown
@@ -426,11 +488,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   // Premium custom input decoration with rounded 16px, light gray border, and red focus state
-  InputDecoration _buildInputDecoration({required String label, required IconData icon}) {
+  InputDecoration _buildInputDecoration({
+    required String label,
+    required IconData icon,
+  }) {
     return InputDecoration(
       labelText: label,
       labelStyle: const TextStyle(color: Color(0xFF6B7280), fontSize: 14),
-      floatingLabelStyle: const TextStyle(color: AppColors.primary, fontSize: 14),
+      floatingLabelStyle: const TextStyle(
+        color: AppColors.primary,
+        fontSize: 14,
+      ),
       prefixIcon: Icon(icon, color: const Color(0xFF6B7280), size: 20),
       filled: true,
       fillColor: Colors.white,

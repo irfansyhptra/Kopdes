@@ -38,7 +38,8 @@ class _ProductCardState extends State<ProductCard> {
     final bool isCompact = screenWidth < 360;
 
     // Determine deterministic simulated values for rating, sold count, and store label
-    final double rating = 4.7 + (widget.product.id.hashCode % 4) * 0.1; // 4.7 to 5.0
+    final double rating =
+        4.7 + (widget.product.id.hashCode % 4) * 0.1; // 4.7 to 5.0
     final int soldCount = 50 + (widget.product.id.hashCode % 900); // 50 to 950
     final String soldStr = soldCount > 500
         ? 'Terjual ${(soldCount / 100).toStringAsFixed(1)}rb'
@@ -49,9 +50,10 @@ class _ProductCardState extends State<ProductCard> {
         : 'UMKM Desa Lamteh';
 
     // Promo badge example
-    final String badgeText = widget.discountLabel ?? 
-        (widget.product.stock < 5 
-            ? 'BEST SELLER' 
+    final String badgeText =
+        widget.discountLabel ??
+        (widget.product.stock < 5
+            ? 'BEST SELLER'
             : (widget.product.stock % 3 == 0 ? '-15%' : 'BARU'));
 
     // Crossed out original price (simulated 25% higher)
@@ -73,9 +75,9 @@ class _ProductCardState extends State<ProductCard> {
             color: Colors.white,
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
-              color: _isPressed 
-                  ? AppColors.primary.withValues(alpha: 0.15) 
-                  : const Color(0xFFF0F0F0), 
+              color: _isPressed
+                  ? AppColors.primary.withValues(alpha: 0.15)
+                  : const Color(0xFFF0F0F0),
               width: 1.2,
             ),
             boxShadow: _isPressed
@@ -107,8 +109,8 @@ class _ProductCardState extends State<ProductCard> {
                 final bool isVeryShort = cardHeight > 0 && cardHeight < 290;
 
                 // Outer padding inside details
-                final double detailsPadding = isNarrow 
-                    ? 8.0 
+                final double detailsPadding = isNarrow
+                    ? 8.0
                     : (isShort ? 10.0 : 12.0);
 
                 // Aspect ratio of the image:
@@ -119,21 +121,28 @@ class _ProductCardState extends State<ProductCard> {
                   // Landscape ratio — image height = cardWidth / 1.4 (much shorter)
                   imageAspectRatio = isNarrow ? 1.2 : 1.4;
                 } else {
-                  imageAspectRatio = isVeryShort ? 1.15 : (isShort ? 1.05 : 1.0);
+                  imageAspectRatio = isVeryShort
+                      ? 1.15
+                      : (isShort ? 1.05 : 1.0);
                 }
 
                 // Estimated image height to calculate remaining detail space
-                final double estImageHeight = cardWidth > 0 ? cardWidth / imageAspectRatio : 0;
+                final double estImageHeight = cardWidth > 0
+                    ? cardWidth / imageAspectRatio
+                    : 0;
                 final double detailsAvailHeight = cardHeight - estImageHeight;
 
                 // Visibility configurations — based on remaining detail space
                 final bool showCategory = detailsAvailHeight > 90;
-                final bool showStoreName = widget.showActions && detailsAvailHeight > 130;
+                final bool showStoreName =
+                    widget.showActions && detailsAvailHeight > 130;
                 final bool showCrossedPrice = detailsAvailHeight > 80;
                 final bool showActions = widget.showActions && cardHeight > 275;
 
                 // Text sizing adjustments
-                final double titleFontSize = isNarrow ? 11 : (isCompact ? 12 : 13);
+                final double titleFontSize = isNarrow
+                    ? 11
+                    : (isCompact ? 12 : 13);
                 final int titleMaxLines = detailsAvailHeight > 110 ? 2 : 1;
 
                 return Column(
@@ -179,7 +188,8 @@ class _ProductCardState extends State<ProductCard> {
                             // Category Label
                             if (showCategory) ...[
                               Text(
-                                (widget.product.category?.name ?? 'Koperasi').toUpperCase(),
+                                (widget.product.category?.name ?? 'Koperasi')
+                                    .toUpperCase(),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
@@ -226,62 +236,66 @@ class _ProductCardState extends State<ProductCard> {
                               fit: BoxFit.scaleDown,
                               alignment: Alignment.centerLeft,
                               child: Row(
-                               children: [
-                                const Icon(Icons.star_rounded, color: Color(0xFFFBBF24), size: 13),
-                                const SizedBox(width: 2),
-                                Text(
-                                  rating.toStringAsFixed(1),
-                                  style: const TextStyle(
-                                    color: Color(0xFF1A1A1A),
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w700,
+                                children: [
+                                  const Icon(
+                                    Icons.star_rounded,
+                                    color: Color(0xFFFBBF24),
+                                    size: 13,
                                   ),
-                                ),
-                                const SizedBox(width: 2),
-                                Text(
-                                  '($reviewStr)',
-                                  style: const TextStyle(
-                                    color: Color(0xFF6B7280),
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w500,
+                                  const SizedBox(width: 2),
+                                  Text(
+                                    rating.toStringAsFixed(1),
+                                    style: const TextStyle(
+                                      color: Color(0xFF1A1A1A),
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(width: 4),
-                                const Text(
-                                  '•',
-                                  style: TextStyle(
-                                    color: Color(0xFF9CA3AF),
-                                    fontSize: 9,
+                                  const SizedBox(width: 2),
+                                  Text(
+                                    '($reviewStr)',
+                                    style: const TextStyle(
+                                      color: Color(0xFF6B7280),
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w500,
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  soldStr,
-                                  style: const TextStyle(
-                                    color: Color(0xFF6B7280),
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w600,
+                                  const SizedBox(width: 4),
+                                  const Text(
+                                    '•',
+                                    style: TextStyle(
+                                      color: Color(0xFF9CA3AF),
+                                      fontSize: 9,
+                                    ),
                                   ),
-                                ),
-                              ],
-                             ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    soldStr,
+                                    style: const TextStyle(
+                                      color: Color(0xFF6B7280),
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                            
+
                             const Spacer(),
 
                             // Price container & crossed out original price
-                             Row(
+                            Row(
                               children: [
                                 Flexible(
                                   child: Text(
-                                  'Rp ${widget.product.price.toStringAsFixed(0).replaceAllMapped(RegExp(r"(\d{1,3})(?=(\d{3})+(?!\d))"), (Match m) => "${m[1]}.")}',
-                                  style: const TextStyle(
-                                    color: Color(0xFFD32F2F),
-                                    fontSize: 12.5,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
+                                    'Rp ${widget.product.price.toStringAsFixed(0).replaceAllMapped(RegExp(r"(\d{1,3})(?=(\d{3})+(?!\d))"), (Match m) => "${m[1]}.")}',
+                                    style: const TextStyle(
+                                      color: Color(0xFFD32F2F),
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                                 if (showCrossedPrice) ...[
@@ -317,7 +331,9 @@ class _ProductCardState extends State<ProductCard> {
                                   Expanded(
                                     child: BuyNowButton(
                                       onTap: widget.onBuyNow ?? () {},
-                                      label: isNarrow ? 'Beli' : 'Beli Sekarang',
+                                      label: isNarrow
+                                          ? 'Beli'
+                                          : 'Beli Sekarang',
                                     ),
                                   ),
                                 ],
@@ -346,11 +362,7 @@ class FavoriteButton extends StatefulWidget {
   final bool isFavorite;
   final ValueChanged<bool>? onToggle;
 
-  const FavoriteButton({
-    super.key,
-    this.isFavorite = false,
-    this.onToggle,
-  });
+  const FavoriteButton({super.key, this.isFavorite = false, this.onToggle});
 
   @override
   State<FavoriteButton> createState() => _FavoriteButtonState();
@@ -413,7 +425,9 @@ class _FavoriteButtonState extends State<FavoriteButton>
             ],
           ),
           child: Icon(
-            _isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+            _isFavorite
+                ? Icons.favorite_rounded
+                : Icons.favorite_border_rounded,
             color: AppColors.primary,
             size: 16,
           ),
@@ -445,9 +459,10 @@ class _PriceCapsuleState extends State<PriceCapsule>
       duration: const Duration(milliseconds: 1500),
     )..repeat(reverse: true);
 
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.04).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 1.04,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override

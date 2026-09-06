@@ -9,20 +9,25 @@ import '../controllers/product_controller.dart';
 import '../controllers/providers.dart';
 import '../../data/models/product_model.dart';
 
-final sellerProductDetailProvider = FutureProvider.family<ProductModel, String>((ref, id) async {
-  final products = await ref.read(productRepositoryProvider).getProducts(limit: 100);
-  return products.firstWhere(
-    (p) => p.id == id,
-    orElse: () => throw Exception('Produk tidak ditemukan'),
-  );
-});
+final sellerProductDetailProvider = FutureProvider.family<ProductModel, String>(
+  (ref, id) async {
+    final products = await ref
+        .read(productRepositoryProvider)
+        .getProducts(limit: 100);
+    return products.firstWhere(
+      (p) => p.id == id,
+      orElse: () => throw Exception('Produk tidak ditemukan'),
+    );
+  },
+);
 
 class ProductDetailScreen extends ConsumerStatefulWidget {
   final String productId;
   const ProductDetailScreen({super.key, required this.productId});
 
   @override
-  ConsumerState<ProductDetailScreen> createState() => _ProductDetailScreenState();
+  ConsumerState<ProductDetailScreen> createState() =>
+      _ProductDetailScreenState();
 }
 
 class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
@@ -37,7 +42,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
             borderRadius: BorderRadius.circular(20),
           ),
           title: const Text('Hapus Produk?'),
-          content: Text('Apakah Anda yakin ingin menghapus "${product.name}"? Tindakan ini tidak dapat dibatalkan.'),
+          content: Text(
+            'Apakah Anda yakin ingin menghapus "${product.name}"? Tindakan ini tidak dapat dibatalkan.',
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
@@ -81,23 +88,32 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final detailState = ref.watch(sellerProductDetailProvider(widget.productId));
+    final detailState = ref.watch(
+      sellerProductDetailProvider(widget.productId),
+    );
 
     return Scaffold(
       backgroundColor: AppColors.canvas,
       body: detailState.when(
-        loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
+        loading: () => const Center(
+          child: CircularProgressIndicator(color: AppColors.primary),
+        ),
         error: (err, _) => Scaffold(
           appBar: AppBar(title: const Text('Detail Produk')),
           body: ErrorStateWidget(
             errorMessage: err.toString(),
-            onRetry: () => ref.invalidate(sellerProductDetailProvider(widget.productId)),
+            onRetry: () =>
+                ref.invalidate(sellerProductDetailProvider(widget.productId)),
           ),
         ),
         data: (product) {
           final isLowStock = product.stock <= 5;
-          final statusColor = product.isApproved ? AppColors.success : AppColors.warning;
-          final statusText = product.isApproved ? 'Disetujui Admin' : 'Menunggu Approval';
+          final statusColor = product.isApproved
+              ? AppColors.success
+              : AppColors.warning;
+          final statusText = product.isApproved
+              ? 'Disetujui Admin'
+              : 'Menunggu Approval';
 
           return CustomScrollView(
             slivers: [
@@ -113,7 +129,10 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                     shape: BoxShape.circle,
                   ),
                   child: IconButton(
-                    icon: const Icon(Icons.arrow_back_rounded, color: AppColors.ink),
+                    icon: const Icon(
+                      Icons.arrow_back_rounded,
+                      color: AppColors.ink,
+                    ),
                     onPressed: () => context.pop(),
                   ),
                 ),
@@ -125,8 +144,12 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                       shape: BoxShape.circle,
                     ),
                     child: IconButton(
-                      icon: const Icon(Icons.edit_outlined, color: AppColors.ink),
-                      onPressed: () => context.push('/umkm/products/edit/${product.id}'),
+                      icon: const Icon(
+                        Icons.edit_outlined,
+                        color: AppColors.ink,
+                      ),
+                      onPressed: () =>
+                          context.push('/umkm/products/edit/${product.id}'),
                     ),
                   ),
                 ],
@@ -150,7 +173,10 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                           },
                         )
                       else
-                        const ProductImageLoader(imageUrl: '', fit: BoxFit.cover),
+                        const ProductImageLoader(
+                          imageUrl: '',
+                          fit: BoxFit.cover,
+                        ),
                       if (product.images.length > 1)
                         Positioned(
                           bottom: AppSpacing.md,
@@ -160,7 +186,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                               product.images.length,
                               (idx) => AnimatedContainer(
                                 duration: AppAnimation.fast,
-                                margin: const EdgeInsets.symmetric(horizontal: 3),
+                                margin: const EdgeInsets.symmetric(
+                                  horizontal: 3,
+                                ),
                                 width: _currentImageIndex == idx ? 16 : 6,
                                 height: 6,
                                 decoration: BoxDecoration(
@@ -195,12 +223,16 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                             ),
                             decoration: BoxDecoration(
                               color: statusColor.withOpacity(0.08),
-                              borderRadius: BorderRadius.circular(AppRadius.pill),
+                              borderRadius: BorderRadius.circular(
+                                AppRadius.pill,
+                              ),
                             ),
                             child: Row(
                               children: [
                                 Icon(
-                                  product.isApproved ? Icons.check_circle : Icons.pending,
+                                  product.isApproved
+                                      ? Icons.check_circle
+                                      : Icons.pending,
                                   size: 14,
                                   color: statusColor,
                                 ),
@@ -225,12 +257,18 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                               color: product.isActive
                                   ? AppColors.success.withOpacity(0.08)
                                   : AppColors.muted.withOpacity(0.08),
-                              borderRadius: BorderRadius.circular(AppRadius.pill),
+                              borderRadius: BorderRadius.circular(
+                                AppRadius.pill,
+                              ),
                             ),
                             child: Text(
-                              product.isActive ? 'Status: Aktif' : 'Status: Nonaktif',
+                              product.isActive
+                                  ? 'Status: Aktif'
+                                  : 'Status: Nonaktif',
                               style: AppTypography.badge.copyWith(
-                                color: product.isActive ? AppColors.success : AppColors.muted,
+                                color: product.isActive
+                                    ? AppColors.success
+                                    : AppColors.muted,
                                 fontSize: 10,
                               ),
                             ),
@@ -282,23 +320,33 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('Stok Tersedia', style: AppTypography.captionSmall),
+                                Text(
+                                  'Stok Tersedia',
+                                  style: AppTypography.captionSmall,
+                                ),
                                 const SizedBox(height: 2),
                                 Text(
                                   '${product.stock} Unit',
                                   style: AppTypography.titleMedium.copyWith(
                                     fontWeight: FontWeight.w800,
-                                    color: isLowStock ? AppColors.errorText : AppColors.ink,
+                                    color: isLowStock
+                                        ? AppColors.errorText
+                                        : AppColors.ink,
                                   ),
                                 ),
                               ],
                             ),
                             if (isLowStock)
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 4,
+                                ),
                                 decoration: BoxDecoration(
                                   color: AppColors.warning.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                                  borderRadius: BorderRadius.circular(
+                                    AppRadius.pill,
+                                  ),
                                 ),
                                 child: Text(
                                   'Stok Kritis!',
@@ -310,10 +358,15 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                               )
                             else
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 4,
+                                ),
                                 decoration: BoxDecoration(
                                   color: AppColors.success.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                                  borderRadius: BorderRadius.circular(
+                                    AppRadius.pill,
+                                  ),
                                 ),
                                 child: Text(
                                   'Stok Aman',
@@ -361,7 +414,11 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                           ),
                           Row(
                             children: [
-                              const Icon(Icons.star_rounded, color: Colors.orange, size: 20),
+                              const Icon(
+                                Icons.star_rounded,
+                                color: Colors.orange,
+                                size: 20,
+                              ),
                               const SizedBox(width: 4),
                               Text(
                                 product.rating > 0
@@ -386,22 +443,36 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                           Expanded(
                             child: OutlinedButton.icon(
                               onPressed: () => _confirmDelete(product),
-                              icon: const Icon(Icons.delete_outline_rounded, color: AppColors.errorText),
+                              icon: const Icon(
+                                Icons.delete_outline_rounded,
+                                color: AppColors.errorText,
+                              ),
                               label: Text(
                                 'Hapus Produk',
-                                style: AppTypography.buttonSm.copyWith(color: AppColors.errorText),
+                                style: AppTypography.buttonSm.copyWith(
+                                  color: AppColors.errorText,
+                                ),
                               ),
                               style: OutlinedButton.styleFrom(
-                                side: const BorderSide(color: AppColors.errorText),
-                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                side: const BorderSide(
+                                  color: AppColors.errorText,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
                               ),
                             ),
                           ),
                           const SizedBox(width: AppSpacing.md),
                           Expanded(
                             child: ElevatedButton.icon(
-                              onPressed: () => context.push('/umkm/products/edit/${product.id}'),
-                              icon: const Icon(Icons.edit_outlined, color: AppColors.onPrimary),
+                              onPressed: () => context.push(
+                                '/umkm/products/edit/${product.id}',
+                              ),
+                              icon: const Icon(
+                                Icons.edit_outlined,
+                                color: AppColors.onPrimary,
+                              ),
                               label: Text(
                                 'Edit Detail',
                                 style: AppTypography.buttonSm.copyWith(
@@ -411,7 +482,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                               ),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.primary,
-                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
                               ),
                             ),
                           ),
@@ -443,14 +516,16 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
             _buildReviewItem(
               name: 'Budi Santoso',
               rating: 5,
-              comment: 'Barangnya sangat berkualitas, pengiriman cepat dan respon seller ramah!',
+              comment:
+                  'Barangnya sangat berkualitas, pengiriman cepat dan respon seller ramah!',
               date: '2 hari lalu',
             ),
             const Divider(height: AppSpacing.lg),
             _buildReviewItem(
               name: 'Siti Rahma',
               rating: 4,
-              comment: 'Kualitas oke banget sesuai deskripsi. Cuma pengiriman agak terhambat dikit di kurir.',
+              comment:
+                  'Kualitas oke banget sesuai deskripsi. Cuma pengiriman agak terhambat dikit di kurir.',
               date: '1 minggu lalu',
             ),
           ],
@@ -463,7 +538,11 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
         child: Column(
           children: [
-            Icon(Icons.rate_review_outlined, color: AppColors.mutedSoft, size: 40),
+            Icon(
+              Icons.rate_review_outlined,
+              color: AppColors.mutedSoft,
+              size: 40,
+            ),
             const SizedBox(height: AppSpacing.sm),
             Text(
               'Belum ada ulasan untuk produk ini.',
@@ -489,7 +568,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
           children: [
             Text(
               name,
-              style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.bold),
+              style: AppTypography.bodyMedium.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
             Text(date, style: AppTypography.captionSmall),
           ],

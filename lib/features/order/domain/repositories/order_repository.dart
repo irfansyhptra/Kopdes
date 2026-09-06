@@ -18,6 +18,7 @@ abstract class OrderRepository {
   Future<Order> checkoutCart({
     required String deliveryAddressId,
     required String paymentMethod,
+    List<String>? cartItemIds,
   });
   Future<Order> createDirectOrder({
     required List<Map<String, dynamic>> items,

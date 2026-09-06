@@ -25,7 +25,10 @@ class TrackingScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildCustomHeader(BuildContext context, AppLocalizations? localizations) {
+  Widget _buildCustomHeader(
+    BuildContext context,
+    AppLocalizations? localizations,
+  ) {
     return Container(
       width: double.infinity,
       padding: EdgeInsets.only(
@@ -51,7 +54,11 @@ class TrackingScreen extends StatelessWidget {
             child: IconButton(
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
-              icon: const Icon(Icons.chevron_left_rounded, color: Colors.white, size: 24),
+              icon: const Icon(
+                Icons.chevron_left_rounded,
+                color: Colors.white,
+                size: 24,
+              ),
               onPressed: () {
                 if (context.canPop()) {
                   context.pop();

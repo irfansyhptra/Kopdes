@@ -1,0 +1,5 @@
+interface:
+  display_name: "Apple-Inspired UI"
+  short_description: "Design polished Apple-inspired interfaces"
+  brand_color: "#007AFF"
+  default_prompt: "Use $apple-inspired-ui to design a polished, accessible interface with an Apple-inspired visual language."

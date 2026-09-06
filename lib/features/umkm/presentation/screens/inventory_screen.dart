@@ -62,7 +62,9 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
             centerTitle: true,
           ),
           body: inventoryState.when(
-            loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
+            loading: () => const Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            ),
             error: (error, stack) => ErrorStateWidget(
               errorMessage: error.toString(),
               onRetry: () => ref.invalidate(sellerInventoryProvider),
@@ -72,7 +74,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                 return const EmptyStateWidget(
                   icon: Icons.inventory_outlined,
                   title: 'Inventaris Kosong',
-                  description: 'Belum ada produk yang tercatat dalam inventaris toko Anda.',
+                  description:
+                      'Belum ada produk yang tercatat dalam inventaris toko Anda.',
                 );
               }
 
@@ -97,7 +100,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                       padding: const EdgeInsets.only(bottom: AppSpacing.md),
                       child: InventoryCard(
                         inventory: item,
-                        onUpdateStock: (newStock) => _handleUpdateStock(item.productId, newStock),
+                        onUpdateStock: (newStock) =>
+                            _handleUpdateStock(item.productId, newStock),
                       ),
                     );
                   },

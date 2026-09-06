@@ -26,10 +26,9 @@ class SellerRepositoryImpl implements SellerRepository {
     required String address,
     required String phone,
   }) => storeService.updateStoreProfile(
-        businessName: businessName,
-        description: description,
-        address: address,
-        phone: phone,
-      );
+    businessName: businessName,
+    description: description,
+    address: address,
+    phone: phone,
+  );
 }
-

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:kopdes/core/theme/theme.dart';
 import '../providers/cart_provider.dart';
 import '../providers/order_provider.dart';
+import '../providers/orders_page_provider.dart';
 import '../widgets/order_summary.dart';
 
 class CheckoutScreen extends ConsumerStatefulWidget {
@@ -24,7 +25,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       final directData = ref.read(directCheckoutProvider);
       if (directData != null) {
         setState(() {
-          _paymentMethod = (directData.paymentMethod == 'Kas Koperasi') ? 'COD' : directData.paymentMethod;
+          _paymentMethod = (directData.paymentMethod == 'Kas Koperasi')
+              ? 'COD'
+              : directData.paymentMethod;
         });
       }
     });
@@ -41,14 +44,15 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
               {
                 'productId': directData.product.id,
                 'quantity': directData.quantity,
-              }
+              },
             ],
             deliveryAddressId: _deliveryAddressId,
             paymentMethod: backendPaymentMethod,
           );
 
       if (order != null && mounted) {
-        ref.read(directCheckoutProvider.notifier).state = null; // Clear direct state
+        ref.read(directCheckoutProvider.notifier).state =
+            null; // Clear direct state
         context.go('/order-success/${order.id}');
       } else if (mounted) {
         final state = ref.read(orderActionProvider);
@@ -77,11 +81,14 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       return;
     }
 
+    // Hanya produk yang dicentang di halaman Pesanan yang ikut dipesan; sisanya
+    // sengaja ditinggalkan di keranjang oleh pemesan.
     final order = await ref
         .read(orderActionProvider.notifier)
         .checkout(
           deliveryAddressId: _deliveryAddressId,
           paymentMethod: _paymentMethod,
+          cartItemIds: ref.read(selectedCartItemsProvider).toList(),
         );
 
     if (order != null && mounted) {
@@ -143,7 +150,11 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             child: IconButton(
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
-              icon: const Icon(Icons.chevron_left_rounded, color: Colors.white, size: 24),
+              icon: const Icon(
+                Icons.chevron_left_rounded,
+                color: Colors.white,
+                size: 24,
+              ),
               onPressed: () {
                 if (isDirect) {
                   ref.read(directCheckoutProvider.notifier).state = null;
@@ -209,7 +220,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                                 Expanded(
                                   child: ListView(
                                     physics: const BouncingScrollPhysics(),
-                                    padding: const EdgeInsets.all(AppSpacing.base),
+                                    padding: const EdgeInsets.all(
+                                      AppSpacing.base,
+                                    ),
                                     children: [
                                       // 1. Delivery Address section
                                       _buildAddressCard(),
@@ -227,12 +240,18 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                                       Container(
                                         decoration: BoxDecoration(
                                           color: AppColors.canvas,
-                                          borderRadius: BorderRadius.circular(AppRadius.card),
-                                          border: Border.all(color: AppColors.hairlineSoft),
+                                          borderRadius: BorderRadius.circular(
+                                            AppRadius.card,
+                                          ),
+                                          border: Border.all(
+                                            color: AppColors.hairlineSoft,
+                                          ),
                                           boxShadow: AppElevation.soft,
                                         ),
                                         child: Padding(
-                                          padding: const EdgeInsets.all(AppSpacing.base),
+                                          padding: const EdgeInsets.all(
+                                            AppSpacing.base,
+                                          ),
                                           child: OrderSummary(
                                             subtotal: cart.subtotal,
                                             shippingFee: 10000.0,
@@ -251,7 +270,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                             );
                           },
                           loading: () => const Center(
-                            child: CircularProgressIndicator(color: AppColors.primary),
+                            child: CircularProgressIndicator(
+                              color: AppColors.primary,
+                            ),
                           ),
                           error: (err, _) => Center(
                             child: Text(
@@ -558,7 +579,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
 
   Widget _buildDirectCheckoutBody(DirectCheckoutData directData) {
     final double subtotal = directData.price * directData.quantity;
-    final double shippingFee = _getShippingFeeForDirect(directData.deliveryMethod);
+    final double shippingFee = _getShippingFeeForDirect(
+      directData.deliveryMethod,
+    );
     const double serviceFee = 1000.0;
 
     return Column(
@@ -578,7 +601,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                   name: '${directData.product.name} (${directData.variant})',
                   quantity: directData.quantity,
                   price: directData.price,
-                )
+                ),
               ]),
               const SizedBox(height: AppSpacing.md),
 
@@ -616,7 +639,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
 
   Widget _buildDirectBottomBar(DirectCheckoutData directData) {
     final double subtotal = directData.price * directData.quantity;
-    final double shippingFee = _getShippingFeeForDirect(directData.deliveryMethod);
+    final double shippingFee = _getShippingFeeForDirect(
+      directData.deliveryMethod,
+    );
     const double serviceFee = 1000.0;
     final double total = subtotal + shippingFee + serviceFee;
 

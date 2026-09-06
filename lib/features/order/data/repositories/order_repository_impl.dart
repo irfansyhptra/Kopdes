@@ -165,10 +165,12 @@ class OrderRepositoryImpl implements OrderRepository {
   Future<Order> checkoutCart({
     required String deliveryAddressId,
     required String paymentMethod,
+    List<String>? cartItemIds,
   }) async {
     final orderModel = await remoteDataSource.checkoutCart(
       deliveryAddressId: deliveryAddressId,
       paymentMethod: paymentMethod,
+      cartItemIds: cartItemIds,
     );
     // Clear local draft cart
     await localDataSource.clearDraftCart(_currentUserId);

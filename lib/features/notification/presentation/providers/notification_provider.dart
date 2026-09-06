@@ -12,7 +12,8 @@ class NotificationsNotifier extends StateNotifier<List<NotificationItem>> {
         id: '1',
         type: NotificationType.orderSuccess,
         title: 'Pesanan Berhasil',
-        description: 'Pesanan Anda berhasil diproses dan sedang disiapkan oleh Kopdes Merah Putih.',
+        description:
+            'Pesanan Anda berhasil diproses dan sedang disiapkan oleh Kopdes Merah Putih.',
         timestamp: DateTime(2026, 6, 23, 14, 20),
         isRead: false,
       ),
@@ -20,7 +21,8 @@ class NotificationsNotifier extends StateNotifier<List<NotificationItem>> {
         id: '2',
         type: NotificationType.deliveryConfirmed,
         title: 'Pengiriman Dikonfirmasi',
-        description: 'Kurir telah mengonfirmasi bahwa barang sedang dalam perjalanan menuju lokasi Anda.',
+        description:
+            'Kurir telah mengonfirmasi bahwa barang sedang dalam perjalanan menuju lokasi Anda.',
         timestamp: DateTime(2026, 6, 23, 14, 15),
         isRead: false,
       ),
@@ -28,7 +30,8 @@ class NotificationsNotifier extends StateNotifier<List<NotificationItem>> {
         id: '3',
         type: NotificationType.validationSuccess,
         title: 'Transaksi Selesai',
-        description: 'Kurir dan penerima telah melakukan validasi. Transaksi berhasil diselesaikan.',
+        description:
+            'Kurir dan penerima telah melakukan validasi. Transaksi berhasil diselesaikan.',
         timestamp: DateTime(2026, 6, 23, 14, 10),
         isRead: true,
       ),
@@ -36,7 +39,8 @@ class NotificationsNotifier extends StateNotifier<List<NotificationItem>> {
         id: '4',
         type: NotificationType.newUmkmProduct,
         title: 'Produk UMKM Baru',
-        description: 'Keripik Pisang Desa Lamteh telah tersedia di marketplace UMKM.',
+        description:
+            'Keripik Pisang Desa Lamteh telah tersedia di marketplace UMKM.',
         timestamp: DateTime(2026, 6, 22, 10, 30),
         isRead: true,
       ),
@@ -44,7 +48,8 @@ class NotificationsNotifier extends StateNotifier<List<NotificationItem>> {
         id: '5',
         type: NotificationType.aiRecommendation,
         title: 'Rekomendasi AI',
-        description: 'AI merekomendasikan stok Mie Instan dan Minyak Goreng untuk ditambah berdasarkan tren penjualan.',
+        description:
+            'AI merekomendasikan stok Mie Instan dan Minyak Goreng untuk ditambah berdasarkan tren penjualan.',
         timestamp: DateTime(2026, 6, 22, 8, 15),
         isRead: true,
       ),
@@ -52,7 +57,8 @@ class NotificationsNotifier extends StateNotifier<List<NotificationItem>> {
         id: '6',
         type: NotificationType.lowStockAlert,
         title: 'Stok Menipis',
-        description: 'Stok Detergen Rinso tersisa 5 unit. Segera lakukan restock.',
+        description:
+            'Stok Detergen Rinso tersisa 5 unit. Segera lakukan restock.',
         timestamp: DateTime(2026, 6, 21, 17, 0),
         isRead: true,
       ),
@@ -60,7 +66,8 @@ class NotificationsNotifier extends StateNotifier<List<NotificationItem>> {
         id: '7',
         type: NotificationType.promoUmkm,
         title: 'Promo Produk Lokal',
-        description: 'Dapatkan diskon hingga 20% untuk produk UMKM pilihan minggu ini.',
+        description:
+            'Dapatkan diskon hingga 20% untuk produk UMKM pilihan minggu ini.',
         timestamp: DateTime(2026, 6, 20, 12, 0),
         isRead: true,
       ),
@@ -78,14 +85,12 @@ class NotificationsNotifier extends StateNotifier<List<NotificationItem>> {
   void markAsRead(String id) {
     state = [
       for (final item in state)
-        if (item.id == id) item.copyWith(isRead: true) else item
+        if (item.id == id) item.copyWith(isRead: true) else item,
     ];
   }
 
   void markAllAsRead() {
-    state = [
-      for (final item in state) item.copyWith(isRead: true)
-    ];
+    state = [for (final item in state) item.copyWith(isRead: true)];
   }
 
   void clearAll() {
@@ -106,7 +111,8 @@ class NotificationsNotifier extends StateNotifier<List<NotificationItem>> {
         id: '${length + 1}',
         type: NotificationType.promoUmkm,
         title: 'Diskon Hari Koperasi',
-        description: 'Dapatkan penawaran menarik menyambut Hari Koperasi Nasional.',
+        description:
+            'Dapatkan penawaran menarik menyambut Hari Koperasi Nasional.',
         timestamp: DateTime(2026, 6, 18, 9, 0),
         isRead: true,
       ),
@@ -123,9 +129,10 @@ class NotificationsNotifier extends StateNotifier<List<NotificationItem>> {
   }
 }
 
-final notificationsProvider = StateNotifierProvider<NotificationsNotifier, List<NotificationItem>>((ref) {
-  return NotificationsNotifier();
-});
+final notificationsProvider =
+    StateNotifierProvider<NotificationsNotifier, List<NotificationItem>>((ref) {
+      return NotificationsNotifier();
+    });
 
 // Loading state for infinite scrolling
 final isNotificationsLoadingMoreProvider = StateProvider<bool>((ref) => false);

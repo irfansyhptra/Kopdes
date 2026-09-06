@@ -81,15 +81,21 @@ class StoreHeader extends StatelessWidget {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
-                                isVerified ? Icons.check_circle_rounded : Icons.pending_rounded,
+                                isVerified
+                                    ? Icons.check_circle_rounded
+                                    : Icons.pending_rounded,
                                 size: 12,
-                                color: isVerified ? AppColors.success : AppColors.warning,
+                                color: isVerified
+                                    ? AppColors.success
+                                    : AppColors.warning,
                               ),
                               const SizedBox(width: 4),
                               Text(
                                 isVerified ? 'Terverifikasi' : 'Pending',
                                 style: AppTypography.badge.copyWith(
-                                  color: isVerified ? AppColors.success : AppColors.warning,
+                                  color: isVerified
+                                      ? AppColors.success
+                                      : AppColors.warning,
                                   fontSize: 10,
                                 ),
                               ),
@@ -118,12 +124,18 @@ class StoreHeader extends StatelessWidget {
           ],
           Row(
             children: [
-              const Icon(Icons.location_on_outlined, size: 16, color: AppColors.muted),
+              const Icon(
+                Icons.location_on_outlined,
+                size: 16,
+                color: AppColors.muted,
+              ),
               const SizedBox(width: AppSpacing.xs),
               Expanded(
                 child: Text(
                   address.isNotEmpty ? address : 'Alamat belum diatur',
-                  style: AppTypography.bodyMedium.copyWith(color: AppColors.muted),
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: AppColors.muted,
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -133,11 +145,17 @@ class StoreHeader extends StatelessWidget {
           const SizedBox(height: AppSpacing.xs),
           Row(
             children: [
-              const Icon(Icons.phone_outlined, size: 16, color: AppColors.muted),
+              const Icon(
+                Icons.phone_outlined,
+                size: 16,
+                color: AppColors.muted,
+              ),
               const SizedBox(width: AppSpacing.xs),
               Text(
                 phone.isNotEmpty ? phone : 'Kontak belum diatur',
-                style: AppTypography.bodyMedium.copyWith(color: AppColors.muted),
+                style: AppTypography.bodyMedium.copyWith(
+                  color: AppColors.muted,
+                ),
               ),
             ],
           ),

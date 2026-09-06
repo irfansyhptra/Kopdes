@@ -93,7 +93,9 @@ class OrderModel {
       status: json['status'] as String? ?? 'PENDING',
       paymentMethod: json['paymentMethod'] as String? ?? 'COD',
       paymentStatus: json['paymentStatus'] as String? ?? 'PENDING',
-      deliveryAddress: AddressInfo.fromJson(json['deliveryAddress'] as Map<String, dynamic>),
+      deliveryAddress: AddressInfo.fromJson(
+        json['deliveryAddress'] as Map<String, dynamic>,
+      ),
       items: parsedItems,
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'] as String)

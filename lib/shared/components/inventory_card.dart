@@ -6,11 +6,7 @@ class InventoryCard extends StatefulWidget {
   final InventoryModel inventory;
   final Function(int newStock)? onUpdateStock;
 
-  const InventoryCard({
-    super.key,
-    required this.inventory,
-    this.onUpdateStock,
-  });
+  const InventoryCard({super.key, required this.inventory, this.onUpdateStock});
 
   @override
   State<InventoryCard> createState() => _InventoryCardState();
@@ -135,10 +131,7 @@ class _InventoryCardState extends State<InventoryCard> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Stok Saat Ini:',
-                    style: AppTypography.captionSmall,
-                  ),
+                  Text('Stok Saat Ini:', style: AppTypography.captionSmall),
                   const SizedBox(height: 2),
                   Text(
                     '$_localStock Pcs',
@@ -156,15 +149,24 @@ class _InventoryCardState extends State<InventoryCard> {
                       _isEditing = true;
                     });
                   },
-                  icon: const Icon(Icons.edit_outlined, size: 16, color: AppColors.primary),
+                  icon: const Icon(
+                    Icons.edit_outlined,
+                    size: 16,
+                    color: AppColors.primary,
+                  ),
                   label: Text(
                     'Update Cepat',
-                    style: AppTypography.buttonSm.copyWith(color: AppColors.primary),
+                    style: AppTypography.buttonSm.copyWith(
+                      color: AppColors.primary,
+                    ),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primarySoft.withOpacity(0.3),
                     elevation: 0,
-                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.md,
+                      vertical: 8,
+                    ),
                     minimumSize: Size.zero,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(AppRadius.button),
@@ -186,7 +188,9 @@ class _InventoryCardState extends State<InventoryCard> {
                         controller: _controller,
                         keyboardType: TextInputType.number,
                         textAlign: TextAlign.center,
-                        style: AppTypography.bodyLarge.copyWith(fontWeight: FontWeight.bold),
+                        style: AppTypography.bodyLarge.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                         decoration: InputDecoration(
                           contentPadding: EdgeInsets.zero,
                           filled: true,

@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kopdes/app/app.dart';
@@ -57,6 +58,11 @@ class FakeAuthLocalDataSource implements AuthLocalDataSource {
 }
 
 class FakeHealthNotifier extends HealthNotifier {
+  // HealthNotifier kini menerima Dio-nya lewat konstruktor supaya batas waktu
+  // probe bisa diatur terpisah dari klien API utama. Fake ini tidak pernah
+  // menyentuh jaringan, jadi Dio kosong sudah cukup.
+  FakeHealthNotifier() : super(Dio());
+
   @override
   Future<bool> checkServerHealth() async {
     state = HealthState.healthy;
@@ -81,7 +87,9 @@ void main() {
           authLocalDataSourceProvider.overrideWithValue(fakeLocalDataSource),
           healthProvider.overrideWith((ref) => FakeHealthNotifier()),
           categoriesProvider.overrideWith((ref) => Future.value([])),
-          onboardingCompletedProvider.overrideWith((ref) => FakeOnboardingNotifier()),
+          onboardingCompletedProvider.overrideWith(
+            (ref) => FakeOnboardingNotifier(),
+          ),
         ],
         child: const KopdesApp(),
       ),

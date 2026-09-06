@@ -25,7 +25,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   final _descController = TextEditingController();
   final _priceController = TextEditingController();
   final _stockController = TextEditingController();
-  
+
   String? _selectedCategoryId;
   List<XFile> _newImages = [];
   List<String> _existingImageUrls = [];
@@ -116,7 +116,9 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
 
     bool success;
     if (widget.productId != null) {
-      success = await ref.read(productControllerProvider.notifier).updateProduct(
+      success = await ref
+          .read(productControllerProvider.notifier)
+          .updateProduct(
             id: widget.productId!,
             name: name,
             description: description,
@@ -128,7 +130,9 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       // Invalidate specific detail provider to see edits
       ref.invalidate(sellerProductDetailProvider(widget.productId!));
     } else {
-      success = await ref.read(productControllerProvider.notifier).createProduct(
+      success = await ref
+          .read(productControllerProvider.notifier)
+          .createProduct(
             name: name,
             description: description,
             price: price,
@@ -172,16 +176,21 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     final isEdit = widget.productId != null;
 
     if (isEdit) {
-      final detailState = ref.watch(sellerProductDetailProvider(widget.productId!));
+      final detailState = ref.watch(
+        sellerProductDetailProvider(widget.productId!),
+      );
       return detailState.when(
         loading: () => const Scaffold(
-          body: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+          body: Center(
+            child: CircularProgressIndicator(color: AppColors.primary),
+          ),
         ),
         error: (err, _) => Scaffold(
           appBar: AppBar(title: const Text('Edit Produk')),
           body: ErrorStateWidget(
             errorMessage: err.toString(),
-            onRetry: () => ref.invalidate(sellerProductDetailProvider(widget.productId!)),
+            onRetry: () =>
+                ref.invalidate(sellerProductDetailProvider(widget.productId!)),
           ),
         ),
         data: (product) {
@@ -262,7 +271,10 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                         });
                       },
                       decoration: const InputDecoration(
-                        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
                       ),
                     );
                   },
@@ -365,7 +377,8 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                   maxLines: 4,
                   keyboardType: TextInputType.multiline,
                   decoration: const InputDecoration(
-                    hintText: 'Jelaskan keunggulan, rasa, kemasan, atau detail produk Anda...',
+                    hintText:
+                        'Jelaskan keunggulan, rasa, kemasan, atau detail produk Anda...',
                   ),
                 ),
                 const SizedBox(height: AppSpacing.lg),
@@ -432,12 +445,20 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                 decoration: BoxDecoration(
                   color: AppColors.surfaceSoft,
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.primary, width: 1.5, style: BorderStyle.none),
+                  border: Border.all(
+                    color: AppColors.primary,
+                    width: 1.5,
+                    style: BorderStyle.none,
+                  ),
                 ),
                 child: const Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.add_photo_alternate_outlined, color: AppColors.primary, size: 28),
+                    Icon(
+                      Icons.add_photo_alternate_outlined,
+                      color: AppColors.primary,
+                      size: 28,
+                    ),
                     SizedBox(height: 4),
                     Text(
                       'Pilih Foto',
@@ -477,7 +498,11 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                             ),
                           ),
                           IconButton(
-                            icon: const Icon(Icons.cancel, color: AppColors.error, size: 20),
+                            icon: const Icon(
+                              Icons.cancel,
+                              color: AppColors.error,
+                              size: 20,
+                            ),
                             onPressed: () => _removeExistingImage(idx),
                           ),
                         ],
@@ -502,7 +527,11 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                             ),
                           ),
                           IconButton(
-                            icon: const Icon(Icons.cancel, color: AppColors.error, size: 20),
+                            icon: const Icon(
+                              Icons.cancel,
+                              color: AppColors.error,
+                              size: 20,
+                            ),
                             onPressed: () => _removeNewImage(idx),
                           ),
                         ],

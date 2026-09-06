@@ -6,11 +6,16 @@ class InventoryService {
   InventoryService({required this.dio});
 
   Future<List<InventoryModel>> getInventoryList() async {
-    final response = await dio.get('/seller/products', queryParameters: {'limit': 100});
+    final response = await dio.get(
+      '/seller/products',
+      queryParameters: {'limit': 100},
+    );
     final responseMap = response.data as Map<String, dynamic>;
     final dataMap = responseMap['data'] as Map<String, dynamic>;
     final list = dataMap['products'] as List? ?? [];
-    return list.map((p) => InventoryModel.fromJson(p as Map<String, dynamic>)).toList();
+    return list
+        .map((p) => InventoryModel.fromJson(p as Map<String, dynamic>))
+        .toList();
   }
 
   Future<void> updateStock(String id, int currentStock) async {

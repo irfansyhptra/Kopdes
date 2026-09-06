@@ -53,7 +53,11 @@ class OrderDetailScreen extends ConsumerWidget {
             child: IconButton(
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
-              icon: const Icon(Icons.chevron_left_rounded, color: Colors.white, size: 24),
+              icon: const Icon(
+                Icons.chevron_left_rounded,
+                color: Colors.white,
+                size: 24,
+              ),
               onPressed: () => Navigator.maybePop(context),
             ),
           ),
@@ -72,7 +76,11 @@ class OrderDetailScreen extends ConsumerWidget {
             child: IconButton(
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
-              icon: const Icon(Icons.refresh_rounded, color: Colors.white, size: 20),
+              icon: const Icon(
+                Icons.refresh_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
               onPressed: () {
                 ref.invalidate(orderDetailProvider(orderId));
                 ref.invalidate(orderTimelineProvider(orderId));
@@ -99,117 +107,119 @@ class OrderDetailScreen extends ConsumerWidget {
               Expanded(
                 child: detailAsync.when(
                   data: (order) {
-              return ListView(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.all(AppSpacing.base),
-                children: [
-                  // 1. Status Simulation Panel (Useful for testing)
-                  _buildSimulatorPanel(context, ref, order),
-                  const SizedBox(height: AppSpacing.md),
-
-                  // 2. Timeline visual tracker
-                  Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.canvas,
-                      borderRadius: BorderRadius.circular(AppRadius.card),
-                      border: Border.all(color: AppColors.hairlineSoft),
-                      boxShadow: AppElevation.soft,
-                    ),
-                    child: Padding(
+                    return ListView(
+                      physics: const BouncingScrollPhysics(),
                       padding: const EdgeInsets.all(AppSpacing.base),
-                      child: OrderTimeline(currentStatus: order.status),
+                      children: [
+                        // 1. Status Simulation Panel (Useful for testing)
+                        _buildSimulatorPanel(context, ref, order),
+                        const SizedBox(height: AppSpacing.md),
+
+                        // 2. Timeline visual tracker
+                        Container(
+                          decoration: BoxDecoration(
+                            color: AppColors.canvas,
+                            borderRadius: BorderRadius.circular(AppRadius.card),
+                            border: Border.all(color: AppColors.hairlineSoft),
+                            boxShadow: AppElevation.soft,
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(AppSpacing.base),
+                            child: OrderTimeline(currentStatus: order.status),
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+
+                        // 3. Invoice rendering
+                        InvoiceViewer(order: order),
+                        const SizedBox(height: AppSpacing.md),
+
+                        // 4. Shipping Address Card
+                        if (order.deliveryAddress != null)
+                          Container(
+                            decoration: BoxDecoration(
+                              color: AppColors.canvas,
+                              borderRadius: BorderRadius.circular(
+                                AppRadius.card,
+                              ),
+                              border: Border.all(color: AppColors.hairlineSoft),
+                              boxShadow: AppElevation.soft,
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(AppSpacing.base),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Alamat Pengiriman',
+                                    style: AppTypography.caption.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.ink,
+                                    ),
+                                  ),
+                                  const SizedBox(height: AppSpacing.sm),
+                                  const Divider(),
+                                  const SizedBox(height: AppSpacing.sm),
+                                  Text(
+                                    order.deliveryAddress!.recipientName,
+                                    style: AppTypography.bodyMedium.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.ink,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    order.deliveryAddress!.phone,
+                                    style: AppTypography.captionSmall.copyWith(
+                                      color: AppColors.muted,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '${order.deliveryAddress!.street}, ${order.deliveryAddress!.city}, ${order.deliveryAddress!.state}, ${order.deliveryAddress!.postalCode}',
+                                    style: AppTypography.bodyMedium.copyWith(
+                                      color: AppColors.body,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        const SizedBox(height: AppSpacing.xl),
+                      ],
+                    );
+                  },
+                  loading: () => const Center(
+                    child: CircularProgressIndicator(color: AppColors.primary),
+                  ),
+                  error: (err, _) => Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(AppSpacing.xl),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.error_outline,
+                            size: 48,
+                            color: AppColors.error,
+                          ),
+                          const SizedBox(height: AppSpacing.base),
+                          Text('Gagal memuat detail pesanan: $err'),
+                          const SizedBox(height: AppSpacing.base),
+                          ElevatedButton(
+                            onPressed: () =>
+                                ref.invalidate(orderDetailProvider(orderId)),
+                            child: const Text('Coba Lagi'),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                  const SizedBox(height: AppSpacing.md),
-
-                  // 3. Invoice rendering
-                  InvoiceViewer(order: order),
-                  const SizedBox(height: AppSpacing.md),
-
-                  // 4. Shipping Address Card
-                  if (order.deliveryAddress != null)
-                    Container(
-                      decoration: BoxDecoration(
-                        color: AppColors.canvas,
-                        borderRadius: BorderRadius.circular(AppRadius.card),
-                        border: Border.all(color: AppColors.hairlineSoft),
-                        boxShadow: AppElevation.soft,
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(AppSpacing.base),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Alamat Pengiriman',
-                              style: AppTypography.caption.copyWith(
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.ink,
-                              ),
-                            ),
-                            const SizedBox(height: AppSpacing.sm),
-                            const Divider(),
-                            const SizedBox(height: AppSpacing.sm),
-                            Text(
-                              order.deliveryAddress!.recipientName,
-                              style: AppTypography.bodyMedium.copyWith(
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.ink,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              order.deliveryAddress!.phone,
-                              style: AppTypography.captionSmall.copyWith(
-                                color: AppColors.muted,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '${order.deliveryAddress!.street}, ${order.deliveryAddress!.city}, ${order.deliveryAddress!.state}, ${order.deliveryAddress!.postalCode}',
-                              style: AppTypography.bodyMedium.copyWith(
-                                color: AppColors.body,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  const SizedBox(height: AppSpacing.xl),
-                ],
-              );
-            },
-            loading: () => const Center(
-              child: CircularProgressIndicator(color: AppColors.primary),
-            ),
-            error: (err, _) => Center(
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.xl),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.error_outline,
-                      size: 48,
-                      color: AppColors.error,
-                    ),
-                    const SizedBox(height: AppSpacing.base),
-                    Text('Gagal memuat detail pesanan: $err'),
-                    const SizedBox(height: AppSpacing.base),
-                    ElevatedButton(
-                      onPressed: () =>
-                          ref.invalidate(orderDetailProvider(orderId)),
-                      child: const Text('Coba Lagi'),
-                    ),
-                  ],
                 ),
               ),
-            ),
+            ],
           ),
         ),
-      ],
-    ),
-  ),
 
         // Global Action loading overlay
         if (actionState is AsyncLoading)

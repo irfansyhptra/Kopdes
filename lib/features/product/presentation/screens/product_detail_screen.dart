@@ -45,7 +45,10 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     );
   }
 
-  Widget _buildCustomHeader(BuildContext context, AppLocalizations? localizations) {
+  Widget _buildCustomHeader(
+    BuildContext context,
+    AppLocalizations? localizations,
+  ) {
     return Container(
       width: double.infinity,
       padding: EdgeInsets.only(
@@ -71,7 +74,11 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
             child: IconButton(
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
-              icon: const Icon(Icons.chevron_left_rounded, color: Colors.white, size: 24),
+              icon: const Icon(
+                Icons.chevron_left_rounded,
+                color: Colors.white,
+                size: 24,
+              ),
               onPressed: () {
                 if (context.canPop()) {
                   context.pop();
@@ -300,11 +307,18 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                     height: 48,
                     child: OutlinedButton(
                       onPressed: product.stock > 0
-                          ? () => showPurchaseBottomSheet(context, product: product, isDirectCheckout: false)
+                          ? () => showPurchaseBottomSheet(
+                              context,
+                              product: product,
+                              isDirectCheckout: false,
+                            )
                           : null,
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.primary,
-                        side: const BorderSide(color: AppColors.primary, width: 1.5),
+                        side: const BorderSide(
+                          color: AppColors.primary,
+                          width: 1.5,
+                        ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(AppRadius.button),
                         ),
@@ -327,7 +341,11 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                     height: 48,
                     child: ElevatedButton(
                       onPressed: product.stock > 0
-                          ? () => showPurchaseBottomSheet(context, product: product, isDirectCheckout: true)
+                          ? () => showPurchaseBottomSheet(
+                              context,
+                              product: product,
+                              isDirectCheckout: true,
+                            )
                           : null,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
@@ -354,7 +372,6 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
       ],
     );
   }
-
 
   Widget _buildStockBadge(int stock) {
     Color color = AppColors.success;

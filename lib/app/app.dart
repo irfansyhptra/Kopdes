@@ -18,6 +18,7 @@ class KopdesApp extends ConsumerWidget {
       darkTheme: AppTheme.lightTheme,
       themeMode: ThemeMode.light,
       routerConfig: router,
+      scrollBehavior: const AppScrollBehavior(),
       debugShowCheckedModeBanner: false,
       localizationsDelegates: const [
         AppLocalizations.delegate,

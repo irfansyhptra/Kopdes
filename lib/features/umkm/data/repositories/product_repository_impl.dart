@@ -8,8 +8,17 @@ class ProductRepositoryImpl implements ProductRepository {
   ProductRepositoryImpl({required this.service});
 
   @override
-  Future<List<ProductModel>> getProducts({String? search, String? categoryId, int page = 1, int limit = 10}) =>
-      service.getProducts(search: search, categoryId: categoryId, page: page, limit: limit);
+  Future<List<ProductModel>> getProducts({
+    String? search,
+    String? categoryId,
+    int page = 1,
+    int limit = 10,
+  }) => service.getProducts(
+    search: search,
+    categoryId: categoryId,
+    page: page,
+    limit: limit,
+  );
 
   @override
   Future<ProductModel> createProduct({
@@ -20,13 +29,13 @@ class ProductRepositoryImpl implements ProductRepository {
     required String categoryId,
     List<dynamic>? images,
   }) => service.createProduct(
-        name: name,
-        description: description,
-        price: price,
-        stock: stock,
-        categoryId: categoryId,
-        images: images,
-      );
+    name: name,
+    description: description,
+    price: price,
+    stock: stock,
+    categoryId: categoryId,
+    images: images,
+  );
 
   @override
   Future<ProductModel> updateProduct({
@@ -39,15 +48,15 @@ class ProductRepositoryImpl implements ProductRepository {
     bool? isActive,
     List<dynamic>? newImages,
   }) => service.updateProduct(
-        id: id,
-        name: name,
-        description: description,
-        price: price,
-        stock: stock,
-        categoryId: categoryId,
-        isActive: isActive,
-        newImages: newImages,
-      );
+    id: id,
+    name: name,
+    description: description,
+    price: price,
+    stock: stock,
+    categoryId: categoryId,
+    isActive: isActive,
+    newImages: newImages,
+  );
 
   @override
   Future<void> deleteProduct(String id) => service.deleteProduct(id);

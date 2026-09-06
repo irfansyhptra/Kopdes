@@ -1,336 +1,656 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/theme.dart';
-import '../../../../localization/app_localizations.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../product/presentation/providers/product_provider.dart';
+import '../../../product/presentation/screens/admin/admin_product_list_screen.dart';
+import '../providers/admin_providers.dart';
+import '../widgets/admin_ui.dart';
+import 'mitra_management_screen.dart';
+import 'umkm_product_takedown_screen.dart';
+import 'order_management_screen.dart';
+import 'courier_management_screen.dart';
+import 'admin_profile_screen.dart';
 
-class AdminDashboardScreen extends StatelessWidget {
-  const AdminDashboardScreen({super.key});
+// Multi-tab Dashboard Admin Kopdes dengan Bottom Navigation Bar.
+class AdminDashboardScreen extends ConsumerStatefulWidget {
+  final int initialIndex;
+
+  const AdminDashboardScreen({super.key, this.initialIndex = 0});
+
+  @override
+  ConsumerState<AdminDashboardScreen> createState() =>
+      _AdminDashboardScreenState();
+}
+
+class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+  }
+
+  void _onTabSelected(int index) {
+    setState(() => _currentIndex = index);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final localizations = AppLocalizations.of(context);
-    final double screenWidth = MediaQuery.of(context).size.width;
-    final double statsAspectRatio = screenWidth < 360 ? 1.35 : 1.6;
+    return Scaffold(
+      backgroundColor: AppColors.canvas,
+      body: IndexedStack(
+        index: _currentIndex,
+        children: [
+          _AdminOverviewTab(onNavigateTab: _onTabSelected),
+          const AdminProductListScreen(showBackButton: false),
+          const _MitraAndUmkmTab(),
+          const _OrdersAndCouriersTab(),
+          const AdminProfileScreen(),
+        ],
+      ),
+      bottomNavigationBar: Container(
+        decoration: const BoxDecoration(
+          color: AppColors.canvas,
+          border: Border(top: BorderSide(color: AppColors.hairlineSoft)),
+          boxShadow: AppElevation.soft,
+        ),
+        child: NavigationBar(
+          selectedIndex: _currentIndex,
+          onDestinationSelected: _onTabSelected,
+          elevation: 0,
+          backgroundColor: AppColors.canvas,
+          indicatorColor: AppColors.primarySoft.withOpacity(0.5),
+          destinations: const [
+            NavigationDestination(
+              icon: Icon(Icons.dashboard_outlined),
+              selectedIcon: Icon(
+                Icons.dashboard_rounded,
+                color: AppColors.primary,
+              ),
+              label: 'Ringkasan',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.inventory_2_outlined),
+              selectedIcon: Icon(
+                Icons.inventory_2_rounded,
+                color: AppColors.primary,
+              ),
+              label: 'Barang',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.storefront_outlined),
+              selectedIcon: Icon(
+                Icons.storefront_rounded,
+                color: AppColors.primary,
+              ),
+              label: 'Mitra & UMKM',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.receipt_long_outlined),
+              selectedIcon: Icon(
+                Icons.receipt_long_rounded,
+                color: AppColors.primary,
+              ),
+              label: 'Pesanan & Kurir',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.person_outline_rounded),
+              selectedIcon: Icon(
+                Icons.person_rounded,
+                color: AppColors.primary,
+              ),
+              label: 'Profil Admin',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// TAB 0: RINGKASAN (OVERVIEW DASHBOARD)
+// ─────────────────────────────────────────────────────────
+class _AdminOverviewTab extends ConsumerWidget {
+  final ValueChanged<int> onNavigateTab;
+
+  const _AdminOverviewTab({required this.onNavigateTab});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(authProvider).user;
+    final productsAsync = ref.watch(adminProductsProvider);
+    final mitraAsync = ref.watch(mitraListProvider);
+    final ordersAsync = ref.watch(adminOrdersProvider);
 
     return Scaffold(
       backgroundColor: AppColors.canvas,
       appBar: AppBar(
-        title: Text(
-          localizations?.translate('adminDashboard') ?? 'Dasbor Admin',
-        ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          onPressed: () {
-            if (context.canPop()) {
-              context.pop();
-            } else {
-              context.go('/home');
-            }
-          },
-        ),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.base),
-        children: [
-          // ─── Stats Grid ───
-          Text(
-            'Ikhtisar Operasional',
-            style: AppTypography.caption.copyWith(
-              color: AppColors.ink,
-              fontWeight: FontWeight.w600,
-              fontSize: 16,
+        backgroundColor: AppColors.canvas,
+        elevation: 0,
+        automaticallyImplyLeading: false,
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.admin_panel_settings_rounded,
+                color: AppColors.primary,
+                size: 20,
+              ),
             ),
+            const SizedBox(width: AppSpacing.sm),
+            Text(
+              'Dashboard Admin Kopdes',
+              style: AppTypography.titleMedium.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.forum_outlined, color: AppColors.ink),
+            tooltip: 'Percakapan Admin',
+            onPressed: () => context.push('/admin/chat'),
           ),
-          const SizedBox(height: AppSpacing.md),
-          GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisSpacing: AppSpacing.md,
-            mainAxisSpacing: AppSpacing.md,
-            childAspectRatio: statsAspectRatio,
-            children: [
-              _StatCard(
-                label: 'Simpanan Total',
-                value: 'Rp 142.5M',
-                icon: Icons.account_balance_outlined,
-              ),
-              _StatCard(
-                label: 'Pinjaman Aktif',
-                value: 'Rp 82.1M',
-                icon: Icons.trending_up_rounded,
-              ),
-              _StatCard(
-                label: 'Anggota',
-                value: '1.024',
-                icon: Icons.people_outline_rounded,
-              ),
-              _StatCard(
-                label: 'Transaksi Hari Ini',
-                value: '124',
-                icon: Icons.swap_horiz_rounded,
-              ),
-            ],
+          IconButton(
+            icon: const Icon(
+              Icons.notifications_none_rounded,
+              color: AppColors.ink,
+            ),
+            tooltip: 'Notifikasi',
+            onPressed: () => context.push('/notifications'),
           ),
-          const SizedBox(height: AppSpacing.xl),
-
-          // ─── Pending Verifications ───
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Verifikasi UMKM',
-                style: AppTypography.caption.copyWith(
-                  color: AppColors.ink,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 16,
+        ],
+      ),
+      body: RefreshIndicator(
+        color: AppColors.primary,
+        onRefresh: () async {
+          ref.invalidate(adminProductsProvider);
+          ref.invalidate(mitraListProvider);
+          ref.invalidate(adminOrdersProvider);
+        },
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
+          ),
+          padding: const EdgeInsets.all(AppSpacing.base),
+          children: [
+            // Welcome Banner Card
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [AppColors.primary, AppColors.primaryActive],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
+                borderRadius: BorderRadius.circular(AppRadius.card),
+                boxShadow: AppElevation.card,
               ),
-              GestureDetector(
-                onTap: () {},
-                child: Text(
-                  'Lihat Semua',
-                  style: AppTypography.buttonSm.copyWith(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(AppRadius.pill),
+                        ),
+                        child: Text(
+                          'KOPERASI DESA DIGITAL',
+                          style: AppTypography.captionSmall.copyWith(
+                            color: AppColors.onPrimary,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                      const Icon(
+                        Icons.nature_people_rounded,
+                        color: AppColors.onPrimary,
+                        size: 24,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  Text(
+                    'Selamat datang,',
+                    style: AppTypography.captionSmall.copyWith(
+                      color: AppColors.onPrimary.withOpacity(0.85),
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    user?.name ?? 'Admin Kopdes',
+                    style: AppTypography.titleLarge.copyWith(
+                      color: AppColors.onPrimary,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    'Kelola katalog barang, verifikasi mitra UMKM, dan atur alur pengiriman desa.',
+                    style: AppTypography.captionSmall.copyWith(
+                      color: AppColors.onPrimary.withOpacity(0.9),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+
+            // Section Metric Stats Header
+            Text(
+              'Statistik Sistem',
+              style: AppTypography.caption.copyWith(
+                color: AppColors.ink,
+                fontWeight: FontWeight.w700,
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+
+            // Stat Cards Grid
+            Row(
+              children: [
+                Expanded(
+                  child: AdminStatCard(
+                    title: 'Barang Ritel',
+                    value: productsAsync.when(
+                      data: (list) => '${list.length}',
+                      loading: () => '...',
+                      error: (_, __) => '-',
+                    ),
+                    subtitle: productsAsync.when(
+                      data: (list) =>
+                          '${list.where((p) => p.isActive).length} Aktif',
+                      loading: () => '',
+                      error: (_, __) => '',
+                    ),
+                    icon: Icons.inventory_2_outlined,
                     color: AppColors.primary,
+                    onTap: () => onNavigateTab(1),
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          _VerificationCard(
-            title: 'Toko Kerajinan Bambu Lestari',
-            subtitle: 'Slamet Raharjo • Sinduadi',
-            time: 'Kemarin',
-            context: context,
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          _VerificationCard(
-            title: 'KWT Melati (Olahan Cassava)',
-            subtitle: 'Sri Wahyuni • Sendangadi',
-            time: '2 hari lalu',
-            context: context,
-          ),
-          const SizedBox(height: AppSpacing.xl),
-
-          // ─── Quick Controls ───
-          Text(
-            'Menu Kontrol',
-            style: AppTypography.caption.copyWith(
-              color: AppColors.ink,
-              fontWeight: FontWeight.w600,
-              fontSize: 16,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          _ActionTile(
-            icon: Icons.inventory_2_outlined,
-            title: 'Kelola Inventaris',
-            onTap: () {},
-          ),
-          _ActionTile(
-            icon: Icons.analytics_outlined,
-            title: 'Laporan Keuangan RAT',
-            onTap: () {},
-          ),
-          _ActionTile(
-            icon: Icons.tune_rounded,
-            title: 'Pengaturan Sistem',
-            onTap: () {},
-          ),
-          const SizedBox(height: AppSpacing.section),
-        ],
-      ),
-    );
-  }
-}
-
-// ─── Sub-widgets ───
-
-class _StatCard extends StatelessWidget {
-  final String label;
-  final String value;
-  final IconData icon;
-
-  const _StatCard({
-    required this.label,
-    required this.value,
-    required this.icon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: AppColors.canvas,
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        border: Border.all(color: AppColors.hairlineSoft),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Flexible(
-                child: Text(
-                  label,
-                  style: AppTypography.captionSmall,
-                  overflow: TextOverflow.ellipsis,
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: AdminStatCard(
+                    title: 'Mitra UMKM',
+                    value: mitraAsync.when(
+                      data: (list) => '${list.length}',
+                      loading: () => '...',
+                      error: (_, __) => '-',
+                    ),
+                    subtitle: mitraAsync.when(
+                      data: (list) =>
+                          '${list.where((m) => m.status == 'PENDING_VERIFICATION').length} Menunggu',
+                      loading: () => '',
+                      error: (_, __) => '',
+                    ),
+                    icon: Icons.storefront_outlined,
+                    color: AppColors.success,
+                    onTap: () => onNavigateTab(2),
+                  ),
                 ),
-              ),
-              Icon(icon, color: AppColors.muted, size: 18),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            value,
-            style: AppTypography.titleMedium.copyWith(
-              fontWeight: FontWeight.w700,
+              ],
             ),
-          ),
-        ],
+            const SizedBox(height: AppSpacing.sm),
+            Row(
+              children: [
+                Expanded(
+                  child: AdminStatCard(
+                    title: 'Pesanan Masuk',
+                    value: ordersAsync.when(
+                      data: (list) => '${list.length}',
+                      loading: () => '...',
+                      error: (_, __) => '-',
+                    ),
+                    subtitle: ordersAsync.when(
+                      data: (list) =>
+                          '${list.where((o) => o.status == 'PENDING' || o.status == 'PAID').length} Perlu Proses',
+                      loading: () => '',
+                      error: (_, __) => '',
+                    ),
+                    icon: Icons.receipt_long_outlined,
+                    color: AppColors.warning,
+                    onTap: () => onNavigateTab(3),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: AdminStatCard(
+                    title: 'Omzet Koperasi',
+                    value: ordersAsync.when(
+                      data: (list) {
+                        final total = list.fold<num>(
+                          0,
+                          (sum, item) => sum + item.totalAmount,
+                        );
+                        return rupiah(total);
+                      },
+                      loading: () => '...',
+                      error: (_, __) => 'Rp 0',
+                    ),
+                    subtitle: 'Total akumulasi pesanan',
+                    icon: Icons.account_balance_wallet_outlined,
+                    color: AppColors.primaryActive,
+                    onTap: () => onNavigateTab(3),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.xl),
+
+            // Moderation & Action Alert Notice if any pending items
+            mitraAsync.maybeWhen(
+              data: (mitras) {
+                final pendingCount = mitras
+                    .where((m) => m.status == 'PENDING_VERIFICATION')
+                    .length;
+                if (pendingCount == 0) return const SizedBox.shrink();
+
+                return Column(
+                  children: [
+                    AdminCard(
+                      borderColor: AppColors.warning,
+                      gradient: LinearGradient(
+                        colors: [
+                          AppColors.warning.withOpacity(0.08),
+                          AppColors.canvas,
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: AppColors.warning.withOpacity(0.2),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.hourglass_top_rounded,
+                              color: AppColors.warning,
+                              size: 22,
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.md),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Verifikasi Mitra UMKM',
+                                  style: AppTypography.bodyMedium.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.ink,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Ada $pendingCount pendaftaran mitra UMKM baru menunggu verifikasi Anda.',
+                                  style: AppTypography.captionSmall,
+                                ),
+                              ],
+                            ),
+                          ),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.warning,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.md,
+                                vertical: 8,
+                              ),
+                              minimumSize: Size.zero,
+                            ),
+                            onPressed: () => onNavigateTab(2),
+                            child: Text(
+                              'Tinjau',
+                              style: AppTypography.buttonSm.copyWith(
+                                color: AppColors.onPrimary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                  ],
+                );
+              },
+              orElse: () => const SizedBox.shrink(),
+            ),
+
+            // Quick Access Grid
+            Text(
+              'Akses Pintas Pengelolaan',
+              style: AppTypography.caption.copyWith(
+                color: AppColors.ink,
+                fontWeight: FontWeight.w700,
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+
+            GridView.count(
+              crossAxisCount: 2,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisSpacing: AppSpacing.md,
+              mainAxisSpacing: AppSpacing.md,
+              childAspectRatio: 1.1,
+              children: [
+                _QuickShortcutCard(
+                  icon: Icons.inventory_2_outlined,
+                  title: 'Kelola Barang Ritel',
+                  subtitle: 'Tambah & edit stok produk',
+                  color: AppColors.primary,
+                  onTap: () => onNavigateTab(1),
+                ),
+                _QuickShortcutCard(
+                  icon: Icons.verified_user_outlined,
+                  title: 'Pengelolaan Mitra',
+                  subtitle: 'Verifikasi & kelola UMKM',
+                  color: AppColors.success,
+                  onTap: () => onNavigateTab(2),
+                ),
+                _QuickShortcutCard(
+                  icon: Icons.receipt_long_outlined,
+                  title: 'Pesanan Masuk',
+                  subtitle: 'Ubah status order',
+                  color: AppColors.warning,
+                  onTap: () => onNavigateTab(3),
+                ),
+                _QuickShortcutCard(
+                  icon: Icons.local_shipping_outlined,
+                  title: 'Penugasan Kurir',
+                  subtitle: 'Atur pengantaran barang',
+                  color: AppColors.primaryActive,
+                  onTap: () => onNavigateTab(3),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.section),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _VerificationCard extends StatelessWidget {
+class _QuickShortcutCard extends StatelessWidget {
+  final IconData icon;
   final String title;
   final String subtitle;
-  final String time;
-  final BuildContext context;
-
-  const _VerificationCard({
-    required this.title,
-    required this.subtitle,
-    required this.time,
-    required this.context,
-  });
-
-  @override
-  Widget build(BuildContext buildContext) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.base),
-      decoration: BoxDecoration(
-        color: AppColors.canvas,
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        border: Border.all(color: AppColors.hairlineSoft),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceSoft,
-                  borderRadius: BorderRadius.circular(AppRadius.sm),
-                ),
-                child: const Icon(
-                  Icons.store_rounded,
-                  color: AppColors.muted,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: AppTypography.bodyMedium.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.ink,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.xxs),
-                    Text(subtitle, style: AppTypography.captionSmall),
-                  ],
-                ),
-              ),
-              Text(time, style: AppTypography.captionSmall),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              TextButton(
-                onPressed: () {},
-                child: Text(
-                  'Tolak',
-                  style: AppTypography.buttonSm.copyWith(
-                    color: AppColors.muted,
-                  ),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              ElevatedButton(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('$title berhasil diverifikasi'),
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppRadius.sm),
-                      ),
-                    ),
-                  );
-                },
-                child: const Text('Setujui'),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ActionTile extends StatelessWidget {
-  final IconData icon;
-  final String title;
+  final Color color;
   final VoidCallback onTap;
 
-  const _ActionTile({
+  const _QuickShortcutCard({
     required this.icon,
     required this.title,
+    required this.subtitle,
+    required this.color,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-      decoration: BoxDecoration(
-        color: AppColors.canvas,
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        border: Border.all(color: AppColors.hairlineSoft),
+    return AdminCard(
+      onTap: onTap,
+      padding: const EdgeInsets.all(AppSpacing.base),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
+            child: Icon(icon, color: color, size: 22),
+          ),
+          const Spacer(),
+          Text(
+            title,
+            style: AppTypography.bodyMedium.copyWith(
+              fontWeight: FontWeight.w700,
+              color: AppColors.ink,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            subtitle,
+            style: AppTypography.captionSmall.copyWith(
+              color: AppColors.muted,
+              fontSize: 11,
+            ),
+          ),
+        ],
       ),
-      child: ListTile(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.card),
-        ),
-        leading: Icon(icon, color: AppColors.ink, size: 22),
-        title: Text(
-          title,
-          style: AppTypography.bodyMedium.copyWith(
-            fontWeight: FontWeight.w500,
-            color: AppColors.ink,
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// TAB 2: MITRA & MODERASI TAB
+// ─────────────────────────────────────────────────────────
+class _MitraAndUmkmTab extends StatelessWidget {
+  const _MitraAndUmkmTab();
+
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        backgroundColor: AppColors.canvas,
+        appBar: AppBar(
+          backgroundColor: AppColors.canvas,
+          elevation: 0,
+          title: Text(
+            'Mitra & Moderasi UMKM',
+            style: AppTypography.titleMedium.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          bottom: TabBar(
+            labelColor: AppColors.primary,
+            unselectedLabelColor: AppColors.muted,
+            indicatorColor: AppColors.primary,
+            labelStyle: AppTypography.buttonSm.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+            tabs: const [
+              Tab(text: 'Verifikasi Mitra'),
+              Tab(text: 'Moderasi Produk'),
+            ],
           ),
         ),
-        trailing: const Icon(
-          Icons.arrow_forward_ios_rounded,
-          size: 14,
-          color: AppColors.hairline,
+        body: const TabBarView(
+          children: [
+            MitraManagementScreenContent(),
+            UmkmProductTakedownScreenContent(),
+          ],
         ),
-        onTap: onTap,
+      ),
+    );
+  }
+}
+
+// Sub-content wrapper for Mitra Management inside Dashboard Shell
+class MitraManagementScreenContent extends StatelessWidget {
+  const MitraManagementScreenContent({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MitraManagementScreen();
+  }
+}
+
+// Sub-content wrapper for UMKM Product Takedown inside Dashboard Shell
+class UmkmProductTakedownScreenContent extends StatelessWidget {
+  const UmkmProductTakedownScreenContent({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const UmkmProductTakedownScreen();
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// TAB 3: PESANAN & KURIR TAB
+// ─────────────────────────────────────────────────────────
+class _OrdersAndCouriersTab extends StatelessWidget {
+  const _OrdersAndCouriersTab();
+
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        backgroundColor: AppColors.canvas,
+        appBar: AppBar(
+          backgroundColor: AppColors.canvas,
+          elevation: 0,
+          title: Text(
+            'Pesanan & Kurir Koperasi',
+            style: AppTypography.titleMedium.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          bottom: TabBar(
+            labelColor: AppColors.primary,
+            unselectedLabelColor: AppColors.muted,
+            indicatorColor: AppColors.primary,
+            labelStyle: AppTypography.buttonSm.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+            tabs: const [
+              Tab(text: 'Pesanan Masuk'),
+              Tab(text: 'Kurir & Pengantaran'),
+            ],
+          ),
+        ),
+        body: const TabBarView(
+          children: [OrderManagementScreen(), CourierManagementScreen()],
+        ),
       ),
     );
   }

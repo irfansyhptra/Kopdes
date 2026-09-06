@@ -65,8 +65,18 @@ class NotificationCard extends ConsumerWidget {
 
   String _formatDateTime(DateTime dt) {
     final months = [
-      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+      'Januari',
+      'Februari',
+      'Maret',
+      'April',
+      'Mei',
+      'Juni',
+      'Juli',
+      'Agustus',
+      'September',
+      'Oktober',
+      'November',
+      'Desember',
     ];
     final day = dt.day;
     final month = months[dt.month - 1];
@@ -83,7 +93,9 @@ class NotificationCard extends ConsumerWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: isUnread ? const Color(0xFFFFF0F3) : Colors.white, // Light red if unread
+        color: isUnread
+            ? const Color(0xFFFFF0F3)
+            : Colors.white, // Light red if unread
         border: const Border(
           bottom: BorderSide(color: Color(0xFFF5F5F5), width: 1.2),
         ),
@@ -95,7 +107,10 @@ class NotificationCard extends ConsumerWidget {
           }
         },
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: 18),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.lg,
+            vertical: 18,
+          ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -131,7 +146,9 @@ class NotificationCard extends ConsumerWidget {
                             item.title,
                             style: AppTypography.caption.copyWith(
                               color: AppColors.ink,
-                              fontWeight: isUnread ? FontWeight.w800 : FontWeight.w600,
+                              fontWeight: isUnread
+                                  ? FontWeight.w800
+                                  : FontWeight.w600,
                               fontSize: 15,
                             ),
                           ),
@@ -140,7 +157,10 @@ class NotificationCard extends ConsumerWidget {
                           const SizedBox(width: 8),
                           // New Badge Pill
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
                             decoration: BoxDecoration(
                               color: AppColors.primary,
                               borderRadius: BorderRadius.circular(10),
@@ -174,7 +194,9 @@ class NotificationCard extends ConsumerWidget {
                     Text(
                       item.description,
                       style: AppTypography.bodyMedium.copyWith(
-                        color: isUnread ? const Color(0xFF1F2937) : AppColors.muted,
+                        color: isUnread
+                            ? const Color(0xFF1F2937)
+                            : AppColors.muted,
                         height: 1.45,
                         fontSize: 13.5,
                       ),

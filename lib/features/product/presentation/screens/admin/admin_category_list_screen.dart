@@ -126,6 +126,9 @@ class AdminCategoryListScreen extends ConsumerWidget {
     final nameController = TextEditingController();
     final descController = TextEditingController();
 
+    // Controller dialog tidak punya State yang mem-dispose-nya; dibuang saat
+    // dialog ditutup. Tanpa ini setiap kali dialog dibuka menyisakan dua
+    // TextEditingController beserta listener-nya di memori.
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -210,7 +213,10 @@ class AdminCategoryListScreen extends ConsumerWidget {
           ),
         ],
       ),
-    );
+    ).whenComplete(() {
+      nameController.dispose();
+      descController.dispose();
+    });
   }
 
   Widget _buildEmptyState() {

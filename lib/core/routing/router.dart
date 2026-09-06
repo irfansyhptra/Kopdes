@@ -8,6 +8,14 @@ import '../../features/auth/presentation/providers/auth_provider.dart';
 
 // Screens
 import '../../features/splash/presentation/screens/splash_screen.dart';
+import '../../features/koperasi/presentation/screens/koperasi_detail_screen.dart';
+import '../../features/koperasi/presentation/screens/koperasi_list_screen.dart';
+import '../../features/content/presentation/screens/content_page_screen.dart';
+import '../../features/content/presentation/screens/membership_register_screen.dart';
+import '../../features/discovery/presentation/screens/umkm_product_detail_screen.dart';
+import '../../features/koperasi/presentation/screens/mitra_detail_screen.dart';
+import '../../features/koperasi/presentation/screens/mitra_list_screen.dart';
+import '../../features/admin/presentation/screens/umkm_location_screen.dart';
 import '../../features/onboarding/presentation/screens/onboarding_screen.dart';
 import '../../features/onboarding/presentation/providers/onboarding_provider.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
@@ -15,9 +23,9 @@ import '../../features/auth/presentation/screens/register_screen.dart';
 import '../../features/auth/presentation/screens/forgot_password_screen.dart';
 import '../../features/auth/presentation/screens/session_expired_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
-import '../../features/product/presentation/screens/product_catalog_screen.dart';
+import '../../features/marketplace/presentation/screens/marketplace_screen.dart';
 import '../../features/product/presentation/screens/product_detail_screen.dart';
-import '../../features/order/presentation/screens/cart_screen.dart';
+import '../../features/order/presentation/screens/orders_page.dart';
 import '../../features/order/presentation/screens/checkout_screen.dart';
 import '../../features/order/presentation/screens/order_success_screen.dart';
 import '../../features/order/presentation/screens/order_history_screen.dart';
@@ -25,7 +33,8 @@ import '../../features/order/presentation/screens/order_detail_screen.dart';
 import '../../features/delivery/presentation/screens/tracking_screen.dart';
 import '../../features/umkm/presentation/screens/seller_dashboard_screen.dart';
 import '../../features/umkm/presentation/screens/product_screen.dart';
-import '../../features/umkm/presentation/screens/product_detail_screen.dart' as seller_view;
+import '../../features/umkm/presentation/screens/product_detail_screen.dart'
+    as seller_view;
 import '../../features/umkm/presentation/screens/product_form_screen.dart';
 import '../../features/umkm/presentation/screens/order_screen.dart';
 import '../../features/umkm/presentation/screens/inventory_screen.dart';
@@ -37,6 +46,16 @@ import '../../features/courier/presentation/screens/courier_dashboard_screen.dar
 import '../../features/product/presentation/screens/admin/admin_product_list_screen.dart';
 import '../../features/product/presentation/screens/admin/admin_product_form_screen.dart';
 import '../../features/product/presentation/screens/admin/admin_category_list_screen.dart';
+import '../../features/admin/presentation/screens/mitra_management_screen.dart';
+import '../../features/admin/presentation/screens/umkm_product_takedown_screen.dart';
+import '../../features/admin/presentation/screens/order_management_screen.dart';
+import '../../features/admin/presentation/screens/courier_management_screen.dart';
+import '../../features/admin/presentation/screens/admin_profile_screen.dart';
+import '../../features/chat/presentation/screens/conversation_list_screen.dart';
+import '../../features/chat/presentation/screens/chat_detail_screen.dart';
+import '../../features/superadmin/presentation/screens/super_admin_dashboard_screen.dart';
+import '../../features/superadmin/presentation/screens/account_management_screen.dart';
+import '../../features/superadmin/presentation/screens/user_directory_screen.dart';
 import '../../features/debug/presentation/screens/developer_debug_screen.dart';
 import '../../features/notification/presentation/screens/notification_screen.dart';
 
@@ -134,7 +153,9 @@ final routerProvider = Provider<GoRouter>((ref) {
         if (isAuthRoute || isSplash || isSessionExpired || isOnboarding) {
           switch (user.role) {
             case 'SUPER_ADMIN':
+              return '/super-admin';
             case 'ADMIN_KOPDES':
+            case 'PEGAWAI_KOPDES':
               return '/admin';
             case 'COURIER':
               return '/courier';
@@ -150,7 +171,9 @@ final routerProvider = Provider<GoRouter>((ref) {
         if (currentLoc == '/home' || currentLoc == '/') {
           switch (user.role) {
             case 'SUPER_ADMIN':
+              return '/super-admin';
             case 'ADMIN_KOPDES':
+            case 'PEGAWAI_KOPDES':
               return '/admin';
             case 'COURIER':
               return '/courier';
@@ -163,8 +186,14 @@ final routerProvider = Provider<GoRouter>((ref) {
         }
 
         // Role guards: prevent roles from accessing pages of other roles
-        if (currentLoc.startsWith('/admin')) {
-          if (user.role != 'ADMIN_KOPDES' && user.role != 'SUPER_ADMIN') {
+        if (currentLoc.startsWith('/super-admin')) {
+          if (user.role != 'SUPER_ADMIN') {
+            return '/home';
+          }
+        } else if (currentLoc.startsWith('/admin')) {
+          if (user.role != 'ADMIN_KOPDES' &&
+              user.role != 'SUPER_ADMIN' &&
+              user.role != 'PEGAWAI_KOPDES') {
             return '/home';
           }
         }
@@ -197,12 +226,54 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const OnboardingScreen(),
       ),
       GoRoute(
+        path: '/koperasi',
+        builder: (context, state) => const KoperasiListScreen(),
+        routes: [
+          GoRoute(
+            path: ':id',
+            builder: (context, state) => KoperasiDetailScreen(
+              koperasiId: state.pathParameters['id'] ?? '',
+            ),
+          ),
+        ],
+      ),
+      GoRoute(
+        path: '/umkm',
+        builder: (context, state) => const MitraListScreen(),
+        routes: [
+          // Didaftarkan sebelum ':id' agar 'products' tidak tertangkap
+          // sebagai id mitra.
+          GoRoute(
+            path: 'products/:id',
+            builder: (context, state) => UmkmProductDetailScreen(
+              productId: state.pathParameters['id'] ?? '',
+            ),
+          ),
+          GoRoute(
+            path: ':id',
+            builder: (context, state) =>
+                MitraDetailScreen(mitraId: state.pathParameters['id'] ?? ''),
+          ),
+        ],
+      ),
+      GoRoute(
+        path: '/info/:slug',
+        builder: (context, state) =>
+            ContentPageScreen(slug: state.pathParameters['slug'] ?? ''),
+      ),
+      GoRoute(
+        path: '/membership/register',
+        builder: (context, state) => const MembershipRegisterScreen(),
+      ),
+      GoRoute(
+        path: '/admin/umkm-locations',
+        builder: (context, state) => const UmkmLocationScreen(),
+      ),
+      GoRoute(
         path: '/notifications',
         parentNavigatorKey: rootNavigatorKey,
-        pageBuilder: (context, state) => _slideTransition(
-          state,
-          const NotificationScreen(),
-        ),
+        pageBuilder: (context, state) =>
+            _slideTransition(state, const NotificationScreen()),
       ),
       GoRoute(
         path: '/debug',
@@ -266,6 +337,60 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const AdminCategoryListScreen(),
       ),
       GoRoute(
+        path: '/admin/mitra',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const MitraManagementScreen(),
+      ),
+      GoRoute(
+        path: '/admin/umkm-products',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const UmkmProductTakedownScreen(),
+      ),
+      GoRoute(
+        path: '/admin/orders',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const OrderManagementScreen(),
+      ),
+      GoRoute(
+        path: '/admin/couriers',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const CourierManagementScreen(),
+      ),
+      GoRoute(
+        path: '/admin/chat',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const ConversationListScreen(),
+      ),
+      GoRoute(
+        path: '/admin/profile',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const AdminProfileScreen(),
+      ),
+      GoRoute(
+        path: '/chat/:id',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) {
+          final id = state.pathParameters['id'] ?? '';
+          final title = state.extra as String? ?? 'Percakapan';
+          return ChatDetailScreen(conversationId: id, title: title);
+        },
+      ),
+      GoRoute(
+        path: '/super-admin',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const SuperAdminDashboardScreen(),
+      ),
+      GoRoute(
+        path: '/super-admin/accounts',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const AccountManagementScreen(),
+      ),
+      GoRoute(
+        path: '/super-admin/users',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const UserDirectoryScreen(),
+      ),
+      GoRoute(
         path: '/courier',
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const CourierDashboardScreen(),
@@ -314,10 +439,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/checkout',
         parentNavigatorKey: rootNavigatorKey,
-        pageBuilder: (context, state) => _slideTransition(
-          state,
-          const CheckoutScreen(),
-        ),
+        pageBuilder: (context, state) =>
+            _slideTransition(state, const CheckoutScreen()),
       ),
       GoRoute(
         path: '/order-success/:id',
@@ -330,10 +453,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/orders/history',
         parentNavigatorKey: rootNavigatorKey,
-        pageBuilder: (context, state) => _slideTransition(
-          state,
-          const OrderHistoryScreen(),
-        ),
+        pageBuilder: (context, state) =>
+            _slideTransition(state, const OrderHistoryScreen()),
       ),
       GoRoute(
         path: '/orders/:id',
@@ -367,7 +488,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/products',
-                builder: (context, state) => const ProductCatalogScreen(),
+                builder: (context, state) => const MarketplaceScreen(),
                 routes: [
                   GoRoute(
                     path: 'detail/:id',
@@ -393,13 +514,14 @@ final routerProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
-          // Branch 4: Shopping Cart
+          // Branch 4: Pesanan — keranjang, pesanan berjalan, dan riwayat.
+          // Rutenya tetap '/cart' supaya tautan lama tidak putus.
           StatefulShellBranch(
             navigatorKey: cartNavigatorKey,
             routes: [
               GoRoute(
                 path: '/cart',
-                builder: (context, state) => const CartScreen(),
+                builder: (context, state) => const OrdersPage(),
               ),
             ],
           ),
@@ -423,10 +545,7 @@ final routerProvider = Provider<GoRouter>((ref) {
 // Page Transition Helper
 // iOS-style slide from right with a subtle fade
 // ─────────────────────────────────────────────────────────
-CustomTransitionPage<void> _slideTransition(
-  GoRouterState state,
-  Widget child,
-) {
+CustomTransitionPage<void> _slideTransition(GoRouterState state, Widget child) {
   return CustomTransitionPage<void>(
     key: state.pageKey,
     child: child,
@@ -436,25 +555,18 @@ CustomTransitionPage<void> _slideTransition(
       final offsetAnimation = Tween<Offset>(
         begin: const Offset(1.0, 0.0),
         end: Offset.zero,
-      ).animate(CurvedAnimation(
-        parent: animation,
-        curve: Curves.easeOutCubic,
-      ));
+      ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic));
 
-      final fadeAnimation = Tween<double>(
-        begin: 0.0,
-        end: 1.0,
-      ).animate(CurvedAnimation(
-        parent: animation,
-        curve: const Interval(0.0, 0.5, curve: Curves.easeIn),
-      ));
+      final fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+        CurvedAnimation(
+          parent: animation,
+          curve: const Interval(0.0, 0.5, curve: Curves.easeIn),
+        ),
+      );
 
       return SlideTransition(
         position: offsetAnimation,
-        child: FadeTransition(
-          opacity: fadeAnimation,
-          child: child,
-        ),
+        child: FadeTransition(opacity: fadeAnimation, child: child),
       );
     },
   );

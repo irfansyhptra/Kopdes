@@ -1,23 +1,27 @@
+import '../../../../core/network/paginated.dart';
 import '../entities/product.dart';
 import '../entities/category.dart';
 
 abstract class ProductRepository {
-  Future<List<Product>> getProducts({
+  Future<Paginated<Product>> getProducts({
     String? search,
     String? categoryId,
     double? minPrice,
     double? maxPrice,
     bool? inStock,
     int page = 1,
-    int limit = 10,
+    int limit = 20,
     String sortBy = 'createdAt',
     String sortOrder = 'desc',
     bool? isActive,
+
+    /// Lewati cache dan paksa ambil dari jaringan — untuk tarik-untuk-muat-ulang.
+    bool forceRefresh = false,
   });
 
-  Future<Product> getProductDetail(String id);
+  Future<Product> getProductDetail(String id, {bool forceRefresh = false});
 
-  Future<List<Category>> getCategories();
+  Future<List<Category>> getCategories({bool forceRefresh = false});
 
   // Admin management
   Future<Product> createProduct({

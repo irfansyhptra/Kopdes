@@ -8,7 +8,10 @@ final sellerOrdersProvider = FutureProvider<List<OrderModel>>((ref) async {
   return ref.watch(orderRepositoryProvider).getOrders();
 });
 
-final sellerOrderDetailProvider = FutureProvider.family<OrderModel, String>((ref, id) async {
+final sellerOrderDetailProvider = FutureProvider.family<OrderModel, String>((
+  ref,
+  id,
+) async {
   return ref.watch(orderRepositoryProvider).getOrderDetail(id);
 });
 
@@ -16,12 +19,10 @@ class OrderController extends StateNotifier<AsyncValue<void>> {
   final OrderRepository _repository;
   final Ref _ref;
 
-  OrderController({
-    required OrderRepository repository,
-    required Ref ref,
-  })  : _repository = repository,
-        _ref = ref,
-        super(const AsyncValue.data(null));
+  OrderController({required OrderRepository repository, required Ref ref})
+    : _repository = repository,
+      _ref = ref,
+      super(const AsyncValue.data(null));
 
   Future<bool> updateOrderStatus(String orderId, String status) async {
     state = const AsyncValue.loading();
@@ -39,9 +40,10 @@ class OrderController extends StateNotifier<AsyncValue<void>> {
   }
 }
 
-final orderControllerProvider = StateNotifierProvider<OrderController, AsyncValue<void>>((ref) {
-  return OrderController(
-    repository: ref.watch(orderRepositoryProvider),
-    ref: ref,
-  );
-});
+final orderControllerProvider =
+    StateNotifierProvider<OrderController, AsyncValue<void>>((ref) {
+      return OrderController(
+        repository: ref.watch(orderRepositoryProvider),
+        ref: ref,
+      );
+    });

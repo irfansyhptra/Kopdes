@@ -12,12 +12,10 @@ class StoreController extends StateNotifier<AsyncValue<void>> {
   final SellerRepository _repository;
   final Ref _ref;
 
-  StoreController({
-    required SellerRepository repository,
-    required Ref ref,
-  })  : _repository = repository,
-        _ref = ref,
-        super(const AsyncValue.data(null));
+  StoreController({required SellerRepository repository, required Ref ref})
+    : _repository = repository,
+      _ref = ref,
+      super(const AsyncValue.data(null));
 
   Future<bool> updateStoreProfile({
     required String businessName,
@@ -44,9 +42,10 @@ class StoreController extends StateNotifier<AsyncValue<void>> {
   }
 }
 
-final storeControllerProvider = StateNotifierProvider<StoreController, AsyncValue<void>>((ref) {
-  return StoreController(
-    repository: ref.watch(sellerRepositoryProvider),
-    ref: ref,
-  );
-});
+final storeControllerProvider =
+    StateNotifierProvider<StoreController, AsyncValue<void>>((ref) {
+      return StoreController(
+        repository: ref.watch(sellerRepositoryProvider),
+        ref: ref,
+      );
+    });

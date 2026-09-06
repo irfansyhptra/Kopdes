@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
@@ -6,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../../core/theme/theme.dart';
+import '../controllers/typewriter_stream.dart';
 import '../../../../localization/app_localizations.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 
@@ -16,8 +18,18 @@ class AIAssistantScreen extends ConsumerStatefulWidget {
   ConsumerState<AIAssistantScreen> createState() => _AIAssistantScreenState();
 }
 
-class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> with TickerProviderStateMixin {
+class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen>
+    with TickerProviderStateMixin {
   final List<Map<String, dynamic>> _messages = [];
+
+  /// Efek ketik mengalir lewat notifier di dalam [TypewriterStream], bukan
+  /// setState. setState membangun ulang SELURUH layar ini; dipanggil tiap 15ms
+  /// selama mengetik itu ±66 rebuild layar penuh per detik untuk perubahan yang
+  /// hanya menyentuh satu gelembung pesan.
+  final TypewriterStream _typewriter = TypewriterStream();
+
+  /// Indeks pesan yang sedang "diketik", atau null kalau tidak ada.
+  int? _streamingIndex;
   final _textController = TextEditingController();
   final _scrollController = ScrollController();
   late AnimationController _ambientGlowController;
@@ -54,7 +66,7 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> with Tick
       'Mencari informasi...',
       'Menyiapkan jawaban...',
     ];
-    
+
     final timer = Timer.periodic(const Duration(seconds: 3), (t) {
       if (!mounted || !_isTyping) {
         t.cancel();
@@ -67,8 +79,10 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> with Tick
     });
 
     final startTime = DateTime.now();
-    debugPrint('🤖 AI ASSISTANT [FRONTEND]: Question: "$text"');
-    debugPrint('🤖 AI ASSISTANT [FRONTEND]: Request Start at $startTime');
+    if (kDebugMode) debugPrint('🤖 AI ASSISTANT [FRONTEND]: Question: "$text"');
+    if (kDebugMode) {
+      debugPrint('🤖 AI ASSISTANT [FRONTEND]: Request Start at $startTime');
+    }
 
     try {
       String endpoint = '/ai/chat';
@@ -77,13 +91,22 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> with Tick
 
       if (_activeMode == 'Gudang') {
         final lowerText = text.toLowerCase();
-        if (lowerText.contains('komunitas') || lowerText.contains('usulan') || lowerText.contains('permintaan') || lowerText.contains('demand')) {
+        if (lowerText.contains('komunitas') ||
+            lowerText.contains('usulan') ||
+            lowerText.contains('permintaan') ||
+            lowerText.contains('demand')) {
           endpoint = '/ai/community';
           isPostWithBody = false;
-        } else if (lowerText.contains('pengadaan') || lowerText.contains('restok') || lowerText.contains('stok kritis') || lowerText.contains('stoknya hampir habis')) {
+        } else if (lowerText.contains('pengadaan') ||
+            lowerText.contains('restok') ||
+            lowerText.contains('stok kritis') ||
+            lowerText.contains('stoknya hampir habis')) {
           endpoint = '/ai/inventory';
           isPostWithBody = false;
-        } else if (lowerText.contains('anomali') || lowerText.contains('audit') || lowerText.contains('mencurigakan') || lowerText.contains('anomaly')) {
+        } else if (lowerText.contains('anomali') ||
+            lowerText.contains('audit') ||
+            lowerText.contains('mencurigakan') ||
+            lowerText.contains('anomaly')) {
           endpoint = '/ai/anomaly';
           isPostWithBody = false;
         } else {
@@ -91,7 +114,9 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> with Tick
         }
       }
 
-      debugPrint('🤖 AI ASSISTANT [FRONTEND]: Target Endpoint = $endpoint');
+      if (kDebugMode) {
+        debugPrint('🤖 AI ASSISTANT [FRONTEND]: Target Endpoint = $endpoint');
+      }
 
       final dio = ref.read(dioProvider);
       final response = await dio.post(
@@ -105,18 +130,28 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> with Tick
 
       final endTime = DateTime.now();
       final duration = endTime.difference(startTime).inMilliseconds;
-      debugPrint('🤖 AI ASSISTANT [FRONTEND]: Request End at $endTime');
-      debugPrint('🤖 AI ASSISTANT [FRONTEND]: Duration: ${duration}ms');
-      debugPrint('🤖 AI ASSISTANT [FRONTEND]: HTTP status: ${response.statusCode}');
+      if (kDebugMode) {
+        debugPrint('🤖 AI ASSISTANT [FRONTEND]: Request End at $endTime');
+      }
+      if (kDebugMode) {
+        debugPrint('🤖 AI ASSISTANT [FRONTEND]: Duration: ${duration}ms');
+      }
+      if (kDebugMode) {
+        debugPrint(
+          '🤖 AI ASSISTANT [FRONTEND]: HTTP status: ${response.statusCode}',
+        );
+      }
 
       String aiResponse = '';
       if (response.data != null) {
-        final Map<String, dynamic> responseMap = response.data as Map<String, dynamic>;
+        final Map<String, dynamic> responseMap =
+            response.data as Map<String, dynamic>;
         aiResponse = responseMap['response'] ?? responseMap['data'] ?? '';
       }
 
       if (aiResponse.isEmpty) {
-        aiResponse = 'Maaf, layanan AI tidak mengembalikan jawaban. Silakan coba kembali beberapa saat lagi.';
+        aiResponse =
+            'Maaf, layanan AI tidak mengembalikan jawaban. Silakan coba kembali beberapa saat lagi.';
       }
 
       // Add a blank AI message first, then simulate typing/streaming effect
@@ -127,51 +162,76 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> with Tick
       _scrollToBottom();
 
       final int messageIndex = _messages.length - 1;
-      int charIndex = 0;
-      Timer.periodic(const Duration(milliseconds: 15), (t) {
-        if (!mounted) {
-          t.cancel();
-          return;
-        }
-        charIndex += 4; // Add 4 characters at a time for smooth but snappy typing
-        if (charIndex >= aiResponse.length) {
-          charIndex = aiResponse.length;
-          t.cancel();
-        }
-        setState(() {
-          _messages[messageIndex] = {
-            'isUser': false,
-            'text': aiResponse.substring(0, charIndex),
-          };
-        });
-        _scrollToBottom();
-      });
+
+      // Satu setState untuk menandai baris yang mengalir — bukan satu per
+      // karakter. Selanjutnya hanya gelembung itu yang dibangun ulang, lewat
+      // ValueListenableBuilder di _buildMessageList.
+      setState(() => _streamingIndex = messageIndex);
+
+      _typewriter.start(
+        aiResponse,
+        onTick: _followBottom,
+        onDone: () {
+          if (!mounted) return;
+          // Teks final dipindahkan ke _messages supaya jadi sumber kebenaran
+          // untuk rebuild berikutnya, lalu mode mengalir dimatikan.
+          setState(() {
+            _messages[messageIndex] = {'isUser': false, 'text': aiResponse};
+            _streamingIndex = null;
+          });
+        },
+      );
     } on DioException catch (e) {
       final endTime = DateTime.now();
       final duration = endTime.difference(startTime).inMilliseconds;
-      debugPrint('🤖 AI ASSISTANT [FRONTEND]: Request Failed with DioException at $endTime');
-      debugPrint('🤖 AI ASSISTANT [FRONTEND]: Duration: ${duration}ms');
-      debugPrint('🤖 AI ASSISTANT [FRONTEND]: Exception Type: ${e.type}');
-      debugPrint('🤖 AI ASSISTANT [FRONTEND]: Status Code: ${e.response?.statusCode}');
-      debugPrint('🤖 AI ASSISTANT [FRONTEND]: Error Message: ${e.message}');
-      debugPrint('🤖 AI ASSISTANT [FRONTEND]: Response Body: ${e.response?.data}');
+      if (kDebugMode) {
+        debugPrint(
+          '🤖 AI ASSISTANT [FRONTEND]: Request Failed with DioException at $endTime',
+        );
+      }
+      if (kDebugMode) {
+        debugPrint('🤖 AI ASSISTANT [FRONTEND]: Duration: ${duration}ms');
+      }
+      if (kDebugMode) {
+        debugPrint('🤖 AI ASSISTANT [FRONTEND]: Exception Type: ${e.type}');
+      }
+      if (kDebugMode) {
+        debugPrint(
+          '🤖 AI ASSISTANT [FRONTEND]: Status Code: ${e.response?.statusCode}',
+        );
+      }
+      if (kDebugMode) {
+        debugPrint('🤖 AI ASSISTANT [FRONTEND]: Error Message: ${e.message}');
+      }
+      if (kDebugMode) {
+        debugPrint(
+          '🤖 AI ASSISTANT [FRONTEND]: Response Body: ${e.response?.data}',
+        );
+      }
 
-      String errorMessage = 'Maaf, layanan AI sedang mengalami gangguan. Silakan coba kembali beberapa saat lagi.';
-      
+      String errorMessage =
+          'Maaf, layanan AI sedang mengalami gangguan. Silakan coba kembali beberapa saat lagi.';
+
       if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.sendTimeout ||
           e.type == DioExceptionType.receiveTimeout) {
         errorMessage = 'AI sedang sibuk. Silakan coba beberapa saat lagi.';
-      } else if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
-        errorMessage = 'Akses ditolak. Silakan periksa kembali login akun Anda.';
+      } else if (e.response?.statusCode == 401 ||
+          e.response?.statusCode == 403) {
+        errorMessage =
+            'Akses ditolak. Silakan periksa kembali login akun Anda.';
       } else if (e.response?.statusCode == 429) {
-        errorMessage = 'Terlalu banyak permintaan. Silakan tunggu beberapa saat lagi.';
+        errorMessage =
+            'Terlalu banyak permintaan. Silakan tunggu beberapa saat lagi.';
       } else if (e.response?.statusCode == 404) {
         errorMessage = 'Layanan AI tidak ditemukan. Silakan hubungi admin.';
-      } else if (e.response?.statusCode == 500 || e.response?.statusCode == 503) {
-        errorMessage = 'Maaf, layanan AI sedang mengalami gangguan. Silakan coba kembali beberapa saat lagi.';
+      } else if (e.response?.statusCode == 500 ||
+          e.response?.statusCode == 503) {
+        errorMessage =
+            'Maaf, layanan AI sedang mengalami gangguan. Silakan coba kembali beberapa saat lagi.';
       } else if (e.error is SocketException) {
-        errorMessage = 'Koneksi internet terputus. Harap periksa jaringan Anda.';
+        errorMessage =
+            'Koneksi internet terputus. Harap periksa jaringan Anda.';
       }
 
       setState(() {
@@ -182,14 +242,21 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> with Tick
     } catch (e) {
       final endTime = DateTime.now();
       final duration = endTime.difference(startTime).inMilliseconds;
-      debugPrint('🤖 AI ASSISTANT [FRONTEND]: Request Failed with Generic Exception: $e');
-      debugPrint('🤖 AI ASSISTANT [FRONTEND]: Duration: ${duration}ms');
+      if (kDebugMode) {
+        debugPrint(
+          '🤖 AI ASSISTANT [FRONTEND]: Request Failed with Generic Exception: $e',
+        );
+      }
+      if (kDebugMode) {
+        debugPrint('🤖 AI ASSISTANT [FRONTEND]: Duration: ${duration}ms');
+      }
 
       setState(() {
         _isTyping = false;
         _messages.add({
           'isUser': false,
-          'text': 'Maaf, layanan AI sedang mengalami gangguan. Silakan coba kembali beberapa saat lagi.'
+          'text':
+              'Maaf, layanan AI sedang mengalami gangguan. Silakan coba kembali beberapa saat lagi.',
         });
       });
       _scrollToBottom();
@@ -198,15 +265,38 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> with Tick
     }
   }
 
+  /// Gulir ke bawah setelah satu pesan penuh masuk.
   void _scrollToBottom() {
     Future.delayed(const Duration(milliseconds: 100), () {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: AppAnimation.normal,
-          curve: AppAnimation.defaultCurve,
-        );
-      }
+      if (!mounted || !_scrollController.hasClients) return;
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: AppAnimation.normal,
+        curve: AppAnimation.defaultCurve,
+      );
+    });
+  }
+
+  /// Mengikuti dasar daftar selama efek ketik berlangsung.
+  ///
+  /// Dipanggil tiap 15ms. Memakai [_scrollToBottom] di sini berarti setiap tick
+  /// menjadwalkan Future 100ms lalu memulai animasi scroll baru — untuk balasan
+  /// 600 karakter itu 150 animasi yang saling mendahului. Di sini cukup satu
+  /// penyesuaian per frame, dan `jumpTo` karena jaraknya hanya beberapa piksel
+  /// tiap tick sehingga animasi tidak menambah apa pun yang terlihat.
+  bool _followScheduled = false;
+
+  void _followBottom() {
+    if (_followScheduled) return;
+    _followScheduled = true;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _followScheduled = false;
+      if (!mounted || !_scrollController.hasClients) return;
+      final position = _scrollController.position;
+      // Jangan rebut kendali kalau pengguna sedang menggulir ke atas membaca.
+      if (position.pixels < position.maxScrollExtent - 120) return;
+      _scrollController.jumpTo(position.maxScrollExtent);
     });
   }
 
@@ -241,10 +331,19 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> with Tick
 
   @override
   void dispose() {
+    _typewriter.dispose();
     _textController.dispose();
     _scrollController.dispose();
     _ambientGlowController.dispose();
     super.dispose();
+  }
+
+  /// Hentikan efek ketik yang sedang berjalan. Wajib dipanggil sebelum
+  /// _messages diubah dari luar, kalau tidak _streamingIndex menunjuk ke
+  /// pesan yang sudah tidak ada.
+  void _stopStreaming() {
+    _typewriter.stop();
+    _streamingIndex = null;
   }
 
   @override
@@ -265,11 +364,7 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> with Tick
           ),
 
           // Tech Grid Overlay
-          Positioned.fill(
-            child: CustomPaint(
-              painter: _TechGridPainter(),
-            ),
-          ),
+          Positioned.fill(child: CustomPaint(painter: _TechGridPainter())),
 
           // 2. Main Contents Stack
           Positioned.fill(
@@ -417,7 +512,11 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> with Tick
                   onTap: () {},
                   borderRadius: BorderRadius.circular(12),
                   child: const Center(
-                    child: Icon(Icons.auto_awesome_rounded, color: Color(0xFFD32F2F), size: 20),
+                    child: Icon(
+                      Icons.auto_awesome_rounded,
+                      color: Color(0xFFD32F2F),
+                      size: 20,
+                    ),
                   ),
                 ),
               ),
@@ -450,6 +549,7 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> with Tick
             _buildHeaderButton(
               icon: Icons.chevron_left_rounded,
               onTap: () {
+                _stopStreaming();
                 setState(() {
                   _messages.clear();
                 });
@@ -484,6 +584,7 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> with Tick
               icon: Icons.delete_sweep_outlined,
               iconColor: Colors.white,
               onTap: () {
+                _stopStreaming();
                 setState(() {
                   _messages.clear();
                 });
@@ -515,9 +616,7 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> with Tick
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(12),
-          child: Center(
-            child: Icon(icon, color: iconColor, size: 20),
-          ),
+          child: Center(child: Icon(icon, color: iconColor, size: 20)),
         ),
       ),
     );
@@ -525,9 +624,21 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> with Tick
 
   Widget _buildModeSelectorBar() {
     final List<Map<String, dynamic>> modes = [
-      {'name': 'Konsumen', 'icon': Icons.shopping_bag_outlined, 'desc': 'Kebutuhan Belanja'},
-      {'name': 'UMKM', 'icon': Icons.storefront_rounded, 'desc': 'Analisis Warung'},
-      {'name': 'Gudang', 'icon': Icons.inventory_2_outlined, 'desc': 'Stok & Koperasi'},
+      {
+        'name': 'Konsumen',
+        'icon': Icons.shopping_bag_outlined,
+        'desc': 'Kebutuhan Belanja',
+      },
+      {
+        'name': 'UMKM',
+        'icon': Icons.storefront_rounded,
+        'desc': 'Analisis Warung',
+      },
+      {
+        'name': 'Gudang',
+        'icon': Icons.inventory_2_outlined,
+        'desc': 'Stok & Koperasi',
+      },
     ];
 
     return Container(
@@ -543,6 +654,7 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> with Tick
           return Expanded(
             child: GestureDetector(
               onTap: () {
+                _stopStreaming();
                 setState(() {
                   _activeMode = mode['name'];
                   _messages.clear(); // Clear chat to match mode context
@@ -571,15 +683,21 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> with Tick
                     Icon(
                       mode['icon'],
                       size: 16,
-                      color: isSelected ? AppColors.primary : const Color(0xFF6B7280),
+                      color: isSelected
+                          ? AppColors.primary
+                          : const Color(0xFF6B7280),
                     ),
                     const SizedBox(width: 8),
                     Text(
                       mode['name'],
                       style: TextStyle(
                         fontSize: 12,
-                        fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                        color: isSelected ? const Color(0xFF1F2937) : const Color(0xFF6B7280),
+                        fontWeight: isSelected
+                            ? FontWeight.w800
+                            : FontWeight.w600,
+                        color: isSelected
+                            ? const Color(0xFF1F2937)
+                            : const Color(0xFF6B7280),
                       ),
                     ),
                   ],
@@ -620,10 +738,7 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> with Tick
                       ),
                     ),
                     const SizedBox(width: 6),
-                    const Text(
-                      '👋',
-                      style: TextStyle(fontSize: 22),
-                    ),
+                    const Text('👋', style: TextStyle(fontSize: 22)),
                   ],
                 ),
                 const SizedBox(height: 4),
@@ -648,7 +763,11 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> with Tick
         // 3. Rekomendasi & Bantuan Header
         Row(
           children: const [
-            Icon(Icons.lightbulb_outline_rounded, color: Color(0xFFF59E0B), size: 18),
+            Icon(
+              Icons.lightbulb_outline_rounded,
+              color: Color(0xFFF59E0B),
+              size: 18,
+            ),
             SizedBox(width: 8),
             Text(
               'Rekomendasi & Bantuan',
@@ -669,7 +788,11 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> with Tick
         // 5. Coba tanyakan ini Header
         Row(
           children: const [
-            Icon(Icons.auto_awesome_rounded, color: Color(0xFF6B7280), size: 16),
+            Icon(
+              Icons.auto_awesome_rounded,
+              color: Color(0xFF6B7280),
+              size: 16,
+            ),
             SizedBox(width: 8),
             Text(
               'Coba tanyakan ini',
@@ -744,7 +867,7 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> with Tick
                 Icons.auto_awesome_rounded,
                 color: Colors.white,
                 size: 24,
-               ),
+              ),
             ),
           ),
           // Positioned orbit dots to mimic mockup
@@ -857,7 +980,11 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> with Tick
             height: 90,
             fit: BoxFit.contain,
             errorBuilder: (context, error, stackTrace) {
-              return const Icon(Icons.smart_toy_outlined, size: 64, color: Color(0xFFD32F2F));
+              return const Icon(
+                Icons.smart_toy_outlined,
+                size: 64,
+                color: Color(0xFFD32F2F),
+              );
             },
           ),
         ],
@@ -1030,10 +1157,7 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> with Tick
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  pill['icon']!,
-                  style: const TextStyle(fontSize: 12),
-                ),
+                Text(pill['icon']!, style: const TextStyle(fontSize: 12)),
                 const SizedBox(width: 6),
                 Text(
                   pill['label']!,
@@ -1129,9 +1253,18 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> with Tick
       itemBuilder: (context, index) {
         final msg = _messages[index];
         final isUser = msg['isUser'] as bool;
-        final String text = msg['text'] as String;
 
-        return _MessageRow(text: text, isUser: isUser);
+        // Baris yang sedang diketik mengikuti notifier; sisanya statis dan
+        // tidak ikut dibangun ulang tiap tick.
+        if (index == _streamingIndex) {
+          return ValueListenableBuilder<String>(
+            valueListenable: _typewriter.text,
+            builder: (context, text, _) =>
+                _MessageRow(text: text, isUser: false),
+          );
+        }
+
+        return _MessageRow(text: msg['text'] as String, isUser: isUser);
       },
     );
   }
@@ -1158,7 +1291,10 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> with Tick
                 decoration: BoxDecoration(
                   color: const Color(0xFFF3F4F6),
                   shape: BoxShape.circle,
-                  border: Border.all(color: const Color(0xFFE5E7EB), width: 1.0),
+                  border: Border.all(
+                    color: const Color(0xFFE5E7EB),
+                    width: 1.0,
+                  ),
                 ),
                 child: const Icon(
                   Icons.mic_none_rounded,
@@ -1175,7 +1311,10 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> with Tick
                 decoration: BoxDecoration(
                   color: const Color(0xFFF9FAFB),
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: const Color(0xFFE5E7EB), width: 1.1),
+                  border: Border.all(
+                    color: const Color(0xFFE5E7EB),
+                    width: 1.1,
+                  ),
                 ),
                 child: TextField(
                   controller: _textController,
@@ -1334,7 +1473,8 @@ class FuturisticAICore extends StatefulWidget {
   State<FuturisticAICore> createState() => _FuturisticAICoreState();
 }
 
-class _FuturisticAICoreState extends State<FuturisticAICore> with SingleTickerProviderStateMixin {
+class _FuturisticAICoreState extends State<FuturisticAICore>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
 
   @override
@@ -1357,7 +1497,8 @@ class _FuturisticAICoreState extends State<FuturisticAICore> with SingleTickerPr
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, _) {
-        final scaleValue = 0.94 + 0.06 * math.sin(_controller.value * 2 * math.pi * 2);
+        final scaleValue =
+            0.94 + 0.06 * math.sin(_controller.value * 2 * math.pi * 2);
 
         return Stack(
           alignment: Alignment.center,
@@ -1383,7 +1524,9 @@ class _FuturisticAICoreState extends State<FuturisticAICore> with SingleTickerPr
               width: 100,
               height: 100,
               child: CustomPaint(
-                painter: _AICoreOrbitsPainter(angle: _controller.value * 2 * math.pi),
+                painter: _AICoreOrbitsPainter(
+                  angle: _controller.value * 2 * math.pi,
+                ),
               ),
             ),
 
@@ -1512,11 +1655,7 @@ class _SuggestionCard extends StatelessWidget {
                 color: color.withOpacity(0.08),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(
-                icon,
-                color: color,
-                size: 16,
-              ),
+              child: Icon(icon, color: color, size: 16),
             ),
             const SizedBox(height: 8),
             // Title
@@ -1562,7 +1701,6 @@ class _MessageRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    debugPrint('🤖 AI ASSISTANT [UI]: _MessageRow build. isUser: $isUser, text: "$text"');
     try {
       if (isUser) {
         return _buildUserBubble(context);
@@ -1570,7 +1708,11 @@ class _MessageRow extends StatelessWidget {
         return _buildAIBubble(context);
       }
     } catch (e, stack) {
-      debugPrint('❌ AI ASSISTANT [UI]: Error building _MessageRow: $e\n$stack');
+      if (kDebugMode) {
+        debugPrint(
+          '❌ AI ASSISTANT [UI]: Error building _MessageRow: $e\n$stack',
+        );
+      }
       return Align(
         alignment: Alignment.centerLeft,
         child: Container(
@@ -1633,13 +1775,14 @@ class _MessageRow extends StatelessWidget {
     // 1. Detect if the message contains list items that can be parsed as products
     final List<Map<String, String>> parsedProducts = _parseProducts(text);
     final String cleanText = _stripProductLines(text);
-    
-    final bool isError = cleanText.contains('gangguan') || 
-                         cleanText.contains('terputus') || 
-                         cleanText.contains('ditolak') || 
-                         cleanText.contains('sibuk') ||
-                         cleanText.contains('tidak ditemukan') ||
-                         cleanText.contains('Layout Error');
+
+    final bool isError =
+        cleanText.contains('gangguan') ||
+        cleanText.contains('terputus') ||
+        cleanText.contains('ditolak') ||
+        cleanText.contains('sibuk') ||
+        cleanText.contains('tidak ditemukan') ||
+        cleanText.contains('Layout Error');
 
     return Align(
       alignment: Alignment.centerLeft,
@@ -1679,9 +1822,14 @@ class _MessageRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                     decoration: BoxDecoration(
-                      color: isError ? const Color(0xFFFEF2F2) : const Color(0xFFF3F4F6),
+                      color: isError
+                          ? const Color(0xFFFEF2F2)
+                          : const Color(0xFFF3F4F6),
                       borderRadius: const BorderRadius.only(
                         topLeft: Radius.circular(2),
                         topRight: Radius.circular(16),
@@ -1689,10 +1837,24 @@ class _MessageRow extends StatelessWidget {
                         bottomRight: Radius.circular(16),
                       ),
                       border: Border(
-                        left: BorderSide(color: isError ? const Color(0xFFEF4444) : AppColors.primary, width: 3.5),
-                        top: const BorderSide(color: Color(0xFFE5E7EB), width: 0.6),
-                        right: const BorderSide(color: Color(0xFFE5E7EB), width: 0.6),
-                        bottom: const BorderSide(color: Color(0xFFE5E7EB), width: 0.6),
+                        left: BorderSide(
+                          color: isError
+                              ? const Color(0xFFEF4444)
+                              : AppColors.primary,
+                          width: 3.5,
+                        ),
+                        top: const BorderSide(
+                          color: Color(0xFFE5E7EB),
+                          width: 0.6,
+                        ),
+                        right: const BorderSide(
+                          color: Color(0xFFE5E7EB),
+                          width: 0.6,
+                        ),
+                        bottom: const BorderSide(
+                          color: Color(0xFFE5E7EB),
+                          width: 0.6,
+                        ),
                       ),
                       boxShadow: [
                         BoxShadow(
@@ -1705,7 +1867,9 @@ class _MessageRow extends StatelessWidget {
                     child: Text(
                       cleanText,
                       style: TextStyle(
-                        color: isError ? const Color(0xFF991B1B) : const Color(0xFF1F2937),
+                        color: isError
+                            ? const Color(0xFF991B1B)
+                            : const Color(0xFF1F2937),
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                         height: 1.5,
@@ -1749,7 +1913,9 @@ class _MessageRow extends StatelessWidget {
 
     for (final line in lines) {
       if (line.trim().startsWith('•') || line.trim().startsWith('-')) {
-        final RegExp regex = RegExp(r'[•-]\s*\*\*(.*?)\*\*\s*—\s*(Rp\s*\d+(?:\.\d+)*)(?:\s*\((.*?)\))?');
+        final RegExp regex = RegExp(
+          r'[•-]\s*\*\*(.*?)\*\*\s*—\s*(Rp\s*\d+(?:\.\d+)*)(?:\s*\((.*?)\))?',
+        );
         final match = regex.firstMatch(line);
         if (match != null) {
           products.add({
@@ -1771,7 +1937,9 @@ class _MessageRow extends StatelessWidget {
 
     for (final line in lines) {
       final trimmed = line.trim();
-      final RegExp regex = RegExp(r'[•-]\s*\*\*(.*?)\*\*\s*—\s*(Rp\s*\d+(?:\.\d+)*)');
+      final RegExp regex = RegExp(
+        r'[•-]\s*\*\*(.*?)\*\*\s*—\s*(Rp\s*\d+(?:\.\d+)*)',
+      );
       if (regex.hasMatch(trimmed)) {
         if (!inList) {
           cleanLines.add('\nBerikut produk rekomendasi KOPDES:');
@@ -1894,13 +2062,17 @@ class _ListeningWaveOverlay extends StatefulWidget {
   final VoidCallback onCancel;
   final String activeMode;
 
-  const _ListeningWaveOverlay({required this.onCancel, required this.activeMode});
+  const _ListeningWaveOverlay({
+    required this.onCancel,
+    required this.activeMode,
+  });
 
   @override
   State<_ListeningWaveOverlay> createState() => _ListeningWaveOverlayState();
 }
 
-class _ListeningWaveOverlayState extends State<_ListeningWaveOverlay> with SingleTickerProviderStateMixin {
+class _ListeningWaveOverlayState extends State<_ListeningWaveOverlay>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
 
   @override
@@ -1941,11 +2113,7 @@ class _ListeningWaveOverlayState extends State<_ListeningWaveOverlay> with Singl
                 ),
               ],
             ),
-            child: const Icon(
-              Icons.mic_rounded,
-              color: Colors.white,
-              size: 32,
-            ),
+            child: const Icon(Icons.mic_rounded, color: Colors.white, size: 32),
           ),
           const SizedBox(height: 24),
           const Text(
@@ -2035,8 +2203,12 @@ class _VoiceWavePainter extends CustomPainter {
 
     for (double x = 0; x <= size.width; x++) {
       // Sine wave equations
-      final wave1 = 25 * math.sin((x * 2.5 * math.pi / size.width) + (progress * 2 * math.pi));
-      final wave2 = 18 * math.sin((x * 4 * math.pi / size.width) - (progress * 2 * math.pi));
+      final wave1 =
+          25 *
+          math.sin((x * 2.5 * math.pi / size.width) + (progress * 2 * math.pi));
+      final wave2 =
+          18 *
+          math.sin((x * 4 * math.pi / size.width) - (progress * 2 * math.pi));
 
       // Fade-out waves at boundaries
       final scale = math.sin(x * math.pi / size.width);
@@ -2062,7 +2234,8 @@ class _TypingDots extends StatefulWidget {
   State<_TypingDots> createState() => _TypingDotsState();
 }
 
-class _TypingDotsState extends State<_TypingDots> with SingleTickerProviderStateMixin {
+class _TypingDotsState extends State<_TypingDots>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
 
   @override

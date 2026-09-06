@@ -1,6 +1,7 @@
 import '../../../product/domain/entities/product.dart';
 import 'address.dart';
 import 'invoice.dart';
+import 'seller_ref.dart';
 
 class OrderItem {
   final String id;
@@ -12,6 +13,9 @@ class OrderItem {
   final int quantity;
   final double price;
 
+  /// Toko asal baris ini — dipakai kartu pesanan untuk menyebut penjualnya.
+  final SellerRef seller;
+
   const OrderItem({
     required this.id,
     required this.orderId,
@@ -21,7 +25,10 @@ class OrderItem {
     this.umkmProduct,
     required this.quantity,
     required this.price,
+    this.seller = const SellerRef(),
   });
+
+  int get lineTotal => (price * quantity).round();
 
   String get name {
     if (product != null) return product!.name;
@@ -68,4 +75,21 @@ class Order {
     required this.createdAt,
     required this.updatedAt,
   });
+
+  /// Nomor yang ditunjukkan ke pemesan: nomor invoice bila sudah terbit,
+  /// kalau belum potongan id pesanan — bukan UUID penuh yang tak terbaca.
+  String get displayNumber {
+    final number = invoice?.invoiceNumber;
+    if (number != null && number.isNotEmpty) return number;
+    return '#${id.substring(0, id.length < 8 ? id.length : 8).toUpperCase()}';
+  }
+
+  /// Satu pesanan bisa memuat produk dari beberapa toko. Kartu ringkas
+  /// menyebut toko pertama dan menghitung sisanya, bukan menyembunyikannya.
+  SellerRef? get primarySeller => items.isEmpty ? null : items.first.seller;
+
+  int get sellerCount =>
+      items.map((item) => item.seller.groupKey).toSet().length;
+
+  int get totalQuantity => items.fold(0, (sum, item) => sum + item.quantity);
 }

@@ -20,7 +20,8 @@ class PurchaseBottomSheet extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<PurchaseBottomSheet> createState() => _PurchaseBottomSheetState();
+  ConsumerState<PurchaseBottomSheet> createState() =>
+      _PurchaseBottomSheetState();
 }
 
 class _PurchaseBottomSheetState extends ConsumerState<PurchaseBottomSheet> {
@@ -90,7 +91,8 @@ class _PurchaseBottomSheetState extends ConsumerState<PurchaseBottomSheet> {
   @override
   Widget build(BuildContext context) {
     final categoryName = widget.product.category?.name.toLowerCase() ?? '';
-    final bool isFoodBeverage = categoryName.contains('minuman') ||
+    final bool isFoodBeverage =
+        categoryName.contains('minuman') ||
         categoryName.contains('makanan') ||
         categoryName.contains('sembako');
 
@@ -100,7 +102,8 @@ class _PurchaseBottomSheetState extends ConsumerState<PurchaseBottomSheet> {
 
     final double originalItemPrice = widget.product.price * 1.25;
     final double originalSubtotal = originalItemPrice * _quantity;
-    final double discount = (originalItemPrice - widget.product.price) * _quantity;
+    final double discount =
+        (originalItemPrice - widget.product.price) * _quantity;
 
     return BackdropFilter(
       filter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
@@ -270,7 +273,9 @@ class _PurchaseBottomSheetState extends ConsumerState<PurchaseBottomSheet> {
               Text(
                 'Stok: ${widget.product.stock} unit tersedia',
                 style: TextStyle(
-                  color: widget.product.stock > 5 ? const Color(0xFF2E7D32) : AppColors.primary,
+                  color: widget.product.stock > 5
+                      ? const Color(0xFF2E7D32)
+                      : AppColors.primary,
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
                 ),
@@ -284,7 +289,8 @@ class _PurchaseBottomSheetState extends ConsumerState<PurchaseBottomSheet> {
 
   Widget _buildVariantSection(List<String> variants) {
     final categoryName = widget.product.category?.name.toLowerCase() ?? '';
-    final bool isFoodBeverage = categoryName.contains('minuman') ||
+    final bool isFoodBeverage =
+        categoryName.contains('minuman') ||
         categoryName.contains('makanan') ||
         categoryName.contains('sembako');
 
@@ -313,21 +319,32 @@ class _PurchaseBottomSheetState extends ConsumerState<PurchaseBottomSheet> {
                 },
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
-                    color: isSelected ? const Color(0xFFFFEAEA) : const Color(0xFFF9FAFB),
+                    color: isSelected
+                        ? const Color(0xFFFFEAEA)
+                        : const Color(0xFFF9FAFB),
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
-                      color: isSelected ? AppColors.primary : const Color(0xFFE5E7EB),
+                      color: isSelected
+                          ? AppColors.primary
+                          : const Color(0xFFE5E7EB),
                       width: 1.5,
                     ),
                   ),
                   child: Text(
                     variant,
                     style: TextStyle(
-                      color: isSelected ? AppColors.primary : const Color(0xFF4B5563),
+                      color: isSelected
+                          ? AppColors.primary
+                          : const Color(0xFF4B5563),
                       fontSize: 12,
-                      fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                      fontWeight: isSelected
+                          ? FontWeight.w800
+                          : FontWeight.w600,
                     ),
                   ),
                 ),
@@ -362,7 +379,9 @@ class _PurchaseBottomSheetState extends ConsumerState<PurchaseBottomSheet> {
             const SizedBox(width: 12),
             _buildQuantityButton(
               icon: Icons.add_rounded,
-              onTap: _quantity < widget.product.stock ? () => _updateQuantity(1) : null,
+              onTap: _quantity < widget.product.stock
+                  ? () => _updateQuantity(1)
+                  : null,
             ),
           ],
         ),
@@ -382,7 +401,9 @@ class _PurchaseBottomSheetState extends ConsumerState<PurchaseBottomSheet> {
           color: isEnabled ? Colors.white : const Color(0xFFF3F4F6),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: isEnabled ? const Color(0xFFE5E7EB) : const Color(0xFFF3F4F6),
+            color: isEnabled
+                ? const Color(0xFFE5E7EB)
+                : const Color(0xFFF3F4F6),
             width: 1.2,
           ),
           boxShadow: isEnabled
@@ -444,12 +465,19 @@ class _PurchaseBottomSheetState extends ConsumerState<PurchaseBottomSheet> {
                 onTap: () => _updateDelivery(opt['method']),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
-                    color: isSelected ? const Color(0xFFFFEAEA) : const Color(0xFFF9FAFB),
+                    color: isSelected
+                        ? const Color(0xFFFFEAEA)
+                        : const Color(0xFFF9FAFB),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: isSelected ? AppColors.primary : const Color(0xFFE5E7EB),
+                      color: isSelected
+                          ? AppColors.primary
+                          : const Color(0xFFE5E7EB),
                       width: 1.5,
                     ),
                   ),
@@ -457,7 +485,9 @@ class _PurchaseBottomSheetState extends ConsumerState<PurchaseBottomSheet> {
                     children: [
                       Icon(
                         opt['icon'],
-                        color: isSelected ? AppColors.primary : const Color(0xFF4B5563),
+                        color: isSelected
+                            ? AppColors.primary
+                            : const Color(0xFF4B5563),
                         size: 20,
                       ),
                       const SizedBox(width: 12),
@@ -468,16 +498,22 @@ class _PurchaseBottomSheetState extends ConsumerState<PurchaseBottomSheet> {
                             Text(
                               opt['method'],
                               style: TextStyle(
-                                color: isSelected ? AppColors.primary : const Color(0xFF1F2937),
+                                color: isSelected
+                                    ? AppColors.primary
+                                    : const Color(0xFF1F2937),
                                 fontSize: 12,
-                                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                                fontWeight: isSelected
+                                    ? FontWeight.w800
+                                    : FontWeight.w600,
                               ),
                             ),
                             const SizedBox(height: 2),
                             Text(
                               opt['desc'],
                               style: TextStyle(
-                                color: isSelected ? AppColors.primary.withOpacity(0.7) : const Color(0xFF6B7280),
+                                color: isSelected
+                                    ? AppColors.primary.withOpacity(0.7)
+                                    : const Color(0xFF6B7280),
                                 fontSize: 10.5,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -541,10 +577,14 @@ class _PurchaseBottomSheetState extends ConsumerState<PurchaseBottomSheet> {
                 duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 decoration: BoxDecoration(
-                  color: isSelected ? const Color(0xFFFFEAEA) : const Color(0xFFF9FAFB),
+                  color: isSelected
+                      ? const Color(0xFFFFEAEA)
+                      : const Color(0xFFF9FAFB),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: isSelected ? AppColors.primary : const Color(0xFFE5E7EB),
+                    color: isSelected
+                        ? AppColors.primary
+                        : const Color(0xFFE5E7EB),
                     width: 1.5,
                   ),
                 ),
@@ -552,7 +592,9 @@ class _PurchaseBottomSheetState extends ConsumerState<PurchaseBottomSheet> {
                   children: [
                     Icon(
                       opt['icon'],
-                      color: isSelected ? AppColors.primary : const Color(0xFF4B5563),
+                      color: isSelected
+                          ? AppColors.primary
+                          : const Color(0xFF4B5563),
                       size: 18,
                     ),
                     const SizedBox(width: 10),
@@ -560,9 +602,13 @@ class _PurchaseBottomSheetState extends ConsumerState<PurchaseBottomSheet> {
                       child: Text(
                         opt['name'],
                         style: TextStyle(
-                          color: isSelected ? AppColors.primary : const Color(0xFF374151),
+                          color: isSelected
+                              ? AppColors.primary
+                              : const Color(0xFF374151),
                           fontSize: 11.5,
-                          fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                          fontWeight: isSelected
+                              ? FontWeight.w800
+                              : FontWeight.w600,
                         ),
                       ),
                     ),
@@ -600,7 +646,11 @@ class _PurchaseBottomSheetState extends ConsumerState<PurchaseBottomSheet> {
     );
   }
 
-  Widget _buildSummaryRow(String label, double amount, {bool isDiscount = false}) {
+  Widget _buildSummaryRow(
+    String label,
+    double amount, {
+    bool isDiscount = false,
+  }) {
     final String amountStr = amount >= 0
         ? 'Rp ${amount.toStringAsFixed(0).replaceAllMapped(RegExp(r"(\d{1,3})(?=(\d{3})+(?!\d))"), (Match m) => "${m[1]}.")}'
         : '-Rp ${amount.abs().toStringAsFixed(0).replaceAllMapped(RegExp(r"(\d{1,3})(?=(\d{3})+(?!\d))"), (Match m) => "${m[1]}.")}';
@@ -619,7 +669,9 @@ class _PurchaseBottomSheetState extends ConsumerState<PurchaseBottomSheet> {
         Text(
           amountStr,
           style: TextStyle(
-            color: isDiscount ? const Color(0xFF22C55E) : const Color(0xFF374151),
+            color: isDiscount
+                ? const Color(0xFF22C55E)
+                : const Color(0xFF374151),
             fontSize: 12,
             fontWeight: isDiscount ? FontWeight.w800 : FontWeight.w600,
           ),
@@ -760,10 +812,9 @@ class _PurchaseBottomSheetState extends ConsumerState<PurchaseBottomSheet> {
     }
 
     // 2. Call CartProvider
-    final success = await ref.read(cartProvider.notifier).addToCart(
-          productId: widget.product.id,
-          quantity: _quantity,
-        );
+    final success = await ref
+        .read(cartProvider.notifier)
+        .addToCart(productId: widget.product.id, quantity: _quantity);
 
     if (success) {
       if (mounted) {
@@ -771,7 +822,8 @@ class _PurchaseBottomSheetState extends ConsumerState<PurchaseBottomSheet> {
         showSuccessActionDialog(
           context,
           title: 'Berhasil Ditambahkan',
-          description: '${widget.product.name} telah masuk ke keranjang belanja Anda.',
+          description:
+              '${widget.product.name} telah masuk ke keranjang belanja Anda.',
           primaryButtonLabel: 'Lihat Keranjang',
           onPrimaryPressed: () {
             Navigator.pop(context); // Close success dialog
@@ -823,9 +875,7 @@ class _PurchaseBottomSheetState extends ConsumerState<PurchaseBottomSheet> {
     Navigator.pop(context);
     context.push('/checkout');
   }
-
-  }
-
+}
 
 class AnimatedQuantityText extends StatefulWidget {
   final int quantity;
@@ -848,8 +898,14 @@ class _AnimatedQuantityTextState extends State<AnimatedQuantityText>
       duration: const Duration(milliseconds: 150),
     );
     _scaleAnimation = TweenSequence<double>([
-      TweenSequenceItem(tween: Tween<double>(begin: 1.0, end: 0.88), weight: 50),
-      TweenSequenceItem(tween: Tween<double>(begin: 0.88, end: 1.0), weight: 50),
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1.0, end: 0.88),
+        weight: 50,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 0.88, end: 1.0),
+        weight: 50,
+      ),
     ]).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
     _controller.forward(from: 0.0);
   }

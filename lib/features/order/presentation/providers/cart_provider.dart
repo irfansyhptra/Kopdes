@@ -67,6 +67,63 @@ class CartNotifier extends StateNotifier<AsyncValue<Cart>> {
     }
   }
 
+  /// Mengubah jumlah satu baris dengan pembaruan optimistis.
+  ///
+  /// Angka di layar berubah seketika, lalu permintaan dikirim. Bila gagal,
+  /// keranjang dikembalikan persis ke keadaan sebelumnya — rollback itulah
+  /// syarat yang membuat pembaruan optimistis aman dipakai di sini.
+  ///
+  /// Mengembalikan `null` bila berhasil, atau pesan kesalahan bila gagal.
+  Future<String?> setItemQuantity(CartItem item, int quantity) async {
+    final current = state.valueOrNull;
+    if (current == null) return 'Keranjang belum siap';
+    if (quantity < 1) return null;
+
+    final previous = current;
+    state = AsyncValue.data(
+      current.copyWithItems([
+        for (final row in current.items)
+          row.id == item.id ? row.copyWithQuantity(quantity) : row,
+      ]),
+    );
+
+    try {
+      final cart = await _repository.updateCartItem(
+        productId: item.productId,
+        umkmProductId: item.umkmProductId,
+        quantity: quantity,
+      );
+      state = AsyncValue.data(cart);
+      return null;
+    } catch (e) {
+      state = AsyncValue.data(previous);
+      return _failureMessage(e);
+    }
+  }
+
+  /// Menghapus satu baris. Sengaja tidak optimistis: menghilangkan kartu lebih
+  /// dulu lalu memunculkannya lagi ketika gagal jauh lebih membingungkan
+  /// daripada menunggu sebentar.
+  Future<String?> removeCartItem(CartItem item) async {
+    try {
+      final cart = await _repository.removeFromCart(
+        productId: item.productId,
+        umkmProductId: item.umkmProductId,
+      );
+      state = AsyncValue.data(cart);
+      return null;
+    } catch (e) {
+      return _failureMessage(e);
+    }
+  }
+
+  String _failureMessage(Object error) {
+    final text = error.toString().toLowerCase();
+    return text.contains('stock') || text.contains('stok')
+        ? 'Stok tidak mencukupi'
+        : 'Perubahan belum tersimpan';
+  }
+
   Future<bool> removeItem({String? productId, String? umkmProductId}) async {
     try {
       final cart = await _repository.removeFromCart(

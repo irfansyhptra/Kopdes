@@ -1399,6 +1399,12 @@ The implementation uses:
 ### Epic 16: Notification System
 
 - [ ] 16.1 Set up Firebase Cloud Messaging (FCM)
+  - **Catatan (2026-09-05):** `firebase_core` & `firebase_messaging` sempat ada
+    di `pubspec.yaml` tapi tidak pernah dipakai (0 import, tidak ada
+    `google-services.json`, tidak ada modul FCM di backend). Keduanya tetap
+    diinisialisasi tiap aplikasi dibuka, jadi dihapus saat audit performa.
+    Pasang kembali dengan `flutter pub add firebase_core firebase_messaging`
+    ketika epik ini benar-benar dikerjakan — mulai dari sisi backend (16.2).
   - Create Firebase project and configure for Android/iOS
   - Install FCM dependencies in Flutter and NestJS
   - Configure Firebase credentials

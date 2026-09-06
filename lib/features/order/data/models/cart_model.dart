@@ -1,4 +1,5 @@
 import '../../domain/entities/cart.dart';
+import '../../domain/entities/seller_ref.dart';
 import '../../../product/data/models/product_model.dart';
 
 class CartItemModel extends CartItem {
@@ -12,10 +13,14 @@ class CartItemModel extends CartItem {
     required super.quantity,
     required super.createdAt,
     required super.updatedAt,
+    super.seller,
   });
 
   factory CartItemModel.fromJson(Map<String, dynamic> json) {
     return CartItemModel(
+      // Penjual dibaca dari JSON mentah, bukan dari `Product` hasil decode:
+      // entitas Product tidak menyimpan relasi kopdes-nya.
+      seller: SellerRef.fromItemJson(json),
       id: json['id'] as String,
       cartId: json['cartId'] as String? ?? '',
       productId: json['productId'] as String?,
@@ -59,6 +64,7 @@ class CartItemModel extends CartItem {
       quantity: quantity,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      seller: seller,
     );
   }
 }

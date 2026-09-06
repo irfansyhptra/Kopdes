@@ -12,9 +12,7 @@ class ProfileScreen extends ConsumerWidget {
         content: Text(message),
         behavior: SnackBarBehavior.floating,
         backgroundColor: const Color(0xFF1F2937),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         duration: const Duration(seconds: 2),
       ),
     );
@@ -37,9 +35,7 @@ class ProfileScreen extends ConsumerWidget {
         child: InkWell(
           onTap: onTap,
           customBorder: const CircleBorder(),
-          child: Center(
-            child: Icon(icon, color: Colors.white, size: 20),
-          ),
+          child: Center(child: Icon(icon, color: Colors.white, size: 20)),
         ),
       ),
     );
@@ -270,11 +266,7 @@ class ProfileScreen extends ConsumerWidget {
                   color: const Color(0xFFFFF0F3),
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: Icon(
-                  icon,
-                  color: const Color(0xFFD32F2F),
-                  size: 24,
-                ),
+                child: Icon(icon, color: const Color(0xFFD32F2F), size: 24),
               ),
               if (badgeCount > 0)
                 Positioned(
@@ -356,9 +348,7 @@ class ProfileScreen extends ConsumerWidget {
               ),
             ],
           ),
-          child: Column(
-            children: items,
-          ),
+          child: Column(children: items),
         ),
         const SizedBox(height: 12),
       ],
@@ -378,7 +368,10 @@ class ProfileScreen extends ConsumerWidget {
     return Column(
       children: [
         ListTile(
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 4,
+          ),
           leading: Container(
             width: 36,
             height: 36,
@@ -419,10 +412,18 @@ class ProfileScreen extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(width: 4),
-                    const Icon(Icons.chevron_right_rounded, color: Color(0xFF9CA3AF), size: 18),
+                    const Icon(
+                      Icons.chevron_right_rounded,
+                      color: Color(0xFF9CA3AF),
+                      size: 18,
+                    ),
                   ],
                 )
-              : const Icon(Icons.chevron_right_rounded, color: Color(0xFF9CA3AF), size: 18),
+              : const Icon(
+                  Icons.chevron_right_rounded,
+                  color: Color(0xFF9CA3AF),
+                  size: 18,
+                ),
           onTap: onTap,
         ),
         if (showDivider)
@@ -467,7 +468,11 @@ class ProfileScreen extends ConsumerWidget {
                 ),
               ),
             ),
-            Icon(Icons.chevron_right_rounded, color: Color(0xFFEF4444), size: 18),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: Color(0xFFEF4444),
+              size: 18,
+            ),
           ],
         ),
       ),
@@ -548,7 +553,8 @@ class ProfileScreen extends ConsumerWidget {
                           const SizedBox(width: 8),
                           _buildHeaderButton(
                             icon: Icons.settings_outlined,
-                            onTap: () => _showSnackBar(context, 'Pengaturan akun'),
+                            onTap: () =>
+                                _showSnackBar(context, 'Pengaturan akun'),
                           ),
                         ],
                       ),
@@ -584,7 +590,9 @@ class ProfileScreen extends ConsumerWidget {
                               decoration: const BoxDecoration(
                                 shape: BoxShape.circle,
                                 image: DecorationImage(
-                                  image: AssetImage('assets/images/profile/budi_profile.png'),
+                                  image: AssetImage(
+                                    'assets/images/profile/budi_profile.png',
+                                  ),
                                   fit: BoxFit.cover,
                                 ),
                               ),
@@ -624,7 +632,10 @@ class ProfileScreen extends ConsumerWidget {
                               const SizedBox(height: 6),
                               // Active Status Badge
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
                                 decoration: BoxDecoration(
                                   color: const Color(0xFFE8F5E9),
                                   borderRadius: BorderRadius.circular(8),
@@ -653,7 +664,11 @@ class ProfileScreen extends ConsumerWidget {
                               // Email info
                               Row(
                                 children: [
-                                  const Icon(Icons.mail_outline_rounded, size: 14, color: Color(0xFF6B7280)),
+                                  const Icon(
+                                    Icons.mail_outline_rounded,
+                                    size: 14,
+                                    color: Color(0xFF6B7280),
+                                  ),
                                   const SizedBox(width: 6),
                                   Expanded(
                                     child: Text(
@@ -673,7 +688,11 @@ class ProfileScreen extends ConsumerWidget {
                               // Phone info
                               Row(
                                 children: [
-                                  const Icon(Icons.phone_outlined, size: 14, color: Color(0xFF6B7280)),
+                                  const Icon(
+                                    Icons.phone_outlined,
+                                    size: 14,
+                                    color: Color(0xFF6B7280),
+                                  ),
                                   const SizedBox(width: 6),
                                   Text(
                                     userPhone,
@@ -689,7 +708,11 @@ class ProfileScreen extends ConsumerWidget {
                               // Location info
                               Row(
                                 children: const [
-                                  Icon(Icons.location_on_outlined, size: 14, color: Color(0xFF6B7280)),
+                                  Icon(
+                                    Icons.location_on_outlined,
+                                    size: 14,
+                                    color: Color(0xFF6B7280),
+                                  ),
                                   SizedBox(width: 6),
                                   Text(
                                     'Desa Lamteh, Banda Aceh',
@@ -709,7 +732,8 @@ class ProfileScreen extends ConsumerWidget {
                             Icons.chevron_right_rounded,
                             color: Color(0xFF9CA3AF),
                           ),
-                          onPressed: () => _showSnackBar(context, 'Menuju detail profil...'),
+                          onPressed: () =>
+                              _showSnackBar(context, 'Menuju detail profil...'),
                         ),
                       ],
                     ),
@@ -745,7 +769,8 @@ class ProfileScreen extends ConsumerWidget {
                 iconBgColor: const Color(0xFFEFF6FF),
                 title: 'Alamat Pengiriman',
                 subtitle: 'Kelola alamat pengiriman Anda',
-                onTap: () => _showSnackBar(context, 'Menuju pengaturan alamat...'),
+                onTap: () =>
+                    _showSnackBar(context, 'Menuju pengaturan alamat...'),
               ),
               _buildListTile(
                 icon: Icons.credit_card_rounded,
@@ -753,7 +778,8 @@ class ProfileScreen extends ConsumerWidget {
                 iconBgColor: const Color(0xFFEFF6FF),
                 title: 'Metode Pembayaran',
                 subtitle: 'Kelola kartu dan metode pembayaran',
-                onTap: () => _showSnackBar(context, 'Menuju metode pembayaran...'),
+                onTap: () =>
+                    _showSnackBar(context, 'Menuju metode pembayaran...'),
               ),
               _buildListTile(
                 icon: Icons.security_rounded,
@@ -786,7 +812,10 @@ class ProfileScreen extends ConsumerWidget {
                 iconBgColor: const Color(0xFFF5F3FF),
                 title: 'Hubungi CS Koperasi',
                 subtitle: 'Chat langsung dengan tim kami',
-                onTap: () => _showSnackBar(context, 'Menghubungi Customer Service Koperasi...'),
+                onTap: () => _showSnackBar(
+                  context,
+                  'Menghubungi Customer Service Koperasi...',
+                ),
               ),
               _buildListTile(
                 icon: Icons.receipt_long_outlined,
@@ -794,7 +823,10 @@ class ProfileScreen extends ConsumerWidget {
                 iconBgColor: const Color(0xFFECFDF5),
                 title: 'Riwayat Transaksi',
                 subtitle: 'Lihat semua transaksi Anda',
-                onTap: () => _showSnackBar(context, 'Fitur Riwayat Transaksi segera hadir'),
+                onTap: () => _showSnackBar(
+                  context,
+                  'Fitur Riwayat Transaksi segera hadir',
+                ),
               ),
               _buildListTile(
                 icon: Icons.local_shipping_outlined,
@@ -810,7 +842,10 @@ class ProfileScreen extends ConsumerWidget {
                 iconBgColor: const Color(0xFFFFF0F3),
                 title: 'Pengajuan UMKM',
                 subtitle: 'Ajukan usaha Anda menjadi mitra',
-                onTap: () => _showSnackBar(context, 'Menuju halaman pendaftaran UMKM...'),
+                onTap: () => _showSnackBar(
+                  context,
+                  'Menuju halaman pendaftaran UMKM...',
+                ),
               ),
               _buildListTile(
                 icon: Icons.directions_car_filled_outlined,
@@ -819,7 +854,10 @@ class ProfileScreen extends ConsumerWidget {
                 title: 'Mitra Driver',
                 subtitle: 'Informasi dan pendaftaran driver',
                 showDivider: false,
-                onTap: () => _showSnackBar(context, 'Menuju halaman pendaftaran Mitra Driver...'),
+                onTap: () => _showSnackBar(
+                  context,
+                  'Menuju halaman pendaftaran Mitra Driver...',
+                ),
               ),
             ],
           ),
@@ -851,7 +889,8 @@ class ProfileScreen extends ConsumerWidget {
                 iconBgColor: const Color(0xFFEFF6FF),
                 title: 'Tentang Aplikasi',
                 subtitle: 'Informasi tentang aplikasi Kopdes',
-                onTap: () => _showSnackBar(context, 'Informasi aplikasi KOPDES...'),
+                onTap: () =>
+                    _showSnackBar(context, 'Informasi aplikasi KOPDES...'),
               ),
               _buildListTile(
                 icon: Icons.smartphone_outlined,
