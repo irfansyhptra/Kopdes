@@ -65,3 +65,8 @@ backend/.git_backup/
 
 
 
+
+# Landing page (Next.js) — punya toolchain & node_modules sendiri
+website/
+android/build/
+.claude/settings.local.json
