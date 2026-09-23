@@ -257,7 +257,7 @@ class ProductPriceView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final price = Text(
-      formatRupiah(product.price),
+      formatRupiah(product.effectivePrice),
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       style: AppTypography.bodyLarge.copyWith(
@@ -276,10 +276,10 @@ class ProductPriceView extends StatelessWidget {
       children: [
         price,
         Semantics(
-          label: 'Harga sebelum diskon ${formatRupiah(product.discountPrice!)}',
+          label: 'Harga sebelum diskon ${formatRupiah(product.price)}',
           child: ExcludeSemantics(
             child: Text(
-              formatRupiah(product.discountPrice!),
+              formatRupiah(product.price),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: AppTypography.captionSmall.copyWith(

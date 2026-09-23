@@ -66,13 +66,13 @@ MarketplaceProduct _p(
 );
 
 final _products = [
-  _p('1', 'Beras Premium 5 kg', 'Kopdes Lamteh', 64000, discountPrice: 80000),
+  _p('1', 'Beras Premium 5 kg', 'Kopdes Lamteh', 80000, discountPrice: 64000),
   _p(
     '2',
     'Minyak Goreng 2 L',
     'Kopdes Lambhuk',
-    34000,
-    discountPrice: 40000,
+    40000,
+    discountPrice: 34000,
     rating: 4.7,
     ratingCount: 96,
   ),

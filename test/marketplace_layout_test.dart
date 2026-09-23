@@ -305,39 +305,42 @@ void main() {
   });
 
   group('Diskon', () {
-    test('harga coret di bawah harga jual bukan diskon', () {
-      // Data terbalik lebih baik tampil sebagai harga biasa daripada
-      // sebagai kenaikan harga yang dibungkus lencana merah.
-      final product = _product(price: 64000, discountPrice: 50000);
+    // Backend menolak `discountPrice >= price` (`assertPricing`), jadi
+    // `price` selalu harga normal dan `discountPrice` harga yang dibayar.
+    test('harga diskon di atas harga normal bukan diskon', () {
+      final product = _product(price: 64000, discountPrice: 80000);
       expect(product.hasDiscount, isFalse);
       expect(product.discountPercent, 0);
+      expect(product.effectivePrice, 64000);
     });
 
-    test('persentase dihitung dari harga sebelum diskon', () {
-      final product = _product(price: 64000, discountPrice: 80000);
+    test('persentase dihitung dari harga normal', () {
+      final product = _product(price: 80000, discountPrice: 64000);
       expect(product.hasDiscount, isTrue);
       expect(product.discountPercent, 20);
+      expect(product.effectivePrice, 64000);
     });
 
-    test('tanpa harga coret tidak ada diskon', () {
+    test('tanpa harga diskon tidak ada diskon', () {
       expect(_product().hasDiscount, isFalse);
+      expect(_product(price: 64000).effectivePrice, 64000);
     });
 
-    test('harga coret ikut tersimpan pada favorit', () {
+    test('harga diskon ikut tersimpan pada favorit', () {
       final restored = MarketplaceProduct.fromJson(
-        _product(discountPrice: 80000).toJson(),
+        _product(price: 80000, discountPrice: 64000).toJson(),
       );
-      expect(restored.discountPrice, 80000);
+      expect(restored.discountPrice, 64000);
       expect(restored.discountPercent, 20);
     });
 
     testWidgets('kartu menampilkan lencana dan harga coret', (tester) async {
       await _pumpGrid(tester, 390, 844, [
-        _product(price: 64000, discountPrice: 80000),
+        _product(price: 80000, discountPrice: 64000),
       ]);
 
       expect(find.text('-20%'), findsOneWidget);
-      expect(find.text('Rp80.000'), findsOneWidget);
+      // Yang dicoret adalah harga normal; yang besar adalah yang dibayar.
       expect(find.text('Rp64.000'), findsOneWidget);
 
       final struck = tester.widget<Text>(find.text('Rp80.000'));
@@ -356,7 +359,7 @@ void main() {
         tester,
       ) async {
         await _pumpGrid(tester, 320, 568, [
-          _product(price: 64000, discountPrice: 80000),
+          _product(price: 80000, discountPrice: 64000),
         ], textScale: scale);
         expect(tester.takeException(), isNull);
       });

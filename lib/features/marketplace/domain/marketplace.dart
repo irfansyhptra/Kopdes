@@ -45,9 +45,10 @@ class MarketplaceProduct {
   final String name;
   final double price;
 
-  /// Harga sebelum diskon. Null berarti produk tidak sedang diskon — bukan
-  /// nol, yang akan terbaca sebagai "gratis" pada harga coret. Hanya produk
-  /// Kopdes yang punya kolom ini di backend.
+  /// Harga setelah diskon — yang dibayar pembeli. Null berarti produk tidak
+  /// sedang diskon. Backend menolak nilai yang tidak lebih kecil daripada
+  /// [price] (`assertPricing`), jadi [price] selalu harga normalnya. Hanya
+  /// produk Kopdes yang punya kolom ini.
   final double? discountPrice;
 
   final int stock;
@@ -86,15 +87,18 @@ class MarketplaceProduct {
 
   bool get isOutOfStock => stock <= 0;
 
-  /// Diskon hanya diakui bila harga coretnya memang lebih tinggi. Data yang
-  /// terbalik lebih baik tampil sebagai harga biasa daripada sebagai "diskon
-  /// -0%" atau kenaikan harga yang dibungkus lencana merah.
-  bool get hasDiscount => discountPrice != null && discountPrice! > price;
+  /// Diskon hanya diakui bila harganya memang turun. Data yang terbalik
+  /// lebih baik tampil sebagai harga biasa daripada sebagai "diskon -0%"
+  /// atau kenaikan harga yang dibungkus lencana merah.
+  bool get hasDiscount =>
+      discountPrice != null && discountPrice! > 0 && discountPrice! < price;
+
+  /// Harga yang benar-benar dibayar.
+  double get effectivePrice => hasDiscount ? discountPrice! : price;
 
   /// Persentase potongan, dibulatkan. Dipakai pada lencana "-20%".
-  int get discountPercent => hasDiscount
-      ? (((discountPrice! - price) / discountPrice!) * 100).round()
-      : 0;
+  int get discountPercent =>
+      hasDiscount ? (((price - discountPrice!) / price) * 100).round() : 0;
   bool get hasRating => ratingAverage != null && ratingCount > 0;
 
   /// Format Indonesia, koma sebagai pemisah desimal.
