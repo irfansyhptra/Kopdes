@@ -28,6 +28,8 @@ class MarketplaceRemoteDataSource {
         if (filter.minPrice != null) 'minPrice': filter.minPrice,
         if (filter.maxPrice != null) 'maxPrice': filter.maxPrice,
         if (filter.inStockOnly) 'inStock': true,
+        if (filter.discountedOnly) 'discounted': true,
+        if (filter.minRating > 0) 'minRating': filter.minRating,
         // Koordinat hanya dikirim saat pengurutan jarak diminta — server
         // menolak sort=distance tanpa koordinat yang sah.
         if (filter.isDistanceSort && latitude != null) 'latitude': latitude,
@@ -102,6 +104,7 @@ class MarketplaceRepository {
         'p$page:l$limit:s${f.search}:c${f.categoryId ?? ''}:'
         't${f.sellerType.wire}:o${f.sort.wire}:'
         'min${f.minPrice ?? ''}:max${f.maxPrice ?? ''}:'
-        'stock${f.inStockOnly}:r${f.radiusKm ?? ''}:$geo';
+        'stock${f.inStockOnly}:disc${f.discountedOnly}:'
+        'rate${f.minRating}:r${f.radiusKm ?? ''}:$geo';
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -8,7 +9,9 @@ import 'package:kopdes/features/discovery/presentation/providers/discovery_provi
 import 'package:kopdes/features/discovery/presentation/widgets/discovery_sections.dart';
 import 'package:kopdes/features/marketplace/domain/marketplace.dart';
 import 'package:kopdes/features/marketplace/presentation/providers/marketplace_provider.dart';
+import 'package:kopdes/features/marketplace/presentation/widgets/marketplace_filters.dart';
 import 'package:kopdes/features/marketplace/presentation/widgets/marketplace_product_card.dart';
+import 'package:kopdes/features/product/domain/entities/category.dart';
 
 /// Ukuran layar yang wajib didukung, sesuai spesifikasi.
 const _sizes = <(String, double, double)>[
@@ -31,10 +34,12 @@ MarketplaceProduct _product({
   double price = 64000,
   double? rating = 4.8,
   int ratingCount = 128,
+  double? discountPrice,
 }) => MarketplaceProduct(
   id: 'p1',
   name: name,
   price: price,
+  discountPrice: discountPrice,
   stock: stock,
   categoryId: 'c1',
   sellerName: seller,
@@ -67,27 +72,64 @@ Future<void> _pumpGrid(
           data: MediaQueryData(textScaler: TextScaler.linear(textScale)),
           child: Scaffold(
             backgroundColor: AppColors.surfaceSoft,
-            body: CustomScrollView(
-              slivers: [
-                SliverPadding(
-                  padding: const EdgeInsets.all(16),
-                  sliver: SliverGrid.builder(
-                    gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-                      maxCrossAxisExtent: 220,
-                      mainAxisSpacing: 12,
-                      crossAxisSpacing: 12,
-                      childAspectRatio: (0.62 / textScale.clamp(1.0, 1.6))
-                          .clamp(0.38, 0.62),
-                    ),
-                    itemCount: products.length,
-                    itemBuilder: (context, i) => MarketplaceProductCard(
-                      product: products[i],
-                      onTap: () {},
-                      onAddToCart: () {},
+            body: Builder(
+              builder: (context) => CustomScrollView(
+                slivers: [
+                  SliverPadding(
+                    padding: const EdgeInsets.all(16),
+                    sliver: SliverGrid.builder(
+                      // Delegate yang sama dengan layar: salinan angka di sini
+                      // pernah membuat uji hijau sementara kartu sungguhan
+                      // meluber.
+                      gridDelegate: marketplaceGridDelegate(context),
+                      itemCount: products.length,
+                      itemBuilder: (context, i) => MarketplaceProductCard(
+                        product: products[i],
+                        onTap: () {},
+                        onAddToCart: () {},
+                      ),
                     ),
                   ),
-                ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+  await tester.pump();
+}
+
+/// Merender satu baris filter kategori seperti di layar.
+Future<void> _pumpFilterRow(
+  WidgetTester tester,
+  double width,
+  double height, {
+  double textScale = 1.0,
+}) async {
+  tester.view.physicalSize = Size(width * 3, height * 3);
+  tester.view.devicePixelRatio = 3.0;
+  addTearDown(tester.view.reset);
+
+  await tester.pumpWidget(
+    ProviderScope(
+      child: MaterialApp(
+        theme: AppTheme.lightTheme,
+        home: MediaQuery(
+          data: MediaQueryData(textScaler: TextScaler.linear(textScale)),
+          child: Scaffold(
+            backgroundColor: AppColors.surfaceSoft,
+            body: CategoryFilterRow(
+              title: 'Filter Makanan',
+              icon: Icons.restaurant_rounded,
+              categories: const [
+                Category(id: 'c1', name: 'Minuman', group: 'FOOD'),
+                Category(id: 'c2', name: 'Cemilan', group: 'FOOD'),
+                Category(id: 'c3', name: 'Kesehatan & Kecantikan'),
               ],
+              selectedId: null,
+              onSelected: (_) {},
             ),
           ),
         ),
@@ -243,12 +285,127 @@ void main() {
       expect(next.maxPrice, isNull);
     });
 
+    test('diskon dan rating minimum dihitung sebagai filter aktif', () {
+      expect(
+        const MarketplaceFilter(discountedOnly: true).hasActiveFilter,
+        isTrue,
+      );
+      expect(const MarketplaceFilter(minRating: 4).hasActiveFilter, isTrue);
+      // Rating 0 berarti tanpa batas bawah, bukan "rating nol".
+      expect(const MarketplaceFilter(minRating: 0).hasActiveFilter, isFalse);
+    });
+
     test('radius ikut dihitung sebagai filter aktif', () {
       expect(const MarketplaceFilter(radiusKm: 3).hasActiveFilter, isTrue);
       final cleared = const MarketplaceFilter(
         radiusKm: 3,
       ).copyWith(clearRadius: true);
       expect(cleared.radiusKm, isNull);
+    });
+  });
+
+  group('Diskon', () {
+    test('harga coret di bawah harga jual bukan diskon', () {
+      // Data terbalik lebih baik tampil sebagai harga biasa daripada
+      // sebagai kenaikan harga yang dibungkus lencana merah.
+      final product = _product(price: 64000, discountPrice: 50000);
+      expect(product.hasDiscount, isFalse);
+      expect(product.discountPercent, 0);
+    });
+
+    test('persentase dihitung dari harga sebelum diskon', () {
+      final product = _product(price: 64000, discountPrice: 80000);
+      expect(product.hasDiscount, isTrue);
+      expect(product.discountPercent, 20);
+    });
+
+    test('tanpa harga coret tidak ada diskon', () {
+      expect(_product().hasDiscount, isFalse);
+    });
+
+    test('harga coret ikut tersimpan pada favorit', () {
+      final restored = MarketplaceProduct.fromJson(
+        _product(discountPrice: 80000).toJson(),
+      );
+      expect(restored.discountPrice, 80000);
+      expect(restored.discountPercent, 20);
+    });
+
+    testWidgets('kartu menampilkan lencana dan harga coret', (tester) async {
+      await _pumpGrid(tester, 390, 844, [
+        _product(price: 64000, discountPrice: 80000),
+      ]);
+
+      expect(find.text('-20%'), findsOneWidget);
+      expect(find.text('Rp80.000'), findsOneWidget);
+      expect(find.text('Rp64.000'), findsOneWidget);
+
+      final struck = tester.widget<Text>(find.text('Rp80.000'));
+      expect(struck.style?.decoration, TextDecoration.lineThrough);
+    });
+
+    testWidgets('produk tanpa diskon tidak menampilkan lencana', (
+      tester,
+    ) async {
+      await _pumpGrid(tester, 390, 844, [_product()]);
+      expect(find.textContaining('%'), findsNothing);
+    });
+
+    for (final scale in _textScales) {
+      testWidgets('kartu diskon tidak meluber pada 320dp text scale $scale', (
+        tester,
+      ) async {
+        await _pumpGrid(tester, 320, 568, [
+          _product(price: 64000, discountPrice: 80000),
+        ], textScale: scale);
+        expect(tester.takeException(), isNull);
+      });
+    }
+  });
+
+  group('Baris filter kategori', () {
+    for (final (label, w, h) in _sizes) {
+      testWidgets('tidak overflow pada $label', (tester) async {
+        await _pumpFilterRow(tester, w, h);
+        expect(tester.takeException(), isNull);
+      });
+    }
+
+    for (final scale in _textScales) {
+      testWidgets('tidak overflow pada 320dp text scale ${scale}x', (
+        tester,
+      ) async {
+        await _pumpFilterRow(tester, 320, 568, textScale: scale);
+        expect(tester.takeException(), isNull);
+      });
+    }
+
+    testWidgets('menampilkan Semua lebih dulu, lalu kategori dari API', (
+      tester,
+    ) async {
+      await _pumpFilterRow(tester, 390, 844);
+      expect(find.text('Semua'), findsOneWidget);
+      expect(find.text('Minuman'), findsOneWidget);
+      expect(find.text('Cemilan'), findsOneWidget);
+    });
+
+    testWidgets('pilihan aktif ditandai selected untuk pembaca layar', (
+      tester,
+    ) async {
+      final handle = tester.ensureSemantics();
+      await _pumpFilterRow(tester, 390, 844);
+
+      final node = tester.getSemantics(find.text('Semua'));
+      expect(node.label, 'Semua');
+      expect(node.hasFlag(SemanticsFlag.isButton), isTrue);
+      expect(node.hasFlag(SemanticsFlag.isSelected), isTrue);
+      handle.dispose();
+    });
+
+    test('kategori yang belum dikenali tetap dapat ikon', () {
+      expect(categoryIcon('Kategori Baru'), Icons.category_rounded);
+      expect(categoryIcon('Minuman'), Icons.local_cafe_rounded);
+      expect(categoryIcon('Bahan Pokok'), Icons.rice_bowl_rounded);
     });
   });
 

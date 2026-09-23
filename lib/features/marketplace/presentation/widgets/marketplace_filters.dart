@@ -17,11 +17,17 @@ class MarketplaceSectionHeader extends StatelessWidget {
   final String? actionLabel;
   final VoidCallback? onAction;
 
+  /// Isi tambahan di sisi kanan judul, mis. baris lokasi. Judul tetap
+  /// mendapat prioritas ruang: pada layar sempit yang mengalah adalah isi
+  /// tambahannya, bukan judul sectionnya.
+  final Widget? trailing;
+
   const MarketplaceSectionHeader({
     super.key,
     required this.title,
     this.actionLabel,
     this.onAction,
+    this.trailing,
   });
 
   @override
@@ -30,6 +36,11 @@ class MarketplaceSectionHeader extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.base),
       child: Row(
         children: [
+          // Expanded, bukan Flexible + Spacer: dengan Spacer judul hanya
+          // kebagian separuh lebar dan "Rekomendasi Untukmu" pecah jadi tiga
+          // baris. Di sini judul mendapat sisa ruang setelah isi kanan
+          // mengukur dirinya sendiri, jadi ia baru membungkus kalau memang
+          // tidak muat.
           Expanded(
             child: Text(
               title,
@@ -40,6 +51,7 @@ class MarketplaceSectionHeader extends StatelessWidget {
               ),
             ),
           ),
+          if (trailing != null) trailing!,
           if (actionLabel != null && onAction != null)
             ApplePressable(
               onTap: onAction,
@@ -69,6 +81,144 @@ class MarketplaceSectionHeader extends StatelessWidget {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// Ikon untuk satu kategori.
+///
+/// Dicocokkan dari nama kategori, bukan dari daftar tetap: nama kategori
+/// datang dari backend dan admin bisa menambah yang baru kapan saja. Kategori
+/// yang belum dikenali tetap mendapat ikon netral, bukan kotak kosong.
+IconData categoryIcon(String name) {
+  final n = name.toLowerCase();
+  if (n.contains('siap saji') || n.contains('instan')) {
+    return Icons.ramen_dining_rounded;
+  }
+  if (n.contains('cemilan') || n.contains('ringan') || n.contains('snack')) {
+    return Icons.cookie_rounded;
+  }
+  if (n.contains('minum') || n.contains('kopi')) {
+    return Icons.local_cafe_rounded;
+  }
+  if (n.contains('makan') || n.contains('kuliner')) {
+    return Icons.restaurant_rounded;
+  }
+  if (n.contains('bahan pokok') || n.contains('sembako')) {
+    return Icons.rice_bowl_rounded;
+  }
+  if (n.contains('rumah') || n.contains('peralatan')) {
+    return Icons.home_rounded;
+  }
+  if (n.contains('rawat') || n.contains('kesehatan') || n.contains('cantik')) {
+    return Icons.spa_rounded;
+  }
+  if (n.contains('elektronik')) return Icons.devices_other_rounded;
+  if (n.contains('pakaian') || n.contains('fesyen')) {
+    return Icons.checkroom_rounded;
+  }
+  if (n.contains('kerajinan')) return Icons.handyman_rounded;
+  if (n.contains('tani') || n.contains('sayur')) {
+    return Icons.agriculture_rounded;
+  }
+  if (n.contains('ikan') || n.contains('laut')) return Icons.set_meal_rounded;
+  if (n.contains('lokal')) return Icons.location_on_rounded;
+  return Icons.category_rounded;
+}
+
+/// Kartu satu pilihan filter: ikon berwarna di atas, label di bawah.
+///
+/// Ukurannya ikut skala teks, bukan angka tetap dari rancangan: pada teks
+/// 2,0x label dua baris tetap muat karena kartunya ikut tumbuh, dan barisnya
+/// menggulir mendatar sehingga tidak ada yang terpotong di layar 320dp.
+class FilterOptionCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color tint;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const FilterOptionCard({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.tint,
+    required this.selected,
+    required this.onTap,
+  });
+
+  /// Skala teks yang dibatasi — dipakai bersama oleh kartu dan baris
+  /// induknya supaya tinggi keduanya tidak pernah berselisih.
+  static double textScale(BuildContext context) =>
+      (MediaQuery.textScalerOf(context).scale(12) / 12).clamp(1.0, 1.8);
+
+  static double widthOf(BuildContext context) => 88 * textScale(context);
+
+  static double heightOf(BuildContext context) => 100 * textScale(context);
+
+  @override
+  Widget build(BuildContext context) {
+    final scale = textScale(context);
+    final iconBox = 42 * scale;
+
+    return ApplePressable(
+      onTap: onTap,
+      pressedScale: 0.96,
+      // Label tidak diulang di sini: teksnya sudah tampil di dalam kartu,
+      // dan menyebutkannya dua kali membuat pembaca layar mengucapkan
+      // "Semua, Semua".
+      selected: selected,
+      child: Container(
+        width: widthOf(context),
+        padding: EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: AppSpacing.md * scale,
+        ),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.primary : AppColors.canvas,
+          borderRadius: BorderRadius.circular(AppleRadii.control),
+          border: Border.all(
+            color: selected ? AppColors.primary : AppColors.hairline,
+          ),
+          boxShadow: selected ? null : AppElevation.hairline,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: iconBox,
+              height: iconBox,
+              decoration: BoxDecoration(
+                color: selected
+                    ? const Color(0x33FFFFFF)
+                    : tint.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(AppleRadii.tile - 4),
+              ),
+              child: Icon(
+                icon,
+                size: 22 * scale,
+                color: selected ? AppColors.onPrimary : tint,
+              ),
+            ),
+            SizedBox(height: AppSpacing.sm * scale),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 2,
+                textAlign: TextAlign.center,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.captionSmall.copyWith(
+                  fontSize: 11.5,
+                  height: 1.2,
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                  color: selected ? AppColors.onPrimary : AppColors.body,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -104,24 +254,28 @@ class CategoryFilterRow extends ConsumerWidget {
         MarketplaceSectionHeader(title: title),
         const SizedBox(height: AppSpacing.sm),
         SizedBox(
-          height: 34,
+          height: FilterOptionCard.heightOf(context),
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.base),
             itemCount: categories.length + 1,
-            separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.sm),
+            separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.md),
             itemBuilder: (context, index) {
               if (index == 0) {
-                return AppleChip(
+                return FilterOptionCard(
+                  icon: Icons.grid_view_rounded,
                   label: 'Semua',
+                  tint: AppColors.primary,
                   selected: selectedId == null,
                   onTap: () => onSelected(null),
                 );
               }
               final category = categories[index - 1];
-              return AppleChip(
+              return FilterOptionCard(
+                icon: categoryIcon(category.name),
                 label: category.name,
+                tint: AppleTints.at(index - 1),
                 selected: selectedId == category.id,
                 // Menekan kategori yang sudah aktif melepasnya — cara
                 // menghapus pilihan tanpa tombol tambahan.
@@ -150,7 +304,10 @@ class ShoppingSourceSelector extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const MarketplaceSectionHeader(title: 'Pilih Tempat Belanja'),
+        const MarketplaceSectionHeader(
+          title: 'Pilih Tempat Belanja',
+          trailing: MarketplaceLocationBar(),
+        ),
         const SizedBox(height: AppSpacing.sm),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.base),
@@ -211,6 +368,13 @@ class ShoppingSourceSelector extends ConsumerWidget {
             ),
           ),
         ),
+        // Tanpa koordinat, baris ringkas di kepala section tidak cukup:
+        // pengguna perlu tahu kenapa lokasi diminta sebelum mengizinkannya.
+        if (ref.watch(userCoordinatesProvider) == null)
+          const Padding(
+            padding: EdgeInsets.only(top: AppSpacing.md),
+            child: LocationPrompt(),
+          ),
       ],
     );
   }
@@ -261,53 +425,56 @@ class _SourceSegment extends StatelessWidget {
     required this.onTap,
   });
 
+  IconData get _icon => switch (type) {
+    SellerType.all => Icons.storefront_rounded,
+    SellerType.kopdes => Icons.apartment_rounded,
+    SellerType.umkm => Icons.store_mall_directory_rounded,
+    SellerType.nearest => Icons.near_me_rounded,
+  };
+
   @override
   Widget build(BuildContext context) {
-    final segment = Semantics(
-      button: true,
+    final segment = ApplePressable(
+      onTap: onTap,
+      pressedScale: 0.97,
       selected: selected,
-      label: type.label,
-      child: ApplePressable(
-        onTap: onTap,
-        pressedScale: 0.97,
-        child: Container(
-          height: 40,
-          alignment: Alignment.center,
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-          decoration: BoxDecoration(
-            color: selected ? AppColors.primary : Colors.transparent,
-            borderRadius: BorderRadius.circular(AppleRadii.control - 1),
-            border: expanded
-                ? null
-                : Border.all(
-                    color: selected ? AppColors.primary : AppColors.hairline,
-                  ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (type == SellerType.nearest) ...[
-                Icon(
-                  Icons.near_me_rounded,
-                  size: 13,
-                  color: selected ? AppColors.onPrimary : AppColors.muted,
+      child: Container(
+        height: 40,
+        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(AppleRadii.control - 1),
+          border: expanded
+              ? null
+              : Border.all(
+                  color: selected ? AppColors.primary : AppColors.hairline,
                 ),
-                const SizedBox(width: 4),
-              ],
-              Flexible(
-                child: Text(
-                  type.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTypography.buttonSm.copyWith(
-                    fontSize: 12.5,
-                    fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                    color: selected ? AppColors.onPrimary : AppColors.body,
-                  ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Ikon mendampingi teks, tidak menggantikannya: keempat pilihan
+            // tetap bisa dibedakan tanpa mengenali ikonnya.
+            Icon(
+              _icon,
+              size: 14,
+              color: selected ? AppColors.onPrimary : AppColors.muted,
+            ),
+            const SizedBox(width: 5),
+            Flexible(
+              child: Text(
+                type.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.buttonSm.copyWith(
+                  fontSize: 12.5,
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                  color: selected ? AppColors.onPrimary : AppColors.body,
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -316,7 +483,11 @@ class _SourceSegment extends StatelessWidget {
   }
 }
 
-/// Baris lokasi pengguna dengan tombol "Ubah".
+/// Baris lokasi ringkas: pin, nama tempat, dan tombol "Ubah".
+///
+/// Duduk di kepala section "Pilih Tempat Belanja", bukan sebagai baris
+/// tersendiri — lokasi adalah keterangan dari pilihan itu, dan menyatukannya
+/// menghemat satu baris penuh pada layar ponsel.
 class MarketplaceLocationBar extends ConsumerWidget {
   const MarketplaceLocationBar({super.key});
 
@@ -324,21 +495,51 @@ class MarketplaceLocationBar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final location = ref.watch(userCoordinatesProvider);
 
+    // Tanpa koordinat, ajakan lengkapnya ada di bawah selector; di sini
+    // cukup pintasan pendek supaya kepala section tidak melebar.
     if (location == null) {
-      return const Padding(
-        padding: EdgeInsets.only(top: AppSpacing.md),
-        child: LocationPrompt(),
+      return ApplePressable(
+        onTap: () => showVillagePicker(context, ref),
+        pressedScale: 1.0,
+        semanticLabel: 'Pilih lokasi belanja',
+        child: const Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: AppSpacing.sm,
+            vertical: AppSpacing.md,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.location_on_rounded,
+                size: 15,
+                color: AppColors.primary,
+              ),
+              SizedBox(width: 4),
+              Text(
+                'Pilih lokasi',
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.primary,
+                ),
+              ),
+            ],
+          ),
+        ),
       );
     }
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.base,
-        AppSpacing.md,
-        AppSpacing.base,
-        0,
+    return Container(
+      // Nama desa bisa sepanjang apa pun; tanpa batas ini judul sectionlah
+      // yang mengalah dan membungkus. Pada ponsel kecil batasnya lebih
+      // ketat — di 320dp judul dan lokasi tidak muat berdampingan.
+      constraints: BoxConstraints(
+        maxWidth: MediaQuery.sizeOf(context).width < 360 ? 118 : 170,
       ),
+      padding: const EdgeInsets.only(left: AppSpacing.sm),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
           const Icon(
             Icons.location_on_rounded,
@@ -346,7 +547,7 @@ class MarketplaceLocationBar extends ConsumerWidget {
             color: AppColors.primary,
           ),
           const SizedBox(width: 5),
-          Expanded(
+          Flexible(
             child: Text(
               location.label ?? 'Lokasi Anda',
               maxLines: 1,

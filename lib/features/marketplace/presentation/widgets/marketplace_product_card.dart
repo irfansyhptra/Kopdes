@@ -7,6 +7,27 @@ import '../../../../shared/widgets/product_image_loader.dart';
 import '../../domain/marketplace.dart';
 import '../providers/marketplace_provider.dart';
 
+/// Delegate grid produk Marketplace.
+///
+/// Jumlah kolom dihitung dari lebar yang tersedia, bukan dari jenis
+/// perangkat. Rasionya ikut skala teks: pada teks besar kartu perlu lebih
+/// tinggi, kalau tidak isinya meluber.
+///
+/// Tinggal di sini, bukan di layar, supaya uji tata letak memakai delegate
+/// yang sama persis. Saat keduanya punya salinan sendiri, angka yang meleset
+/// hanya ketahuan di perangkat sungguhan.
+SliverGridDelegate marketplaceGridDelegate(BuildContext context) {
+  final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
+  return SliverGridDelegateWithMaxCrossAxisExtent(
+    maxCrossAxisExtent: 220,
+    mainAxisSpacing: AppSpacing.md,
+    crossAxisSpacing: AppSpacing.md,
+    // 0,62 — bukan 0,66: kartu berdiskon punya satu baris harga tambahan,
+    // dan dengan font sungguhnya 0,66 meluber 0,65px pada lebar 320dp.
+    childAspectRatio: (0.62 / textScale.clamp(1.0, 1.8)).clamp(0.34, 0.62),
+  );
+}
+
 /// Lencana tipe penjual.
 ///
 /// Warna saja tidak cukup membedakan Kopdes dari UMKM bagi pengguna yang sulit
@@ -83,8 +104,14 @@ class MarketplaceProductCard extends ConsumerWidget {
                     placeholderIconSize: 26,
                   ),
                 ),
+                if (product.hasDiscount)
+                  Positioned(
+                    top: AppSpacing.sm,
+                    left: AppSpacing.sm,
+                    child: _DiscountBadge(percent: product.discountPercent),
+                  ),
                 Positioned(
-                  top: AppSpacing.sm,
+                  bottom: AppSpacing.sm,
                   left: AppSpacing.sm,
                   child: SellerTypeBadge(isUmkm: product.isUmkm),
                 ),
@@ -102,7 +129,7 @@ class MarketplaceProductCard extends ConsumerWidget {
                 if (product.isOutOfStock)
                   Positioned(
                     bottom: AppSpacing.sm,
-                    left: AppSpacing.sm,
+                    right: AppSpacing.sm,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 6,
@@ -166,18 +193,7 @@ class MarketplaceProductCard extends ConsumerWidget {
                   const SizedBox(height: AppSpacing.sm),
                   Row(
                     children: [
-                      Expanded(
-                        child: Text(
-                          formatRupiah(product.price),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTypography.bodyLarge.copyWith(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: -0.3,
-                          ),
-                        ),
-                      ),
+                      Expanded(child: ProductPriceView(product: product)),
                       const SizedBox(width: AppSpacing.sm),
                       AppleAddButton(
                         // Stok habis dan permintaan yang sedang berjalan
@@ -197,6 +213,84 @@ class MarketplaceProductCard extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Lencana potongan harga, mis. "-20%".
+class _DiscountBadge extends StatelessWidget {
+  final int percent;
+
+  const _DiscountBadge({required this.percent});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: AppColors.primary,
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+      ),
+      child: Text(
+        '-$percent%',
+        style: AppTypography.badge.copyWith(
+          color: AppColors.onPrimary,
+          fontSize: 9.5,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+/// Harga jual, dengan harga coret di sampingnya bila sedang diskon.
+///
+/// Urutannya sengaja harga-baru dulu: pembaca layar menyebut angka yang
+/// dibayar lebih dulu, baru harga sebelumnya yang diberi label — tanpa itu
+/// yang terdengar pertama justru harga yang tidak berlaku. Saat ruang sempit
+/// harga coret yang mengalah, bukan harga yang dibayar.
+class ProductPriceView extends StatelessWidget {
+  final MarketplaceProduct product;
+
+  const ProductPriceView({super.key, required this.product});
+
+  @override
+  Widget build(BuildContext context) {
+    final price = Text(
+      formatRupiah(product.price),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: AppTypography.bodyLarge.copyWith(
+        fontSize: 16,
+        fontWeight: FontWeight.w700,
+        letterSpacing: -0.3,
+        color: product.hasDiscount ? AppColors.primary : AppColors.ink,
+      ),
+    );
+
+    if (!product.hasDiscount) return price;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        price,
+        Semantics(
+          label: 'Harga sebelum diskon ${formatRupiah(product.discountPrice!)}',
+          child: ExcludeSemantics(
+            child: Text(
+              formatRupiah(product.discountPrice!),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTypography.captionSmall.copyWith(
+                fontSize: 11.5,
+                decoration: TextDecoration.lineThrough,
+                decorationColor: AppColors.mutedSoft,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

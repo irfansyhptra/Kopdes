@@ -87,6 +87,7 @@ class BannerSection extends ConsumerWidget {
     description: b.description ?? '',
     cta: b.ctaLabel ?? 'Lihat',
     icon: Icons.shopping_basket_rounded,
+    imageUrl: b.imageUrl,
   );
 
   /// Mencocokkan item yang ditekan kembali ke banner asalnya untuk mengambil

@@ -42,6 +42,14 @@ class ApplePressable extends StatefulWidget {
   final BorderRadius? borderRadius;
   final String? semanticLabel;
 
+  /// Status terpilih, untuk kontrol seperti tab, chip, dan segmented control.
+  ///
+  /// Harus lewat sini, bukan lewat `Semantics(selected: ...)` di luar: widget
+  /// ini sudah membuat node semantics sendiri, jadi pembungkus di luar menjadi
+  /// node terpisah dan flagnya tidak pernah ikut pada node yang dibacakan
+  /// pembaca layar bersama labelnya.
+  final bool? selected;
+
   const ApplePressable({
     super.key,
     required this.child,
@@ -49,6 +57,7 @@ class ApplePressable extends StatefulWidget {
     this.pressedScale = 0.97,
     this.borderRadius,
     this.semanticLabel,
+    this.selected,
   });
 
   @override
@@ -69,6 +78,7 @@ class _ApplePressableState extends State<ApplePressable> {
     final reduce = _reduceMotion(context);
     return Semantics(
       button: true,
+      selected: widget.selected,
       label: widget.semanticLabel,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,

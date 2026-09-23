@@ -43,6 +43,14 @@ class _FilterSheetState extends ConsumerState<_FilterSheet> {
 
   /// `null` = memakai bawaan server, bukan "tanpa batas": server selalu
   /// menerapkan radius maksimumnya sendiri.
+  /// 0 berarti tanpa batas bawah — bukan "rating nol", yang justru akan
+  /// menyaring habis seluruh katalog.
+  static const _ratingSteps = <(String, double)>[
+    ('Semua', 0),
+    ('4,0+', 4),
+    ('4,5+', 4.5),
+  ];
+
   static const _radiusSteps = <(String, double?)>[
     ('Bawaan', null),
     ('3 km', 3),
@@ -140,6 +148,35 @@ class _FilterSheetState extends ConsumerState<_FilterSheet> {
               ),
               const SizedBox(height: AppSpacing.lg),
 
+              _label('Rating Minimum'),
+              Wrap(
+                spacing: AppSpacing.sm,
+                runSpacing: AppSpacing.sm,
+                children: [
+                  for (final (label, value) in _ratingSteps)
+                    AppleChip(
+                      label: label,
+                      selected: _draft.minRating == value,
+                      onTap: () => setState(
+                        () => _draft = _draft.copyWith(minRating: value),
+                      ),
+                    ),
+                ],
+              ),
+              const Padding(
+                padding: EdgeInsets.only(top: AppSpacing.sm),
+                child: Text(
+                  'Produk yang belum punya ulasan ikut tersaring keluar saat '
+                  'rating minimum dipakai.',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    color: AppColors.muted,
+                    height: 1.35,
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+
               _label('Radius Pencarian'),
               Wrap(
                 spacing: AppSpacing.sm,
@@ -180,6 +217,26 @@ class _FilterSheetState extends ConsumerState<_FilterSheet> {
                 title: Text(
                   'Hanya produk tersedia',
                   style: AppTypography.bodyMedium.copyWith(fontSize: 14),
+                ),
+              ),
+              SwitchListTile.adaptive(
+                contentPadding: EdgeInsets.zero,
+                value: _draft.discountedOnly,
+                onChanged: (v) =>
+                    setState(() => _draft = _draft.copyWith(discountedOnly: v)),
+                activeThumbColor: AppColors.primary,
+                title: Text(
+                  'Hanya produk diskon',
+                  style: AppTypography.bodyMedium.copyWith(fontSize: 14),
+                ),
+                subtitle: const Text(
+                  'Harga coret hanya ada pada produk Kopdes, jadi produk '
+                  'mitra tidak ikut tampil.',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    color: AppColors.muted,
+                    height: 1.3,
+                  ),
                 ),
               ),
               const SizedBox(height: AppSpacing.base),

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/theme.dart';
 import '../../../../shared/widgets/apple_ui.dart';
+import '../../../../shared/widgets/product_image_loader.dart';
 
 /// Satu slide banner promosi.
 class PromoBannerItem {
@@ -14,6 +15,11 @@ class PromoBannerItem {
   final String cta;
   final IconData icon;
 
+  /// Gambar iklan dari `Banner.imageUrl`. Null atau gagal dimuat berarti
+  /// artwork gambar sendiri yang tampil — banner tetap terbaca meski
+  /// gambarnya belum diunggah admin atau jaringannya putus.
+  final String? imageUrl;
+
   const PromoBannerItem({
     required this.badge,
     required this.title,
@@ -21,6 +27,7 @@ class PromoBannerItem {
     required this.description,
     required this.cta,
     required this.icon,
+    this.imageUrl,
   });
 }
 
@@ -408,7 +415,7 @@ class _BannerCard extends StatelessWidget {
             ),
             if (constraints.maxWidth >= 300) ...[
               const SizedBox(width: AppSpacing.md),
-              _BannerArtwork(icon: item.icon),
+              _BannerArtwork(icon: item.icon, imageUrl: item.imageUrl),
             ],
           ],
         );
@@ -470,8 +477,9 @@ class _BannerCard extends StatelessWidget {
 /// aset baru per kampanye.
 class _BannerArtwork extends StatelessWidget {
   final IconData icon;
+  final String? imageUrl;
 
-  const _BannerArtwork({required this.icon});
+  const _BannerArtwork({required this.icon, this.imageUrl});
 
   /// Beras, minyak, kopi, dan makanan ringan — isi keranjang khas warga desa.
   static const _goods = <IconData>[
@@ -485,6 +493,20 @@ class _BannerArtwork extends StatelessWidget {
   Widget build(BuildContext context) {
     // Dekoratif murni: pembaca layar sudah mendapat judul, deskripsi, dan
     // tombol dari kolom teks di sebelahnya.
+    final url = imageUrl;
+    if (url != null && url.isNotEmpty) {
+      return ExcludeSemantics(
+        child: SizedBox(
+          width: 96,
+          child: ProductImageLoader(
+            imageUrl: url,
+            fit: BoxFit.contain,
+            placeholderIconSize: 26,
+          ),
+        ),
+      );
+    }
+
     return ExcludeSemantics(
       child: SizedBox(
         width: 64,

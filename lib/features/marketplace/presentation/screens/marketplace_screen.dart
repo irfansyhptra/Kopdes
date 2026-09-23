@@ -231,9 +231,9 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
                         child: SizedBox(height: AppSpacing.lg),
                       ),
 
-                      // 6 & 7. Sumber belanja + lokasi pengguna.
+                      // 6 & 7. Sumber belanja + lokasi pengguna: lokasinya
+                      // duduk di kepala section yang sama.
                       const SliverToBoxAdapter(child: ShoppingSourceSelector()),
-                      const SliverToBoxAdapter(child: MarketplaceLocationBar()),
                       const SliverToBoxAdapter(
                         child: SizedBox(height: AppSpacing.lg),
                       ),
@@ -248,6 +248,7 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
                                     : 'Rekomendasi Untukmu',
                                 actionLabel: 'Lihat Semua',
                                 onAction: _showAll,
+                                trailing: const _FavoritesButton(),
                               ),
                         ),
                       ),
@@ -341,8 +342,6 @@ class _SearchBar extends StatelessWidget {
             ),
           ),
           const SizedBox(width: AppSpacing.md),
-          const _FavoritesButton(),
-          const SizedBox(width: AppSpacing.md),
           const _FilterButton(),
         ],
       ),
@@ -362,24 +361,18 @@ class _FavoritesButton extends ConsumerWidget {
     return ApplePressable(
       onTap: () => ref.read(showFavoritesProvider.notifier).state = !showing,
       pressedScale: 0.94,
+      selected: showing,
       semanticLabel: showing
           ? 'Kembali ke semua produk'
           : 'Lihat $count produk favorit',
       child: Container(
-        width: 50,
-        height: 50,
+        width: 44,
+        height: 44,
         alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: showing ? AppColors.primary : AppColors.canvas,
-          borderRadius: BorderRadius.circular(17),
-          border: Border.all(
-            color: showing ? AppColors.primary : AppColors.hairline,
-          ),
-        ),
         child: Icon(
           showing ? Icons.favorite_rounded : Icons.favorite_border_rounded,
           size: 20,
-          color: showing ? AppColors.onPrimary : AppColors.primary,
+          color: showing ? AppColors.primary : AppColors.muted,
         ),
       ),
     );
@@ -453,7 +446,7 @@ class _ProductGrid extends ConsumerWidget {
             child: GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: _delegate(context),
+              gridDelegate: marketplaceGridDelegate(context),
               itemCount: 4,
               itemBuilder: (_, __) => const _SkeletonCard(),
             ),
@@ -483,7 +476,7 @@ class _ProductGrid extends ConsumerWidget {
           return SliverMainAxisGroup(
             slivers: [
               SliverGrid.builder(
-                gridDelegate: _delegate(context),
+                gridDelegate: marketplaceGridDelegate(context),
                 itemCount: state.items.length,
                 itemBuilder: (context, index) {
                   final product = state.items[index];
@@ -553,7 +546,7 @@ class _ProductGrid extends ConsumerWidget {
               ),
             )
           : SliverGrid.builder(
-              gridDelegate: _delegate(context),
+              gridDelegate: marketplaceGridDelegate(context),
               itemCount: items.length,
               itemBuilder: (context, index) {
                 final product = items[index];
@@ -564,18 +557,6 @@ class _ProductGrid extends ConsumerWidget {
                 );
               },
             ),
-    );
-  }
-
-  /// Rasio disesuaikan dengan skala teks: pada teks besar kartu perlu lebih
-  /// tinggi, kalau tidak isinya meluber.
-  SliverGridDelegate _delegate(BuildContext context) {
-    final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
-    return SliverGridDelegateWithMaxCrossAxisExtent(
-      maxCrossAxisExtent: 220,
-      mainAxisSpacing: AppSpacing.md,
-      crossAxisSpacing: AppSpacing.md,
-      childAspectRatio: (0.66 / textScale.clamp(1.0, 1.8)).clamp(0.34, 0.66),
     );
   }
 }

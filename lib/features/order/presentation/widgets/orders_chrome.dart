@@ -251,71 +251,65 @@ class _TabSegment extends StatelessWidget {
   Widget build(BuildContext context) {
     final fg = selected ? AppColors.onPrimary : AppColors.body;
 
-    final segment = Semantics(
-      button: true,
+    final segment = ApplePressable(
+      onTap: onTap,
+      pressedScale: 0.97,
+      semanticLabel: badge > 0 ? '${tab.label}, $badge pesanan' : tab.label,
       selected: selected,
-      label: badge > 0 ? '${tab.label}, $badge pesanan' : tab.label,
-      child: ApplePressable(
-        onTap: onTap,
-        pressedScale: 0.97,
-        child: Container(
-          height: 40,
-          alignment: Alignment.center,
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-          decoration: BoxDecoration(
-            color: selected ? AppColors.primary : Colors.transparent,
-            borderRadius: BorderRadius.circular(AppleRadii.control + 2),
-            border: expanded
-                ? null
-                : Border.all(
-                    color: selected ? AppColors.primary : AppColors.hairline,
-                  ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(_icons[tab], size: 15, color: fg),
+      child: Container(
+        height: 40,
+        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(AppleRadii.control + 2),
+          border: expanded
+              ? null
+              : Border.all(
+                  color: selected ? AppColors.primary : AppColors.hairline,
+                ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(_icons[tab], size: 15, color: fg),
+            const SizedBox(width: 5),
+            Flexible(
+              child: Text(
+                tab.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.buttonSm.copyWith(
+                  fontSize: 12.5,
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                  color: fg,
+                ),
+              ),
+            ),
+            if (badge > 0) ...[
               const SizedBox(width: 5),
-              Flexible(
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                constraints: const BoxConstraints(minWidth: 17),
+                decoration: BoxDecoration(
+                  color: selected
+                      ? const Color(0x40FFFFFF)
+                      : AppColors.primaryTint,
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                ),
                 child: Text(
-                  tab.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTypography.buttonSm.copyWith(
-                    fontSize: 12.5,
-                    fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                    color: fg,
+                  badge > 99 ? '99+' : '$badge',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w700,
+                    height: 1.3,
+                    color: selected ? AppColors.onPrimary : AppColors.primary,
                   ),
                 ),
               ),
-              if (badge > 0) ...[
-                const SizedBox(width: 5),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 5,
-                    vertical: 1,
-                  ),
-                  constraints: const BoxConstraints(minWidth: 17),
-                  decoration: BoxDecoration(
-                    color: selected
-                        ? const Color(0x40FFFFFF)
-                        : AppColors.primaryTint,
-                    borderRadius: BorderRadius.circular(AppRadius.pill),
-                  ),
-                  child: Text(
-                    badge > 99 ? '99+' : '$badge',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 9.5,
-                      fontWeight: FontWeight.w700,
-                      height: 1.3,
-                      color: selected ? AppColors.onPrimary : AppColors.primary,
-                    ),
-                  ),
-                ),
-              ],
             ],
-          ),
+          ],
         ),
       ),
     );

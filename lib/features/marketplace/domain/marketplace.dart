@@ -44,6 +44,12 @@ class MarketplaceProduct {
   final String id;
   final String name;
   final double price;
+
+  /// Harga sebelum diskon. Null berarti produk tidak sedang diskon — bukan
+  /// nol, yang akan terbaca sebagai "gratis" pada harga coret. Hanya produk
+  /// Kopdes yang punya kolom ini di backend.
+  final double? discountPrice;
+
   final int stock;
   final String? imageUrl;
   final String categoryId;
@@ -65,6 +71,7 @@ class MarketplaceProduct {
     required this.name,
     required this.price,
     required this.stock,
+    this.discountPrice,
     required this.categoryId,
     required this.sellerName,
     required this.isUmkm,
@@ -78,6 +85,16 @@ class MarketplaceProduct {
   });
 
   bool get isOutOfStock => stock <= 0;
+
+  /// Diskon hanya diakui bila harga coretnya memang lebih tinggi. Data yang
+  /// terbalik lebih baik tampil sebagai harga biasa daripada sebagai "diskon
+  /// -0%" atau kenaikan harga yang dibungkus lencana merah.
+  bool get hasDiscount => discountPrice != null && discountPrice! > price;
+
+  /// Persentase potongan, dibulatkan. Dipakai pada lencana "-20%".
+  int get discountPercent => hasDiscount
+      ? (((discountPrice! - price) / discountPrice!) * 100).round()
+      : 0;
   bool get hasRating => ratingAverage != null && ratingCount > 0;
 
   /// Format Indonesia, koma sebagai pemisah desimal.
@@ -91,6 +108,7 @@ class MarketplaceProduct {
       id: json['id'] as String,
       name: json['name'] as String? ?? '',
       price: (json['price'] as num?)?.toDouble() ?? 0,
+      discountPrice: (json['discountPrice'] as num?)?.toDouble(),
       stock: (json['stock'] as num?)?.toInt() ?? 0,
       imageUrl: json['imageUrl'] as String?,
       categoryId: json['categoryId'] as String? ?? '',
@@ -112,6 +130,7 @@ class MarketplaceProduct {
     'id': id,
     'name': name,
     'price': price,
+    'discountPrice': discountPrice,
     'stock': stock,
     'imageUrl': imageUrl,
     'categoryId': categoryId,
@@ -143,6 +162,14 @@ class MarketplaceFilter {
   final double? minPrice;
   final double? maxPrice;
   final bool inStockOnly;
+
+  /// Hanya produk yang sedang diskon. Disaring server; produk mitra tidak
+  /// punya harga coret sehingga ikut tersaring keluar di sana.
+  final bool discountedOnly;
+
+  /// Rating rata-rata minimum, 0 berarti tanpa batas bawah.
+  final double minRating;
+
   final MarketplaceSort sort;
 
   /// Radius pencarian dalam kilometer. Hanya berlaku pada pengurutan jarak:
@@ -158,6 +185,8 @@ class MarketplaceFilter {
     this.minPrice,
     this.maxPrice,
     this.inStockOnly = false,
+    this.discountedOnly = false,
+    this.minRating = 0,
     this.sort = MarketplaceSort.newest,
     this.radiusKm,
   });
@@ -178,6 +207,8 @@ class MarketplaceFilter {
       minPrice != null ||
       maxPrice != null ||
       inStockOnly ||
+      discountedOnly ||
+      minRating > 0 ||
       radiusKm != null ||
       sort != MarketplaceSort.newest;
 
@@ -189,6 +220,8 @@ class MarketplaceFilter {
     double? minPrice,
     double? maxPrice,
     bool? inStockOnly,
+    bool? discountedOnly,
+    double? minRating,
     MarketplaceSort? sort,
     double? radiusKm,
     bool clearFood = false,
@@ -205,6 +238,8 @@ class MarketplaceFilter {
     minPrice: clearPrice ? null : (minPrice ?? this.minPrice),
     maxPrice: clearPrice ? null : (maxPrice ?? this.maxPrice),
     inStockOnly: inStockOnly ?? this.inStockOnly,
+    discountedOnly: discountedOnly ?? this.discountedOnly,
+    minRating: minRating ?? this.minRating,
     sort: sort ?? this.sort,
     radiusKm: clearRadius ? null : (radiusKm ?? this.radiusKm),
   );
