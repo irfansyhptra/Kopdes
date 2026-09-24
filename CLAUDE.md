@@ -185,7 +185,27 @@ tampilan aplikasi maupun web:
 | `accessibility` | audit WCAG 2.2, keyboard, screen reader | `addyosmani/web-quality-skills@accessibility` |
 | `web-design-guidelines` | review UI terhadap Web Interface Guidelines | `vercel-labs/agent-skills@web-design-guidelines` |
 
-Pasang ulang dengan `npx skills add <sumber> -g -y`.
+Ditambah kemudian:
+
+| Skill / plugin | Untuk apa | Sumber |
+|---|---|---|
+| `accessibility-audit` | audit WCAG menyeluruh + rencana perbaikan | `rampstackco/claude-skills@accessibility-audit` |
+| `modern-web-guidance` (plugin, 2 skill) | praktik web terbaru + `chrome-extensions` | `claude plugin install modern-web-guidance@claude-plugins-official` |
+
+Pasang ulang skill dengan `npx skills add <sumber> -g -y`.
+
+### MCP shadcn
+
+`.mcp.json` di root mendaftarkan server `shadcn` (`npx shadcn@latest mcp`).
+Baru aktif setelah sesi Claude Code dimulai ulang.
+
+Perlu diketahui sebelum memakainya: **website ini belum memakai shadcn/ui
+maupun Tailwind sama sekali.** Dependensinya hanya Next, React, dan
+`lucide-react`; komponennya kelas `kc-*` di `shared/design/components.css`
+yang sengaja berbagi token dengan tema Flutter, sehingga satu perubahan token
+berlaku di web dan aplikasi. Menarik komponen shadcn berarti menambahkan
+Tailwind dan satu sistem komponen kedua — itu keputusan arsitektur, bukan
+sekadar `npx shadcn add`.
 
 Dua di antaranya bukan dari pemilik yang disebut semula: `w3c` dan `google`
 tidak menerbitkan skill ini, dan `shadcn/shcdn-ui` salah ketik. Yang dipakai
