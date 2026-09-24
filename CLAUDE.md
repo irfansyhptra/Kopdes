@@ -172,6 +172,28 @@ mencetak token ke log.
 - Commit conventional (`feat:`, `fix:`, `docs:`, `chore:`). Backend punya git sendiri.
 - `backend/.env` berisi secret — jangan commit / jangan tampilkan isinya.
 
+## Skill desain
+
+Lima skill terpasang global (`~/.claude/skills/`) dan dipakai saat menyentuh
+tampilan aplikasi maupun web:
+
+| Skill | Untuk apa | Sumber |
+|---|---|---|
+| `ui-ux-pro-max` | arah desain, palet, tipografi, layout responsif, chart | `nextlevelbuilder/ui-ux-pro-max-skill@ui-ux-pro-max` |
+| `frontend-design` | rasa visual: menghindari tampilan template | `anthropics/skills@frontend-design` |
+| `shadcn` | komponen shadcn/ui untuk website Next.js | `shadcn-ui/ui@shadcn` |
+| `accessibility` | audit WCAG 2.2, keyboard, screen reader | `addyosmani/web-quality-skills@accessibility` |
+| `web-design-guidelines` | review UI terhadap Web Interface Guidelines | `vercel-labs/agent-skills@web-design-guidelines` |
+
+Pasang ulang dengan `npx skills add <sumber> -g -y`.
+
+Dua di antaranya bukan dari pemilik yang disebut semula: `w3c` dan `google`
+tidak menerbitkan skill ini, dan `shadcn/shcdn-ui` salah ketik. Yang dipakai
+adalah repo resmi shadcn serta dua skill dengan pemakai terbanyak di bidangnya.
+
+`shadcn` hanya berlaku untuk `website/` — aplikasi Flutter memakai widget
+`lib/shared/widgets/apple_ui.dart`, bukan komponen React.
+
 ## Docs
 `requirements.md`, `tasks.md`, `design.md`, `new_design.md`, `report.md` — spec &
 perencanaan produk. Rujuk saat butuh konteks fitur yang belum ada di kode.
