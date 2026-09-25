@@ -50,9 +50,11 @@ class SellerTypeBadge extends StatelessWidget {
       ),
       child: Text(
         isUmkm ? 'UMKM' : 'Kopdes',
+        // 11pt: batas bawah keterbacaan menurut HIG (`accessibility.md` —
+        // "mobile default 17 pt, minimum 11 pt"). Sebelumnya 9,5pt.
         style: AppTypography.badge.copyWith(
           color: AppColors.onPrimary,
-          fontSize: 9.5,
+          fontSize: 11,
           fontWeight: FontWeight.w700,
         ),
       ),
@@ -143,7 +145,7 @@ class MarketplaceProductCard extends ConsumerWidget {
                         'Stok habis',
                         style: AppTypography.badge.copyWith(
                           color: AppColors.onPrimary,
-                          fontSize: 9.5,
+                          fontSize: 11,
                         ),
                       ),
                     ),
@@ -235,7 +237,7 @@ class _DiscountBadge extends StatelessWidget {
         '-$percent%',
         style: AppTypography.badge.copyWith(
           color: AppColors.onPrimary,
-          fontSize: 9.5,
+          fontSize: 11,
           fontWeight: FontWeight.w700,
         ),
       ),

@@ -211,7 +211,10 @@ class _CardButton extends StatelessWidget {
       pressedScale: 0.96,
       semanticLabel: label,
       child: Container(
-        height: 34,
+        // 44pt, bukan 34: HIG menetapkan 44x44 sebagai ukuran kontrol bawaan
+        // di ponsel (`accessibility.md`). 34 masih di atas batas mutlak 28,
+        // tetapi di bawah ukuran yang nyaman ditekan sambil berjalan.
+        height: 44,
         alignment: Alignment.center,
         padding: const EdgeInsets.symmetric(horizontal: 6),
         decoration: BoxDecoration(

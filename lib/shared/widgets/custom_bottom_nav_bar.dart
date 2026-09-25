@@ -147,7 +147,7 @@ class _NavButton extends StatelessWidget {
                 duration: duration,
                 curve: Curves.easeOut,
                 style: AppTypography.captionSmall.copyWith(
-                  fontSize: 10.5,
+                  fontSize: 11,
                   height: 1.1,
                   // Lokasi aktif ditandai warna DAN bobot, bukan warna saja.
                   fontWeight: selected ? FontWeight.w600 : FontWeight.w400,

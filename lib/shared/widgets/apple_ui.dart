@@ -567,7 +567,7 @@ class AppleBadge extends StatelessWidget {
         label,
         style: AppTypography.badge.copyWith(
           color: AppColors.onPrimary,
-          fontSize: 10.5,
+          fontSize: 11,
           fontWeight: FontWeight.w600,
         ),
       ),
