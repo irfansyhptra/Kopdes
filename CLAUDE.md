@@ -214,6 +214,30 @@ adalah repo resmi shadcn serta dua skill dengan pemakai terbanyak di bidangnya.
 `shadcn` hanya berlaku untuk `website/` — aplikasi Flutter memakai widget
 `lib/shared/widgets/apple_ui.dart`, bukan komponen React.
 
+## Sepuluh aturan desain web
+
+Berlaku untuk `website/`. Yang bisa diukur, diukur — jangan menyimpulkan dari
+tampilan saja.
+
+1. **50ms** — bagian atas layar harus langsung terbaca berkualitas.
+2. **Satu ide per section** — satu gagasan, satu aksi.
+3. **Tipografi itu identitas** — maksimal 2–3 font, hierarki jelas, skala cair
+   (`--fs-*` memakai `clamp()`).
+4. **Warna terkendali** — 60-30-10, maksimal 2–3 warna inti.
+5. **Ruang kosong itu kemewahan** — 40% isi, 60% ruang.
+6. **Animasi seperlunya** — 150–500ms, kurva `--ease-out`, hanya
+   `transform`/`opacity`.
+7. **Gambar menentukan** — tanpa foto stok, AVIF/WebP, ukuran mengikuti
+   tampilan (`shared/image.ts`).
+8. **Performa itu kemewahan** — LCP ≤ 2,5s, CLS ≤ 0,1, animasi 60fps.
+9. **Arahkan, jangan membanjiri** — satu CTA utama per section.
+10. **Konsistensi itu keahlian** — grid 8px, token desain, satu sistem
+    bayangan/radius/easing.
+
+Mengukurnya: `node scripts/audit-responsive.mjs <rute>` untuk luberan dan
+target sentuh; Core Web Vitals lewat Chrome headless dengan CPU 4x dan 4G
+lambat — angka tanpa throttling tidak berarti apa-apa untuk ponsel desa.
+
 ## Docs
 `requirements.md`, `tasks.md`, `design.md`, `new_design.md`, `report.md` — spec &
 perencanaan produk. Rujuk saat butuh konteks fitur yang belum ada di kode.
