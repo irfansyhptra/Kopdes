@@ -1,16 +1,26 @@
 import 'package:flutter/material.dart';
 
 // ─────────────────────────────────────────────────────────
-// KOPDES Design System — Source of Truth: design.md
-// Airbnb-inspired, single accent color (#FF385C) on white
+// KMP Mitra Unified Apple Design System — token aplikasi.
+//
+// Pasangannya ada di `website/shared/design/tokens.css`. Angkanya sama persis,
+// bukan mirip: itulah yang membuat web dan aplikasi terasa satu produk. Kalau
+// salah satu berubah, keduanya harus berubah.
 // ─────────────────────────────────────────────────────────
 
 class AppColors {
   // Brand — single accent strategy
-  static const Color primary = Color(0xFFD32F2F);
-  static const Color primaryActive = Color(0xFFB71C1C);
-  static const Color primarySoft = Color(0xFFFFCDD2);
-  static const Color primaryTint = Color(0xFFFFEBEE);
+  static const Color primary = Color(0xFFE31B23);
+  static const Color primaryActive = Color(0xFFC9141C);
+
+  /// Merah untuk TEKS di atas permukaan terang.
+  ///
+  /// [primary] hanya 4,34:1 di atas [surfaceSoft] — di bawah 4,5:1 yang
+  /// dituntut teks kecil. Merah gelap sistemnya sendiri mencapai 5,36:1.
+  /// [primary] tetap untuk isian tombol, yang dipasangkan teks putih.
+  static const Color primaryText = Color(0xFFC9141C);
+  static const Color primarySoft = Color(0x1AE31B23);
+  static const Color primaryTint = Color(0x0FE31B23);
 
   // Gradien header beranda. Aksen produk tetap [primary]; dua warna ini hanya
   // titik awal/akhir gradien, bukan aksen kedua.
@@ -21,30 +31,30 @@ class AppColors {
   static const Color yellowAccent = Color(0xFFFFC400);
 
   /// Isian indikator terpilih (12% aksen) — const, jadi tak perlu withOpacity.
-  static const Color primaryFaint = Color(0x1FD32F2F);
+  static const Color primaryFaint = Color(0x1FE31B23);
 
   // Neutrals
-  static const Color ink = Color(0xFF222222);
-  static const Color body = Color(0xFF3F3F3F);
-  static const Color muted = Color(0xFF6A6A6A);
-  static const Color mutedSoft = Color(0xFF929292);
-  static const Color hairline = Color(0xFFDDDDDD);
-  static const Color hairlineSoft = Color(0xFFEBEBEB);
-  static const Color borderStrong = Color(0xFFC1C1C1);
+  static const Color ink = Color(0xFF1D1D1F);
+  static const Color body = Color(0xFF424245);
+  static const Color muted = Color(0xFF6E6E73);
+  static const Color mutedSoft = Color(0xFF86868B);
+  static const Color hairline = Color(0x0F000000);
+  static const Color hairlineSoft = Color(0x0A000000);
+  static const Color borderStrong = Color(0x1F000000);
 
   // Surfaces
   static const Color canvas = Color(0xFFFFFFFF);
-  static const Color surfaceSoft = Color(0xFFF7F7F7);
-  static const Color surfaceStrong = Color(0xFFF2F2F2);
+  static const Color surfaceSoft = Color(0xFFF5F5F7);
+  static const Color surfaceStrong = Color(0xFFF8F8FA);
 
   // On‑color
   static const Color onPrimary = Color(0xFFFFFFFF);
   static const Color onDark = Color(0xFFFFFFFF);
 
   // Semantic
-  static const Color success = Color(0xFF22C55E);
-  static const Color warning = Color(0xFFF59E0B);
-  static const Color error = Color(0xFFEF4444);
+  static const Color success = Color(0xFF34C759);
+  static const Color warning = Color(0xFFFF9F0A);
+  static const Color error = Color(0xFFFF3B30);
   static const Color errorText = Color(0xFFC13515);
 
   // Dark mode surfaces
@@ -54,15 +64,33 @@ class AppColors {
 }
 
 class AppRadius {
-  static const double xs = 4.0;
-  static const double sm = 8.0;
-  static const double md = 14.0;
+  static const double xs = 8.0;
+  static const double sm = 12.0;
+  static const double md = 16.0;
   static const double lg = 20.0;
-  static const double xl = 32.0;
-  static const double button = 12.0;
-  static const double card = 16.0;
-  static const double modal = 24.0;
-  static const double pill = 9999.0;
+  static const double xl = 24.0;
+  static const double xxl = 28.0;
+  static const double xxxl = 32.0;
+
+  /// Tombol berbentuk pil.
+  static const double button = 999.0;
+  static const double card = 24.0;
+  static const double modal = 28.0;
+  static const double pill = 999.0;
+}
+
+/// Kekuatan blur kaca. Dipakai dengan `ImageFilter.blur` di dalam
+/// `BackdropFilter` — sigma, bukan piksel CSS, jadi nilainya kira-kira
+/// setengah dari padanan webnya.
+class AppBlur {
+  static const double light = 8.0;
+  static const double standard = 12.0;
+  static const double strong = 16.0;
+
+  /// Opasitas permukaan kaca, sama dengan `--glass*` di web.
+  static const double surfaceOpacity = 0.68;
+  static const double surfaceOpacityStrong = 0.82;
+  static const double surfaceOpacityLight = 0.48;
 }
 
 class AppSpacing {
@@ -78,36 +106,60 @@ class AppSpacing {
 }
 
 class AppElevation {
-  /// The only shadow used across the entire application
-  static const List<BoxShadow> card = [
+  /// Bayangan lembut dan menyebar — kartu mengambang sedikit di atas latar,
+  /// bukan ditindih kotak gelap. Tidak ada nilai di atas 14% kehitaman.
+  static const List<BoxShadow> subtle = [
     BoxShadow(
-      color: Color.fromRGBO(0, 0, 0, 0.06),
-      offset: Offset(0, 2),
-      blurRadius: 8,
+      color: Color.fromRGBO(0, 0, 0, 0.03),
+      offset: Offset(0, 1),
+      blurRadius: 2,
     ),
-  ];
-
-  static const List<BoxShadow> cardHover = [
-    BoxShadow(
-      color: Color.fromRGBO(0, 0, 0, 0.10),
-      offset: Offset(0, 4),
-      blurRadius: 16,
-    ),
-  ];
-
-  /// Hairline + bayangan sangat halus — default kartu konten (Apple-inspired).
-  static const List<BoxShadow> hairline = [
-    BoxShadow(color: Color(0x0D000000), offset: Offset(0, 1), blurRadius: 2),
-    BoxShadow(color: Color(0x0A000000), offset: Offset(0, 6), blurRadius: 16),
   ];
 
   static const List<BoxShadow> soft = [
     BoxShadow(
-      color: Color.fromRGBO(0, 0, 0, 0.04),
-      offset: Offset(0, 1),
-      blurRadius: 4,
+      color: Color.fromRGBO(0, 0, 0, 0.06),
+      offset: Offset(0, 8),
+      blurRadius: 30,
     ),
   ];
+
+  static const List<BoxShadow> card = [
+    BoxShadow(
+      color: Color.fromRGBO(0, 0, 0, 0.055),
+      offset: Offset(0, 10),
+      blurRadius: 35,
+    ),
+  ];
+
+  static const List<BoxShadow> floating = [
+    BoxShadow(
+      color: Color.fromRGBO(0, 0, 0, 0.09),
+      offset: Offset(0, 18),
+      blurRadius: 50,
+    ),
+  ];
+
+  static const List<BoxShadow> modal = [
+    BoxShadow(
+      color: Color.fromRGBO(0, 0, 0, 0.14),
+      offset: Offset(0, 25),
+      blurRadius: 80,
+    ),
+  ];
+
+  /// Bayangan beraksen untuk tombol utama.
+  static const List<BoxShadow> accent = [
+    BoxShadow(
+      color: Color.fromRGBO(227, 27, 35, 0.18),
+      offset: Offset(0, 8),
+      blurRadius: 24,
+    ),
+  ];
+
+  /// Nama lama, dipetakan ke skala baru supaya pemakaian lama ikut berubah.
+  static const List<BoxShadow> cardHover = floating;
+  static const List<BoxShadow> hairline = subtle;
 }
 
 /// Material "liquid glass" — hanya untuk lapisan yang benar-benar mengambang di
