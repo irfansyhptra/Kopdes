@@ -183,11 +183,23 @@ class _FilterBar extends ConsumerWidget {
         ref.read(koperasiFilterProvider.notifier).state = next;
 
     return SizedBox(
-      height: 34,
+      // 44, bukan 34: AppleChip kini setinggi area sentuh HIG,
+      // dan wadah 34 justru memotong pil 36-nya sendiri.
+      height: 44,
       child: ListView(
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
         children: [
+          // "Semua jarak" adalah keadaan awal: daftar lengkap, terdekat
+          // lebih dulu. Radius hanya menyempitkan bila dipilih.
+          Padding(
+            padding: const EdgeInsets.only(right: AppSpacing.sm),
+            child: AppleChip(
+              label: 'Semua Jarak',
+              selected: filter.radiusKm == null,
+              onTap: () => update(filter.copyWith(clearRadius: true)),
+            ),
+          ),
           for (final km in const [5.0, 10.0, 25.0])
             Padding(
               padding: const EdgeInsets.only(right: AppSpacing.sm),

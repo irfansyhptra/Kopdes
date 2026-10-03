@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entities/cart.dart';
 import '../../domain/repositories/order_repository.dart';
@@ -6,6 +8,8 @@ import '../../data/datasources/order_local_data_source.dart';
 import '../../data/repositories/order_repository_impl.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../../core/storage/isar_service.dart';
+import '../../../notification/domain/entities/notification_item.dart';
+import '../../../notification/presentation/providers/notification_provider.dart';
 
 final orderRepositoryProvider = Provider<OrderRepository>((ref) {
   return OrderRepositoryImpl(
@@ -16,8 +20,10 @@ final orderRepositoryProvider = Provider<OrderRepository>((ref) {
 
 class CartNotifier extends StateNotifier<AsyncValue<Cart>> {
   final OrderRepository _repository;
+  final Ref _ref;
 
-  CartNotifier(this._repository) : super(const AsyncValue.loading()) {
+  CartNotifier(this._repository, this._ref)
+    : super(const AsyncValue.loading()) {
     loadCart();
   }
 
@@ -31,10 +37,17 @@ class CartNotifier extends StateNotifier<AsyncValue<Cart>> {
     }
   }
 
+  /// Menambah barang ke keranjang.
+  ///
+  /// Notifikasinya dicatat di sini, bukan di tiap layar yang punya tombol
+  /// "+": beranda, detail produk, etalase toko, dan carousel semuanya lewat
+  /// metode ini, jadi satu tempat sudah cukup — dan tidak ada layar baru
+  /// yang bisa lupa melakukannya.
   Future<bool> addToCart({
     String? productId,
     String? umkmProductId,
     required int quantity,
+    String? productName,
   }) async {
     try {
       final cart = await _repository.addToCart(
@@ -43,6 +56,20 @@ class CartNotifier extends StateNotifier<AsyncValue<Cart>> {
         quantity: quantity,
       );
       state = AsyncValue.data(cart);
+
+      final label = productName?.trim();
+      unawaited(
+        _ref
+            .read(notificationsProvider.notifier)
+            .add(
+              type: NotificationType.cartAdded,
+              title: 'Masuk Keranjang',
+              description: label == null || label.isEmpty
+                  ? '$quantity barang ditambahkan ke keranjang belanja Anda.'
+                  : '$label (${quantity}x) ditambahkan ke keranjang belanja '
+                        'Anda.',
+            ),
+      );
       return true;
     } catch (e) {
       return false;
@@ -151,5 +178,5 @@ class CartNotifier extends StateNotifier<AsyncValue<Cart>> {
 final cartProvider = StateNotifierProvider<CartNotifier, AsyncValue<Cart>>((
   ref,
 ) {
-  return CartNotifier(ref.watch(orderRepositoryProvider));
+  return CartNotifier(ref.watch(orderRepositoryProvider), ref);
 });

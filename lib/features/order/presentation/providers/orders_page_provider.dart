@@ -250,12 +250,13 @@ final cartSummaryProvider = Provider<CartSummary>((ref) {
 // Pesanan diproses & selesai
 // ─────────────────────────────────────────────────────────────
 
-/// Riwayat dari server dipecah di sisi klien: `/orders/history` mengembalikan
-/// seluruh pesanan tanpa parameter status, jadi memisahkannya di sini lebih
-/// murah daripada dua permintaan untuk data yang sama.
+/// Riwayat dipecah di sisi klien: `/orders/history` tidak menerima parameter
+/// status, jadi memisahkannya di sini lebih murah daripada dua permintaan
+/// berhalaman untuk data yang sama. Yang dipecah adalah halaman yang sudah
+/// terkumpul, sehingga "muat lebih banyak" menambah keduanya sekaligus.
 final activeOrdersProvider = Provider<AsyncValue<List<Order>>>((ref) {
   return ref
-      .watch(orderHistoryProvider)
+      .watch(orderHistoryListProvider)
       .whenData(
         (orders) => orders.where((o) => o.statusView.isActive).toList(),
       );
@@ -263,7 +264,7 @@ final activeOrdersProvider = Provider<AsyncValue<List<Order>>>((ref) {
 
 final doneOrdersProvider = Provider<AsyncValue<List<Order>>>((ref) {
   final filter = ref.watch(doneFilterProvider);
-  return ref.watch(orderHistoryProvider).whenData((orders) {
+  return ref.watch(orderHistoryListProvider).whenData((orders) {
     final finished = orders.where((o) => !o.statusView.isActive);
     return switch (filter) {
       DoneFilter.all => finished.toList(),

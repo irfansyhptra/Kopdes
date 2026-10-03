@@ -50,6 +50,16 @@ class OrderItem {
 class Order {
   final String id;
   final String customerId;
+
+  /// Nilai barang sebelum ongkir dan diskon, dalam rupiah bulat.
+  ///
+  /// Datang dari kolomnya sendiri di backend. Sebelumnya hanya total yang
+  /// tersimpan, sehingga rincian pembayaran tidak bisa menunjukkan ongkir
+  /// maupun potongan — dan pemesan hanya melihat satu angka tanpa asal-usul.
+  final int subtotal;
+  final int shippingFee;
+  final int discountAmount;
+
   final double totalAmount;
   final String status;
   final String paymentMethod;
@@ -64,6 +74,9 @@ class Order {
   const Order({
     required this.id,
     required this.customerId,
+    this.subtotal = 0,
+    this.shippingFee = 0,
+    this.discountAmount = 0,
     required this.totalAmount,
     required this.status,
     required this.paymentMethod,
@@ -92,4 +105,11 @@ class Order {
       items.map((item) => item.seller.groupKey).toSet().length;
 
   int get totalQuantity => items.fold(0, (sum, item) => sum + item.quantity);
+
+  /// Rincian pembayaran hanya layak ditampilkan bila ada komponennya.
+  /// Pesanan lama (sebelum kolom ini ada) memakai subtotal nol; di situ
+  /// rinciannya disembunyikan alih-alih menampilkan "Subtotal Rp0".
+  bool get hasPaymentBreakdown => subtotal > 0;
+
+  int get totalRounded => totalAmount.round();
 }

@@ -92,69 +92,67 @@ class _MitraListScreenState extends ConsumerState<MitraListScreen> {
               ),
             ),
 
-            // Pencarian mitra memang berbasis kedekatan; tanpa koordinat yang
-            // ditampilkan adalah ajakan memilih lokasi, bukan daftar kosong.
+            // Tanpa koordinat daftarnya tetap tampil — hanya urutannya yang
+            // kehilangan jarak. Ajakan lokasi menemani daftar, bukan
+            // menggantikannya.
             if (!hasLocation)
               const SliverToBoxAdapter(
                 child: Padding(
-                  padding: EdgeInsets.only(top: AppSpacing.lg),
+                  padding: EdgeInsets.only(bottom: AppSpacing.md),
                   child: LocationPrompt(),
                 ),
-              )
-            else
-              async.when(
-                loading: () => const SliverToBoxAdapter(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(vertical: AppSpacing.xl),
-                    child: Center(
-                      child: CircularProgressIndicator(
-                        color: AppColors.primary,
-                      ),
-                    ),
+              ),
+            async.when(
+              loading: () => const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: AppSpacing.xl),
+                  child: Center(
+                    child: CircularProgressIndicator(color: AppColors.primary),
                   ),
                 ),
-                error: (_, __) => SliverToBoxAdapter(
-                  child: _Message(
-                    message: 'Data belum berhasil dimuat.',
-                    actionLabel: 'Coba Lagi',
-                    onAction: () => ref
-                        .read(mitraListPagedProvider.notifier)
-                        .load(forceRefresh: true),
-                  ),
+              ),
+              error: (_, __) => SliverToBoxAdapter(
+                child: _Message(
+                  message: 'Data belum berhasil dimuat.',
+                  actionLabel: 'Coba Lagi',
+                  onAction: () => ref
+                      .read(mitraListPagedProvider.notifier)
+                      .load(forceRefresh: true),
                 ),
-                data: (list) {
-                  if (list.items.isEmpty) {
-                    return const SliverToBoxAdapter(
-                      child: _Message(
-                        message:
-                            'Belum ada Mitra UMKM pada radius ini.\n'
-                            'Perluas jarak pencarian atau ubah filter.',
-                      ),
-                    );
-                  }
-                  return SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.base,
-                      0,
-                      AppSpacing.base,
-                      AppSpacing.xl,
-                    ),
-                    sliver: SliverList.separated(
-                      itemCount: list.items.length,
-                      separatorBuilder: (_, __) =>
-                          const SizedBox(height: AppSpacing.md),
-                      itemBuilder: (context, index) {
-                        final mitra = list.items[index];
-                        return MitraCard(
-                          mitra: mitra,
-                          fullWidth: true,
-                          onVisit: () => context.push('/umkm/${mitra.id}'),
-                        );
-                      },
+              ),
+              data: (list) {
+                if (list.items.isEmpty) {
+                  return const SliverToBoxAdapter(
+                    child: _Message(
+                      message:
+                          'Belum ada Mitra UMKM yang cocok.\n'
+                          'Ubah kata kunci atau filternya.',
                     ),
                   );
-                },
-              ),
+                }
+                return SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.base,
+                    0,
+                    AppSpacing.base,
+                    AppSpacing.xl,
+                  ),
+                  sliver: SliverList.separated(
+                    itemCount: list.items.length,
+                    separatorBuilder: (_, __) =>
+                        const SizedBox(height: AppSpacing.md),
+                    itemBuilder: (context, index) {
+                      final mitra = list.items[index];
+                      return MitraCard(
+                        mitra: mitra,
+                        fullWidth: true,
+                        onVisit: () => context.push('/mitra/${mitra.id}'),
+                      );
+                    },
+                  ),
+                );
+              },
+            ),
 
             if (async.valueOrNull?.isLoadingMore ?? false)
               const SliverToBoxAdapter(
@@ -190,7 +188,9 @@ class _MitraFilterBar extends ConsumerWidget {
         ref.read(mitraFilterProvider.notifier).state = next;
 
     return SizedBox(
-      height: 34,
+      // 44, bukan 34: AppleChip kini setinggi area sentuh HIG,
+      // dan wadah 34 justru memotong pil 36-nya sendiri.
+      height: 44,
       child: ListView(
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
@@ -213,6 +213,14 @@ class _MitraFilterBar extends ConsumerWidget {
                   onTap: () => update(filter.copyWith(category: c)),
                 ),
               ),
+          Padding(
+            padding: const EdgeInsets.only(right: AppSpacing.sm),
+            child: AppleChip(
+              label: 'Semua Jarak',
+              selected: filter.radiusKm == null,
+              onTap: () => update(filter.copyWith(clearRadius: true)),
+            ),
+          ),
           for (final km in const [5.0, 10.0, 25.0])
             Padding(
               padding: const EdgeInsets.only(right: AppSpacing.sm),

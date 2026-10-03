@@ -1,5 +1,6 @@
-import '../../domain/entities/cart.dart';
-import '../../domain/entities/order.dart';
+import '../../../../core/network/paginated.dart';
+import '../entities/cart.dart';
+import '../entities/order.dart';
 
 abstract class OrderRepository {
   Future<Cart> getCart();
@@ -25,7 +26,10 @@ abstract class OrderRepository {
     required String deliveryAddressId,
     required String paymentMethod,
   });
-  Future<List<Order>> getOrderHistory();
+
+  /// Satu halaman riwayat pesanan. Halaman pertama juga disimpan ke cache
+  /// lokal sebagai bekal saat jaringan mati.
+  Future<Paginated<Order>> getOrderHistory({int page, int limit});
   Future<Order> getOrderDetail(String orderId);
   Future<Order> updateOrderStatus(String orderId, String status);
   Future<List<Map<String, dynamic>>> getOrderTimeline(String orderId);

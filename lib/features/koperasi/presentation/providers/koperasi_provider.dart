@@ -25,26 +25,35 @@ final userCoordinatesProvider = Provider<UserLocation?>((ref) {
   return ref.watch(locationProvider.select((s) => s.location));
 });
 
-/// Kopdes terdekat. `null` bila koordinat belum ada — bukan daftar kosong,
-/// supaya UI bisa membedakan "belum tahu lokasi" dari "tidak ada Kopdes".
-final nearbyKoperasiProvider = FutureProvider<Paginated<Koperasi>?>((
-  ref,
-) async {
+/// Kopdes untuk beranda — SELURUHNYA, terdekat lebih dulu.
+///
+/// Dulu ini memanggil `/koperasi/nearby` dengan radius 10 km dan
+/// mengembalikan `null` tanpa koordinat. Dua akibatnya nyata:
+///
+/// - Tanpa izin lokasi, bagiannya kosong dan terbaca sebagai "tidak ada
+///   Kopdes" — padahal yang tidak ada hanyalah lokasi penggunanya.
+/// - Dengan izin lokasi, Kopdes di luar 10 km hilang. Di kabupaten yang
+///   desanya berjauhan, itu berarti hampir semuanya.
+///
+/// Sekarang satu jalur untuk keduanya: daftar lengkap, dan koordinat — bila
+/// ada — hanya mengubah urutannya. Tidak ada lagi keadaan "belum tahu lokasi"
+/// yang perlu dibedakan UI, jadi tipenya tidak lagi nullable.
+final nearbyKoperasiProvider = FutureProvider<Paginated<Koperasi>>((ref) async {
   final location = ref.watch(userCoordinatesProvider);
-  if (location == null) return null;
 
   return ref
       .watch(koperasiRepositoryProvider)
-      .nearbyKoperasi(
-        latitude: location.latitude,
-        longitude: location.longitude,
+      .allKoperasi(
+        latitude: location?.latitude,
+        longitude: location?.longitude,
         // Beranda hanya menampilkan tiga card; sisanya di halaman "Lihat
         // Lainnya" yang punya paginasinya sendiri.
         limit: 3,
       );
 });
 
-/// Daftar Kopdes tanpa jarak — jalan keluar saat izin lokasi ditolak.
+/// Daftar Kopdes tanpa urutan jarak. Dipertahankan untuk pemanggil yang
+/// memang tidak peduli posisi pengguna.
 final koperasiListProvider = FutureProvider<Paginated<Koperasi>>((ref) {
   return ref.watch(koperasiRepositoryProvider).allKoperasi(limit: 3);
 });
@@ -52,15 +61,18 @@ final koperasiListProvider = FutureProvider<Paginated<Koperasi>>((ref) {
 /// Filter kategori pada section Mitra UMKM. `null` berarti "Semua".
 final mitraCategoryFilterProvider = StateProvider<MitraCategory?>((_) => null);
 
-final nearbyMitraProvider = FutureProvider<Paginated<Mitra>?>((ref) async {
+/// Mitra UMKM untuk beranda — seluruhnya, terdekat lebih dulu.
+///
+/// Alasannya sama dengan [nearbyKoperasiProvider]: radius yang menyaring
+/// membuat mitra yang ada tapi jauh terbaca sebagai mitra yang tidak ada.
+final nearbyMitraProvider = FutureProvider<Paginated<Mitra>>((ref) async {
   final location = ref.watch(userCoordinatesProvider);
-  if (location == null) return null;
 
   return ref
       .watch(koperasiRepositoryProvider)
-      .nearbyMitra(
-        latitude: location.latitude,
-        longitude: location.longitude,
+      .allMitra(
+        latitude: location?.latitude,
+        longitude: location?.longitude,
         limit: 3,
         category: ref.watch(mitraCategoryFilterProvider),
       );
@@ -76,13 +88,19 @@ final koperasiDetailProvider = FutureProvider.family<Koperasi, String>((
 /// Filter halaman "Lihat Lainnya".
 class KoperasiFilter {
   final String search;
-  final double radiusKm;
+
+  /// `null` berarti tanpa batas jarak — daftar lengkap, terdekat lebih dulu.
+  ///
+  /// Dulu nilainya 10 dan tidak bisa dilepas, sehingga Kopdes di luar 10 km
+  /// tidak pernah terlihat meski terdaftar. Radius sekarang penyempit yang
+  /// dipilih pengguna, bukan bawaan yang diam-diam menyembunyikan baris.
+  final double? radiusKm;
   final double minRating;
   final bool openOnly;
 
   const KoperasiFilter({
     this.search = '',
-    this.radiusKm = 10,
+    this.radiusKm,
     this.minRating = 0,
     this.openOnly = false,
   });
@@ -90,11 +108,12 @@ class KoperasiFilter {
   KoperasiFilter copyWith({
     String? search,
     double? radiusKm,
+    bool clearRadius = false,
     double? minRating,
     bool? openOnly,
   }) => KoperasiFilter(
     search: search ?? this.search,
-    radiusKm: radiusKm ?? this.radiusKm,
+    radiusKm: clearRadius ? null : (radiusKm ?? this.radiusKm),
     minRating: minRating ?? this.minRating,
     openOnly: openOnly ?? this.openOnly,
   );
@@ -194,21 +213,31 @@ class KoperasiListNotifier
         .toList(growable: false);
   }
 
+  /// `/koperasi/nearby` hanya dipakai bila pengguna memang memilih radius —
+  /// endpoint itu memotong apa pun di luarnya. Selain itu daftar lengkap,
+  /// dengan koordinat sebagai pengurut saja bila tersedia.
   Future<Paginated<Koperasi>> _fetch(int page, {bool forceRefresh = false}) {
     final location = _location;
-    if (location == null) {
+    final radius = _filter.radiusKm;
+    final search = _filter.search.trim();
+
+    if (location == null || radius == null) {
       return _repository.allKoperasi(
         page: page,
         limit: 10,
+        search: search.isEmpty ? null : search,
+        latitude: location?.latitude,
+        longitude: location?.longitude,
         forceRefresh: forceRefresh,
       );
     }
     return _repository.nearbyKoperasi(
       latitude: location.latitude,
       longitude: location.longitude,
-      radius: _filter.radiusKm,
+      radius: radius,
       page: page,
       limit: 10,
+      search: search.isEmpty ? null : search,
       forceRefresh: forceRefresh,
     );
   }
@@ -228,14 +257,16 @@ final koperasiListPagedProvider =
 /// Filter halaman "Lihat Semua" Mitra UMKM.
 class MitraFilter {
   final String search;
-  final double radiusKm;
+
+  /// `null` berarti tanpa batas jarak — lihat [KoperasiFilter.radiusKm].
+  final double? radiusKm;
   final double minRating;
   final bool openOnly;
   final MitraCategory? category;
 
   const MitraFilter({
     this.search = '',
-    this.radiusKm = 10,
+    this.radiusKm,
     this.minRating = 0,
     this.openOnly = false,
     this.category,
@@ -244,13 +275,14 @@ class MitraFilter {
   MitraFilter copyWith({
     String? search,
     double? radiusKm,
+    bool clearRadius = false,
     double? minRating,
     bool? openOnly,
     MitraCategory? category,
     bool clearCategory = false,
   }) => MitraFilter(
     search: search ?? this.search,
-    radiusKm: radiusKm ?? this.radiusKm,
+    radiusKm: clearRadius ? null : (radiusKm ?? this.radiusKm),
     minRating: minRating ?? this.minRating,
     openOnly: openOnly ?? this.openOnly,
     category: clearCategory ? null : (category ?? this.category),
@@ -289,9 +321,9 @@ class MitraListState {
 
 /// Daftar Mitra UMKM berhalaman.
 ///
-/// Berbeda dari Kopdes, tidak ada jalur "tanpa lokasi": pencarian mitra
-/// memang berbasis kedekatan. Tanpa koordinat, layar menampilkan ajakan
-/// memilih lokasi, bukan daftar kosong.
+/// Sama seperti Kopdes: lokasi mengurutkan, tidak menyaring. Dulu tanpa
+/// koordinat daftarnya dikosongkan di sini, sehingga mitra yang terdaftar
+/// tidak pernah terlihat oleh pengguna yang menolak izin lokasi.
 class MitraListNotifier extends StateNotifier<AsyncValue<MitraListState>> {
   final KoperasiRepository _repository;
   final UserLocation? _location;
@@ -304,14 +336,8 @@ class MitraListNotifier extends StateNotifier<AsyncValue<MitraListState>> {
 
   int _page = 1;
 
-  bool get hasLocation => _location != null;
-
   Future<void> load({bool forceRefresh = false}) async {
     _page = 1;
-    if (_location == null) {
-      state = const AsyncValue.data(MitraListState());
-      return;
-    }
     if (forceRefresh) state = const AsyncValue.loading();
     try {
       final result = await _fetch(1, forceRefresh: forceRefresh);
@@ -357,13 +383,28 @@ class MitraListNotifier extends StateNotifier<AsyncValue<MitraListState>> {
   }
 
   Future<Paginated<Mitra>> _fetch(int page, {bool forceRefresh = false}) {
-    final location = _location!;
+    final location = _location;
+    final radius = _filter.radiusKm;
+    final search = _filter.search.trim();
+
+    if (location == null || radius == null) {
+      return _repository.allMitra(
+        page: page,
+        limit: 10,
+        search: search.isEmpty ? null : search,
+        category: _filter.category,
+        latitude: location?.latitude,
+        longitude: location?.longitude,
+        forceRefresh: forceRefresh,
+      );
+    }
     return _repository.nearbyMitra(
       latitude: location.latitude,
       longitude: location.longitude,
-      radius: _filter.radiusKm,
+      radius: radius,
       page: page,
       limit: 10,
+      search: search.isEmpty ? null : search,
       category: _filter.category,
       forceRefresh: forceRefresh,
     );

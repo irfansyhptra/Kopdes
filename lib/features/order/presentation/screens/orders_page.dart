@@ -40,8 +40,7 @@ class _OrdersPageState extends ConsumerState<OrdersPage> {
     if (tab == OrdersTab.cart) {
       await ref.read(cartProvider.notifier).loadCart();
     } else {
-      ref.invalidate(orderHistoryProvider);
-      await ref.read(orderHistoryProvider.future);
+      await ref.read(orderHistoryProvider.notifier).load();
     }
   }
 
@@ -217,10 +216,7 @@ class _OrdersScrollView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tab = ref.watch(ordersTabProvider);
-    final unread = ref
-        .watch(notificationsProvider)
-        .where((n) => !n.isRead)
-        .length;
+    final unread = ref.watch(unreadNotificationCountProvider);
 
     return CustomScrollView(
       key: const PageStorageKey('orders-scroll'),
@@ -370,7 +366,7 @@ class _OrdersScrollView extends ConsumerWidget {
             icon: Icons.wifi_off_rounded,
             title: 'Pesanan belum berhasil dimuat',
             actionLabel: 'Coba Lagi',
-            onAction: () => ref.invalidate(orderHistoryProvider),
+            onAction: () => ref.read(orderHistoryProvider.notifier).load(),
           ),
         ),
         data: (orders) {
@@ -387,10 +383,21 @@ class _OrdersScrollView extends ConsumerWidget {
             );
           }
 
+          // Satu baris ekstra di kaki daftar: tombol muat-lebih, indikator,
+          // atau tawaran coba lagi. Riwayat berhalaman, jadi daftar ini
+          // memang belum tentu memuat seluruh pesanan.
+          final page = ref.watch(orderHistoryProvider).valueOrNull;
+          final showFooter =
+              page != null && (page.hasMore || page.loadMoreFailed);
+
           return SliverList.builder(
-            itemCount: orders.length,
-            itemBuilder: (context, index) =>
-                OrderStatusCard(order: orders[index], finished: finished),
+            itemCount: orders.length + (showFooter ? 1 : 0),
+            itemBuilder: (context, index) {
+              if (index >= orders.length) {
+                return _HistoryFooter(state: page!);
+              }
+              return OrderStatusCard(order: orders[index], finished: finished);
+            },
           );
         },
       ),
@@ -466,6 +473,55 @@ class _OrdersScrollView extends ConsumerWidget {
                   ),
                 ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Kaki daftar riwayat: muat halaman berikutnya, atau tawarkan coba lagi.
+///
+/// Muat-lebih dipicu tombol, bukan gulir otomatis: tab ini dibuka untuk
+/// mencari satu pesanan tertentu, dan menarik halaman demi halaman sendiri
+/// akan menghabiskan kuota pemesan untuk baris yang tidak ia cari.
+class _HistoryFooter extends ConsumerWidget {
+  const _HistoryFooter({required this.state});
+
+  final OrderHistoryState state;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (state.isLoadingMore) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: AppSpacing.base),
+        child: Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+      );
+    }
+
+    final failed = state.loadMoreFailed;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+      child: Center(
+        child: TextButton.icon(
+          onPressed: () => ref.read(orderHistoryProvider.notifier).loadMore(),
+          icon: Icon(
+            failed ? Icons.refresh_rounded : Icons.expand_more_rounded,
+            size: 18,
+          ),
+          label: Text(
+            failed
+                ? 'Gagal memuat, coba lagi'
+                : 'Muat pesanan sebelumnya (${state.total - state.orders.length} lagi)',
+          ),
+          style: TextButton.styleFrom(
+            foregroundColor: failed ? AppColors.primary : AppColors.muted,
           ),
         ),
       ),

@@ -4,6 +4,8 @@ import 'package:kopdes/core/theme/theme.dart';
 import '../providers/order_provider.dart';
 import '../widgets/invoice_viewer.dart';
 import '../widgets/order_timeline.dart';
+import '../widgets/order_summary.dart';
+import '../../domain/order_totals.dart';
 
 class OrderDetailScreen extends ConsumerWidget {
   final String orderId;
@@ -185,6 +187,31 @@ class OrderDetailScreen extends ConsumerWidget {
                               ),
                             ),
                           ),
+                        // Rincian pembayaran dari komponen yang benar-benar
+                        // ditagihkan — bukan dihitung ulang di layar ini.
+                        // Pesanan lama (sebelum kolomnya ada) memakai subtotal
+                        // nol, dan di situ rinciannya disembunyikan alih-alih
+                        // menampilkan "Subtotal Rp0".
+                        if (order.hasPaymentBreakdown) ...[
+                          const SizedBox(height: AppSpacing.md),
+                          Container(
+                            padding: const EdgeInsets.all(AppSpacing.base),
+                            decoration: BoxDecoration(
+                              color: AppColors.canvas,
+                              borderRadius: BorderRadius.circular(
+                                AppRadius.card,
+                              ),
+                              border: Border.all(color: AppColors.hairlineSoft),
+                            ),
+                            child: OrderSummary(
+                              totals: OrderTotals(
+                                subtotal: order.subtotal,
+                                shippingFee: order.shippingFee,
+                                discountAmount: order.discountAmount,
+                              ),
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: AppSpacing.xl),
                       ],
                     );

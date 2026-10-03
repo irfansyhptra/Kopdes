@@ -10,6 +10,6 @@ class InventoryRepositoryImpl implements InventoryRepository {
   Future<List<InventoryModel>> getInventoryList() => service.getInventoryList();
 
   @override
-  Future<void> updateStock(String id, int currentStock) =>
-      service.updateStock(id, currentStock);
+  Future<void> adjustStock(String id, int delta, {String? reason}) =>
+      service.adjustStock(id, delta, reason: reason);
 }

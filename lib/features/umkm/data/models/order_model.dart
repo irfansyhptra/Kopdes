@@ -52,6 +52,24 @@ class AddressInfo {
   }
 }
 
+class CourierInfo {
+  final String id;
+  final String name;
+  final String phone;
+
+  const CourierInfo({
+    required this.id,
+    required this.name,
+    required this.phone,
+  });
+
+  factory CourierInfo.fromJson(Map<String, dynamic> json) => CourierInfo(
+    id: json['id'] as String? ?? '',
+    name: json['name'] as String? ?? 'Kurir',
+    phone: json['phone'] as String? ?? '',
+  );
+}
+
 class OrderModel {
   final String id;
   final String customerId;
@@ -63,6 +81,7 @@ class OrderModel {
   final AddressInfo deliveryAddress;
   final List<OrderItemModel> items;
   final DateTime createdAt;
+  final CourierInfo? courier;
 
   const OrderModel({
     required this.id,
@@ -75,6 +94,7 @@ class OrderModel {
     required this.deliveryAddress,
     required this.items,
     required this.createdAt,
+    this.courier,
   });
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
@@ -82,6 +102,9 @@ class OrderModel {
     final parsedItems = itemList
         .map((i) => OrderItemModel.fromJson(i as Map<String, dynamic>))
         .toList();
+
+    final delivery = json['delivery'] as Map<String, dynamic>?;
+    final courier = delivery?['courier'] as Map<String, dynamic>?;
 
     return OrderModel(
       id: json['id'] as String,
@@ -100,6 +123,7 @@ class OrderModel {
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'] as String)
           : DateTime.now(),
+      courier: courier == null ? null : CourierInfo.fromJson(courier),
     );
   }
 }

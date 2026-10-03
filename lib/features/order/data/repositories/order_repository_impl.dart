@@ -1,3 +1,4 @@
+import '../../../../core/network/paginated.dart';
 import '../../domain/entities/cart.dart';
 import '../../domain/entities/order.dart';
 import '../../../product/domain/entities/product.dart';
@@ -198,18 +199,46 @@ class OrderRepositoryImpl implements OrderRepository {
   }
 
   @override
-  Future<List<Order>> getOrderHistory() async {
+  Future<Paginated<Order>> getOrderHistory({
+    int page = 1,
+    int limit = 10,
+  }) async {
     try {
-      final orders = await remoteDataSource.getOrderHistory();
-      final cacheOrders = orders.map((o) => _mapToOrderCache(o)).toList();
-      await localDataSource.cacheOrderHistory(_currentUserId, cacheOrders);
-      return orders.map((o) => o.toEntity()).toList();
+      final result = await remoteDataSource.getOrderHistory(
+        page: page,
+        limit: limit,
+      );
+      // Hanya halaman pertama yang disimpan lokal. `cacheOrderHistory`
+      // membuang seluruh baris milik pemesan sebelum menulis, jadi menyimpan
+      // halaman 2 akan menghapus halaman 1 — dan bekal offline-nya justru
+      // tinggal bagian tengah riwayat.
+      if (page == 1) {
+        final cacheOrders = result.orders
+            .map((o) => _mapToOrderCache(o))
+            .toList();
+        await localDataSource.cacheOrderHistory(_currentUserId, cacheOrders);
+      }
+      return Paginated<Order>(
+        items: result.orders.map((o) => o.toEntity()).toList(),
+        page: result.page,
+        totalPages: result.totalPages,
+        total: result.total,
+      );
     } catch (e) {
-      // Fallback
+      // Jaringan mati: halaman pertama masih bisa dilayani dari cache lokal.
+      // Halaman lanjutan tidak pernah tersimpan, jadi errornya diteruskan
+      // supaya tombol "muat lebih banyak" bisa menawarkan coba lagi.
+      if (page != 1) rethrow;
       final cached = await localDataSource.getCachedOrderHistory(
         _currentUserId,
       );
-      return cached.map((c) => _mapFromOrderCache(c)).toList();
+      final items = cached.map((c) => _mapFromOrderCache(c)).toList();
+      return Paginated<Order>(
+        items: items,
+        page: 1,
+        totalPages: 1,
+        total: items.length,
+      );
     }
   }
 

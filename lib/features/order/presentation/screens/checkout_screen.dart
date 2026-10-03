@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kopdes/core/theme/theme.dart';
+import '../../domain/order_totals.dart';
 import '../providers/cart_provider.dart';
 import '../providers/order_provider.dart';
 import '../providers/orders_page_provider.dart';
@@ -253,9 +254,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                                             AppSpacing.base,
                                           ),
                                           child: OrderSummary(
-                                            subtotal: cart.subtotal,
-                                            shippingFee: 10000.0,
-                                            serviceFee: 2000.0,
+                                            totals: _totalsFor(cart.subtotal),
+                                            note:
+                                                'Ongkir dan potongan ditentukan koperasi saat pesanan dibuat.',
                                           ),
                                         ),
                                       ),
@@ -512,10 +513,19 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     );
   }
 
+  /// Komponen uang yang akan ditagihkan.
+  ///
+  /// Ongkir dan diskon nol karena backend memang belum membebankan keduanya
+  /// (lihat `resolveShippingFee` di `order-money.ts`). Sebelumnya layar ini
+  /// menambahkan ongkir Rp10.000 dan biaya layanan Rp2.000 sendiri, sehingga
+  /// total yang dilihat pemesan selalu Rp12.000 lebih besar daripada yang
+  /// benar-benar ditagihkan.
+  OrderTotals _totalsFor(double subtotal) =>
+      OrderTotals(subtotal: subtotal.round());
+
   Widget _buildBottomBar(double subtotal) {
-    const shippingFee = 10000.0;
-    const serviceFee = 2000.0;
-    final total = subtotal + shippingFee + serviceFee;
+    final totals = _totalsFor(subtotal);
+    final total = totals.total;
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.base),
@@ -541,7 +551,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Rp ${total.toStringAsFixed(0).replaceAllMapped(RegExp(r"(\d{1,3})(?=(\d{3})+(?!\d))"), (Match m) => "${m[1]}.")}',
+                  formatRupiah(total),
                   style: AppTypography.titleMedium.copyWith(
                     color: AppColors.primary,
                     fontWeight: FontWeight.w700,
@@ -578,11 +588,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   }
 
   Widget _buildDirectCheckoutBody(DirectCheckoutData directData) {
-    final double subtotal = directData.price * directData.quantity;
-    final double shippingFee = _getShippingFeeForDirect(
-      directData.deliveryMethod,
-    );
-    const double serviceFee = 1000.0;
+    final totals = _totalsFor(directData.price * directData.quantity);
 
     return Column(
       children: [
@@ -620,9 +626,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                 child: Padding(
                   padding: const EdgeInsets.all(AppSpacing.base),
                   child: OrderSummary(
-                    subtotal: subtotal,
-                    shippingFee: shippingFee,
-                    serviceFee: serviceFee,
+                    totals: totals,
+                    note:
+                        'Ongkir dan potongan ditentukan koperasi saat pesanan dibuat.',
                   ),
                 ),
               ),
@@ -638,12 +644,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   }
 
   Widget _buildDirectBottomBar(DirectCheckoutData directData) {
-    final double subtotal = directData.price * directData.quantity;
-    final double shippingFee = _getShippingFeeForDirect(
-      directData.deliveryMethod,
-    );
-    const double serviceFee = 1000.0;
-    final double total = subtotal + shippingFee + serviceFee;
+    final totals = _totalsFor(directData.price * directData.quantity);
+    final total = totals.total;
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.base),
@@ -669,7 +671,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Rp ${total.toStringAsFixed(0).replaceAllMapped(RegExp(r"(\d{1,3})(?=(\d{3})+(?!\d))"), (Match m) => "${m[1]}.")}',
+                  formatRupiah(total),
                   style: AppTypography.titleMedium.copyWith(
                     color: AppColors.primary,
                     fontWeight: FontWeight.w700,
@@ -703,19 +705,6 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         ),
       ),
     );
-  }
-
-  double _getShippingFeeForDirect(String method) {
-    switch (method) {
-      case 'Ambil di Koperasi':
-        return 0.0;
-      case 'Diantar Kurir':
-        return 8000.0;
-      case 'Driver Kopdes':
-        return 12000.0;
-      default:
-        return 8000.0;
-    }
   }
 }
 

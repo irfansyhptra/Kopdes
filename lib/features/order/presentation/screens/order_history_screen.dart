@@ -76,7 +76,9 @@ class OrderHistoryScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final historyAsync = ref.watch(orderHistoryProvider);
+    // Layar ini memakai daftar yang sudah terkumpul; halaman berikutnya
+    // dimuat dari tab Selesai pada halaman Pesanan.
+    final historyAsync = ref.watch(orderHistoryListProvider);
 
     return Scaffold(
       backgroundColor: AppColors.canvas,
@@ -91,7 +93,8 @@ class OrderHistoryScreen extends ConsumerWidget {
                 }
                 return RefreshIndicator(
                   color: AppColors.primary,
-                  onRefresh: () => ref.read(orderHistoryProvider.future),
+                  onRefresh: () =>
+                      ref.read(orderHistoryProvider.notifier).load(),
                   child: ListView.builder(
                     physics: const BouncingScrollPhysics(
                       parent: AlwaysScrollableScrollPhysics(),
@@ -127,7 +130,8 @@ class OrderHistoryScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: AppSpacing.base),
                       ElevatedButton(
-                        onPressed: () => ref.invalidate(orderHistoryProvider),
+                        onPressed: () =>
+                            ref.read(orderHistoryProvider.notifier).load(),
                         child: const Text('Coba Lagi'),
                       ),
                     ],

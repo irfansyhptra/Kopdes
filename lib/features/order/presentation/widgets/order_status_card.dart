@@ -6,6 +6,8 @@ import '../../../../core/theme/theme.dart';
 import '../../../../shared/widgets/apple_ui.dart';
 import '../../../../shared/widgets/product_image_loader.dart';
 import '../../domain/entities/order.dart';
+import '../../data/review_repository.dart';
+import 'review_sheet.dart';
 import '../../domain/order_status_view.dart';
 import '../providers/cart_provider.dart';
 import '../providers/order_provider.dart';
@@ -288,9 +290,22 @@ class _Actions extends ConsumerWidget {
           onTap: () => _reorder(context, ref),
         ),
       );
-      // Tombol "Beri Ulasan" sengaja tidak ada: endpoint ulasan belum
-      // terpasang, dan tombol yang tidak melakukan apa-apa lebih buruk
-      // daripada tidak ada tombol.
+      // "Beri Ulasan" hanya muncul bila server memang menyisakan produk
+      // yang belum diulas pada pesanan ini. Tombol yang selalu tampil lalu
+      // dijawab 409 "sudah pernah diulas" lebih buruk daripada tidak ada.
+      if (order.statusView.isCancelled == false) {
+        final reviewable = ref
+            .watch(reviewableItemsProvider(order.id))
+            .valueOrNull;
+        if (reviewable != null && reviewable.isNotEmpty) {
+          buttons.add(
+            _OrderButton(
+              label: 'Beri Ulasan',
+              onTap: () => showReviewSheet(context, order.id, reviewable),
+            ),
+          );
+        }
+      }
     } else {
       if (order.isAwaitingPayment) {
         buttons.add(
@@ -353,6 +368,7 @@ class _Actions extends ConsumerWidget {
             productId: item.productId,
             umkmProductId: item.umkmProductId,
             quantity: item.quantity,
+            productName: item.name,
           );
       if (ok) added++;
     }

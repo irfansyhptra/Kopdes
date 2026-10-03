@@ -18,7 +18,27 @@ class InventoryService {
         .toList();
   }
 
-  Future<void> updateStock(String id, int currentStock) async {
-    await dio.put('/seller/products/$id', data: {'stock': currentStock});
+  /// Menyesuaikan stok lewat buku besar inventaris.
+  ///
+  /// BUKAN `PUT /seller/products/:id` seperti sebelumnya. Jalur itu menimpa
+  /// angka stok tanpa meninggalkan catatan apa pun, sehingga penyesuaian
+  /// dari aplikasi tidak pernah muncul di riwayat maupun di pemantauan
+  /// langsung — hanya pergerakan dari checkout dan kasir yang tercatat, dan
+  /// selisihnya tidak bisa dijelaskan siapa pun.
+  ///
+  /// [delta] positif berarti barang masuk, negatif berarti keluar.
+  Future<void> adjustStock(String id, int delta, {String? reason}) async {
+    if (delta == 0) return;
+    await dio.post(
+      '/seller/inventory/adjust',
+      data: {
+        'umkmProductId': id,
+        'type': delta > 0 ? 'IN' : 'OUT',
+        'quantity': delta.abs(),
+        'reason':
+            reason ??
+            (delta > 0 ? 'Restok dari aplikasi' : 'Pengurangan dari aplikasi'),
+      },
+    );
   }
 }

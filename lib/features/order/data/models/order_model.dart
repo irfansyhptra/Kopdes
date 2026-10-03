@@ -67,6 +67,9 @@ class OrderModel extends Order {
   const OrderModel({
     required super.id,
     required super.customerId,
+    super.subtotal,
+    super.shippingFee,
+    super.discountAmount,
     required super.totalAmount,
     required super.status,
     required super.paymentMethod,
@@ -88,6 +91,9 @@ class OrderModel extends Order {
     return OrderModel(
       id: json['id'] as String,
       customerId: json['customerId'] as String? ?? '',
+      subtotal: _rupiah(json['subtotal']),
+      shippingFee: _rupiah(json['shippingFee']),
+      discountAmount: _rupiah(json['discountAmount']),
       totalAmount: json['totalAmount'] is num
           ? (json['totalAmount'] as num).toDouble()
           : double.tryParse(json['totalAmount'].toString()) ?? 0.0,
@@ -119,6 +125,9 @@ class OrderModel extends Order {
     return {
       'id': id,
       'customerId': customerId,
+      'subtotal': subtotal,
+      'shippingFee': shippingFee,
+      'discountAmount': discountAmount,
       'totalAmount': totalAmount,
       'status': status,
       'paymentMethod': paymentMethod,
@@ -133,6 +142,9 @@ class OrderModel extends Order {
     return Order(
       id: id,
       customerId: customerId,
+      subtotal: subtotal,
+      shippingFee: shippingFee,
+      discountAmount: discountAmount,
       totalAmount: totalAmount,
       status: status,
       paymentMethod: paymentMethod,
@@ -145,4 +157,14 @@ class OrderModel extends Order {
       updatedAt: updatedAt,
     );
   }
+}
+
+/// Nominal `Decimal` dari backend datang sebagai string ("8000.00").
+/// Dibulatkan ke rupiah bulat di sini supaya seluruh perhitungan di layar
+/// memakai integer — bukan `double` yang menumpuk galat antar baris.
+int _rupiah(Object? value) {
+  if (value == null) return 0;
+  if (value is int) return value;
+  if (value is num) return value.round();
+  return double.tryParse(value.toString())?.round() ?? 0;
 }

@@ -52,6 +52,10 @@ class Koperasi {
   /// Dihitung server dari ulasan pengguna.
   final RatingSummary rating;
 
+  /// Pengurus yang bisa dihubungi warga — tujuan tombol "Chat Toko".
+  /// `null` bila koperasinya belum punya pengurus; tombolnya tidak digambar.
+  final String? adminUserId;
+
   const Koperasi({
     required this.id,
     required this.name,
@@ -72,6 +76,7 @@ class Koperasi {
     this.distanceLabel,
     this.isOpen,
     this.rating = const RatingSummary(),
+    this.adminUserId,
   });
 
   /// Alamat singkat untuk card.
@@ -99,6 +104,7 @@ class Koperasi {
     distanceLabel: json['distanceLabel'] as String?,
     isOpen: json['isOpen'] as bool?,
     rating: RatingSummary.fromJson(json['rating']),
+    adminUserId: json['adminUserId'] as String?,
   );
 }
 
@@ -136,6 +142,13 @@ class Mitra {
   final bool? isOpen;
   final RatingSummary rating;
 
+  /// Pemilik tokonya — tujuan tombol "Chat Toko".
+  final String? ownerUserId;
+
+  /// Kopdes yang menaungi mitra ini. Mitra tidak bisa berjualan tanpa
+  /// diverifikasi salah satu Kopdes, jadi namanya selalu layak ditampilkan.
+  final String? kopdesName;
+
   const Mitra({
     required this.id,
     required this.businessName,
@@ -150,6 +163,8 @@ class Mitra {
     this.distanceLabel,
     this.isOpen,
     this.rating = const RatingSummary(),
+    this.ownerUserId,
+    this.kopdesName,
   });
 
   factory Mitra.fromJson(Map<String, dynamic> json) => Mitra(
@@ -166,5 +181,7 @@ class Mitra {
     distanceLabel: json['distanceLabel'] as String?,
     isOpen: json['isOpen'] as bool?,
     rating: RatingSummary.fromJson(json['rating']),
+    ownerUserId: json['userId'] as String?,
+    kopdesName: (json['kopdes'] as Map<String, dynamic>?)?['name'] as String?,
   );
 }

@@ -22,10 +22,15 @@ class InventoryController extends StateNotifier<AsyncValue<void>> {
        _ref = ref,
        super(const AsyncValue.data(null));
 
-  Future<bool> updateStock(String productId, int newStock) async {
+  /// Menambah atau mengurangi stok sebanyak [delta], tercatat di buku besar.
+  Future<bool> adjustStock(
+    String productId,
+    int delta, {
+    String? reason,
+  }) async {
     state = const AsyncValue.loading();
     try {
-      await _repository.updateStock(productId, newStock);
+      await _repository.adjustStock(productId, delta, reason: reason);
       state = const AsyncValue.data(null);
       _ref.invalidate(sellerInventoryProvider);
       _ref.invalidate(sellerProductsProvider);

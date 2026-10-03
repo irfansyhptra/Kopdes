@@ -4,10 +4,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/theme.dart';
 import '../../../../shared/components/product_card.dart';
+import '../../../../shared/widgets/apple_ui.dart';
 import '../../../../shared/components/loading_widget.dart';
 import '../../../../shared/components/error_state_widget.dart';
 import '../../../../shared/components/empty_state_widget.dart';
+import '../../../../shared/widgets/app_glass_chrome.dart';
+import '../controllers/inventory_controller.dart';
 import '../controllers/product_controller.dart';
+import '../widgets/seller_page_ui.dart';
+import '../widgets/stock_live_panel.dart';
 
 class ProductScreen extends ConsumerStatefulWidget {
   const ProductScreen({super.key});
@@ -37,6 +42,7 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
   }
 
   void _onSearchChanged(String text) {
+    setState(() {});
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 500), () {
       ref.read(sellerProductQueryProvider.notifier).update((state) {
@@ -52,6 +58,38 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
       final nextCategory = currentCategory == categoryId ? '' : categoryId;
       return state.copyWith(categoryId: nextCategory, page: 1);
     });
+  }
+
+  /// Produk yang penyesuaian stoknya sedang berjalan.
+  final Set<String> _adjusting = {};
+
+  /// Menambah atau mengurangi stok satu langkah.
+  ///
+  /// Lewat buku besar inventaris, bukan tulis-timpa kolom stok: tiap langkah
+  /// meninggalkan catatan, dan pemantauan langsung di atas ikut
+  /// menampilkannya seperti pergerakan dari kasir.
+  Future<void> _adjustStock(String productId, String name, int delta) async {
+    if (_adjusting.contains(productId)) return;
+    setState(() => _adjusting.add(productId));
+
+    final ok = await ref
+        .read(inventoryControllerProvider.notifier)
+        .adjustStock(productId, delta);
+
+    if (!mounted) return;
+    setState(() => _adjusting.remove(productId));
+
+    if (!ok) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text('Stok "$name" gagal diperbarui'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+    }
   }
 
   Future<void> _confirmDelete(String productId, String productName) async {
@@ -112,216 +150,219 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
     final categoriesState = ref.watch(sellerCategoriesProvider);
     final query = ref.watch(sellerProductQueryProvider);
 
+    final productCount = productsState.valueOrNull?.length;
+
     return Scaffold(
-      backgroundColor: AppColors.canvas,
-      appBar: AppBar(title: const Text('Kelola Produk'), centerTitle: true),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.push('/umkm/products/new'),
-        backgroundColor: AppColors.primary,
-        foregroundColor: AppColors.onPrimary,
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Tambah Produk'),
-      ),
-      body: Column(
-        children: [
-          // Search Bar
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.base,
-              AppSpacing.sm,
-              AppSpacing.base,
-              AppSpacing.sm,
-            ),
-            child: TextField(
-              controller: _searchController,
-              onChanged: _onSearchChanged,
-              decoration: InputDecoration(
-                hintText: 'Cari nama produk...',
-                prefixIcon: const Icon(
-                  Icons.search_rounded,
-                  color: AppColors.muted,
-                ),
-                suffixIcon: _searchController.text.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear_rounded),
-                        onPressed: () {
-                          _searchController.clear();
-                          ref.read(sellerProductQueryProvider.notifier).update((
-                            state,
-                          ) {
-                            return state.copyWith(search: '', page: 1);
-                          });
-                        },
-                      )
-                    : null,
-                contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                filled: true,
-                fillColor: AppColors.surfaceSoft,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.button),
-                  borderSide: BorderSide.none,
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.button),
-                  borderSide: BorderSide.none,
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.button),
-                  borderSide: const BorderSide(
-                    color: AppColors.primary,
-                    width: 1.5,
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-          // Categories Filter Row
-          categoriesState.when(
-            data: (categories) {
-              if (categories.isEmpty) return const SizedBox.shrink();
-              return SizedBox(
-                height: 48,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.base,
-                  ),
-                  itemCount: categories.length,
-                  itemBuilder: (context, index) {
-                    final cat = categories[index];
-                    final isSelected = query.categoryId == cat.id;
-
-                    return Padding(
-                      padding: const EdgeInsets.only(right: AppSpacing.sm),
-                      child: FilterChip(
-                        label: Text(cat.name),
-                        selected: isSelected,
-                        onSelected: (_) => _onCategorySelected(cat.id),
-                        selectedColor: AppColors.primaryTint,
-                        checkmarkColor: AppColors.primary,
-                        labelStyle: AppTypography.caption.copyWith(
-                          color: isSelected ? AppColors.primary : AppColors.ink,
-                          fontWeight: isSelected
-                              ? FontWeight.w700
-                              : FontWeight.w500,
-                        ),
-                        backgroundColor: AppColors.surfaceSoft,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppRadius.pill),
-                          side: BorderSide(
-                            color: isSelected
-                                ? AppColors.primary
-                                : Colors.transparent,
-                            width: 1,
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              );
-            },
-            loading: () => const SizedBox(
-              height: 48,
-              child: Center(
-                child: SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: AppColors.primary,
-                  ),
-                ),
-              ),
-            ),
-            error: (_, __) => const SizedBox.shrink(),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-
-          // Products Grid
-          Expanded(
-            child: productsState.when(
-              loading: () => const ProductListSkeleton(),
-              error: (error, stack) => ErrorStateWidget(
-                errorMessage: error.toString(),
-                onRetry: () => ref.invalidate(sellerProductsProvider),
-              ),
-              data: (products) {
-                if (products.isEmpty) {
-                  return EmptyStateWidget(
-                    icon: Icons.inventory_2_outlined,
-                    title: 'Produk Kosong',
-                    description: query.search.isNotEmpty
-                        ? 'Tidak ada produk yang cocok dengan pencarian Anda.'
-                        : 'Mulai pasarkan produk UMKM Anda dengan menambahkan produk baru!',
-                    actionLabel: query.search.isNotEmpty
-                        ? 'Reset Pencarian'
-                        : null,
-                    onAction: query.search.isNotEmpty
-                        ? () {
-                            _searchController.clear();
-                            ref
-                                .read(sellerProductQueryProvider.notifier)
-                                .update((state) {
-                                  return state.copyWith(
-                                    search: '',
-                                    categoryId: '',
-                                    page: 1,
-                                  );
-                                });
-                          }
-                        : null,
-                  );
-                }
-
-                return GridView.builder(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.base,
-                    AppSpacing.xs,
-                    AppSpacing.base,
-                    AppSpacing.section,
-                  ),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: AppSpacing.md,
-                    mainAxisSpacing: AppSpacing.md,
-                    // Kartu penjual punya baris kontrol tambahan; rasio ini
-                    // memberi ruang untuk target sentuh 44px tanpa overflow.
-                    childAspectRatio: 0.58,
-                  ),
-                  itemCount: products.length,
-                  itemBuilder: (context, index) {
-                    final product = products[index];
-                    return ProductCard(
-                      product: product,
-                      onEdit: () =>
-                          context.push('/umkm/products/edit/${product.id}'),
-                      onDelete: () => _confirmDelete(product.id, product.name),
-                      onToggleActive: (val) async {
-                        final success = await ref
-                            .read(productControllerProvider.notifier)
-                            .updateProduct(id: product.id, isActive: val);
-                        if (mounted && !success) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Gagal mengubah status aktif produk',
-                              ),
-                              backgroundColor: AppColors.error,
-                            ),
-                          );
-                        }
-                      },
-                      onTap: () =>
-                          context.push('/umkm/products/detail/${product.id}'),
-                    );
-                  },
-                );
-              },
-            ),
+      backgroundColor: AppColors.surfaceSoft,
+      body: SellerPageChrome(
+        title: 'Produk Toko',
+        subtitle: productCount == null
+            ? 'Kelola etalase dan ketersediaan produk'
+            : '$productCount produk di etalase Anda',
+        actions: [
+          GlassIconButton(
+            icon: Icons.add_rounded,
+            label: 'Tambah produk',
+            onDark: true,
+            onTap: () => context.push('/umkm/products/new'),
           ),
         ],
+        headerChild: SizedBox(
+          height: 46,
+          child: TextField(
+            controller: _searchController,
+            onChanged: _onSearchChanged,
+            textInputAction: TextInputAction.search,
+            style: AppTypography.bodyMedium.copyWith(color: AppColors.ink),
+            decoration: InputDecoration(
+              hintText: 'Cari produk di toko Anda',
+              prefixIcon: const Icon(
+                Icons.search_rounded,
+                color: AppColors.muted,
+              ),
+              suffixIcon: _searchController.text.isNotEmpty
+                  ? IconButton(
+                      tooltip: 'Hapus pencarian',
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () {
+                        setState(_searchController.clear);
+                        ref.read(sellerProductQueryProvider.notifier).update((
+                          state,
+                        ) {
+                          return state.copyWith(search: '', page: 1);
+                        });
+                      },
+                    )
+                  : null,
+              filled: true,
+              fillColor: AppColors.canvas,
+              contentPadding: const EdgeInsets.symmetric(vertical: 12),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppRadius.pill),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppRadius.pill),
+                borderSide: const BorderSide(color: Color(0x29FFFFFF)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppRadius.pill),
+                borderSide: const BorderSide(
+                  color: AppColors.yellowAccent,
+                  width: 1.5,
+                ),
+              ),
+            ),
+          ),
+        ),
+        body: Column(
+          children: [
+            // Pemantauan stok pindah ke sini: halaman Stok yang terpisah
+            // dilebur, karena melihat pergerakan lalu mengubah stok adalah
+            // satu pekerjaan, bukan dua halaman.
+            const SellerContentBoundary(
+              padding: EdgeInsets.only(top: AppSpacing.md),
+              child: StockLivePanel(),
+            ),
+            categoriesState.when(
+              data: (categories) {
+                if (categories.isEmpty) return const SizedBox(height: 12);
+                return SellerContentBoundary(
+                  padding: const EdgeInsets.only(
+                    top: AppSpacing.md,
+                    bottom: AppSpacing.xs,
+                  ),
+                  child: SizedBox(
+                    height: 40,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: categories.length,
+                      separatorBuilder: (_, __) =>
+                          const SizedBox(width: AppSpacing.sm),
+                      itemBuilder: (context, index) {
+                        final category = categories[index];
+                        return AppleChip(
+                          label: category.name,
+                          selected: query.categoryId == category.id,
+                          onTap: () => _onCategorySelected(category.id),
+                        );
+                      },
+                    ),
+                  ),
+                );
+              },
+              loading: () => const SizedBox(
+                height: 56,
+                child: Center(
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
+              ),
+              error: (_, __) => const SizedBox(height: AppSpacing.md),
+            ),
+            Expanded(
+              child: SellerContentBoundary(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.base,
+                ),
+                child: productsState.when(
+                  loading: () => const ProductListSkeleton(),
+                  error: (error, stack) => ErrorStateWidget(
+                    errorMessage: error.toString(),
+                    onRetry: () => ref.invalidate(sellerProductsProvider),
+                  ),
+                  data: (products) {
+                    if (products.isEmpty) {
+                      return EmptyStateWidget(
+                        icon: Icons.inventory_2_outlined,
+                        title: 'Produk Kosong',
+                        description: query.search.isNotEmpty
+                            ? 'Tidak ada produk yang cocok dengan pencarian Anda.'
+                            : 'Mulai pasarkan produk UMKM Anda dengan menambahkan produk baru!',
+                        actionLabel: query.search.isNotEmpty
+                            ? 'Reset Pencarian'
+                            : null,
+                        onAction: query.search.isNotEmpty
+                            ? () {
+                                _searchController.clear();
+                                ref
+                                    .read(sellerProductQueryProvider.notifier)
+                                    .update((state) {
+                                      return state.copyWith(
+                                        search: '',
+                                        categoryId: '',
+                                        page: 1,
+                                      );
+                                    });
+                              }
+                            : null,
+                      );
+                    }
+
+                    return GridView.builder(
+                      padding: const EdgeInsets.fromLTRB(
+                        0,
+                        AppSpacing.sm,
+                        0,
+                        112,
+                      ),
+                      // Satu kolom di ponsel, dua mulai tablet — dan tinggi
+                      // dalam piksel, bukan rasio. Dua kolom yang dipaksa di
+                      // semua lebar membuat baris kontrol (Switch 51px + dua
+                      // tombol 44px = 139px perabot tetap) bertabrakan di kartu
+                      // yang isinya cuma 106dp, sementara rasio 0,58 meluber
+                      // 95px ke bawah di layar 320dp.
+                      gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+                        maxCrossAxisExtent: sellerProductCardMaxWidth,
+                        crossAxisSpacing: AppSpacing.md,
+                        mainAxisSpacing: AppSpacing.md,
+                        mainAxisExtent: sellerProductCardHeight(context),
+                      ),
+                      itemCount: products.length,
+                      itemBuilder: (context, index) {
+                        final product = products[index];
+                        return ProductCard(
+                          product: product,
+                          stockBusy: _adjusting.contains(product.id),
+                          onAdjustStock: (delta) =>
+                              _adjustStock(product.id, product.name, delta),
+                          onEdit: () =>
+                              context.push('/umkm/products/edit/${product.id}'),
+                          onDelete: () =>
+                              _confirmDelete(product.id, product.name),
+                          onToggleActive: (val) async {
+                            final success = await ref
+                                .read(productControllerProvider.notifier)
+                                .updateProduct(id: product.id, isActive: val);
+                            if (!success && context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Gagal mengubah status aktif produk',
+                                  ),
+                                  backgroundColor: AppColors.error,
+                                ),
+                              );
+                            }
+                          },
+                          onTap: () => context.push(
+                            '/umkm/products/detail/${product.id}',
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

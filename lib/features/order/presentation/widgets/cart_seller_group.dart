@@ -479,15 +479,38 @@ class CartProductRow extends ConsumerWidget {
         final narrow = constraints.maxWidth < 340;
         final thumb = narrow ? 62.0 : spec.thumbnailSize;
 
-        final price = Text(
-          formatRupiah(item.price),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: AppTypography.bodyLarge.copyWith(
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
-            letterSpacing: -0.2,
-          ),
+        // Yang ditulis besar adalah total baris, bukan harga satuan.
+        // Sebelumnya baris ini menampilkan harga satuan saja, sehingga
+        // keranjang berisi 3 item seharga Rp65.000 terbaca "Rp65.000"
+        // sementara yang dibayar Rp195.000.
+        final price = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              formatRupiah(item.lineTotal),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTypography.bodyLarge.copyWith(
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.3,
+                height: 1.15,
+                color: AppColors.primary,
+              ),
+            ),
+            // Perkaliannya hanya ditulis saat memang ada yang dikalikan.
+            if (item.quantity > 1)
+              Text(
+                '${formatRupiah(item.price)} × ${item.quantity}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.captionSmall.copyWith(
+                  fontSize: 11.5,
+                  color: AppColors.muted,
+                ),
+              ),
+          ],
         );
 
         final stepper = _QuantityStepper(item: item, busy: busy);
@@ -515,7 +538,7 @@ class CartProductRow extends ConsumerWidget {
                 ),
               ),
               ClipRRect(
-                borderRadius: BorderRadius.circular(AppleRadii.control + 2),
+                borderRadius: BorderRadius.circular(AppleRadii.tile),
                 child: SizedBox(
                   width: thumb,
                   height: thumb,
@@ -626,9 +649,13 @@ class _QuantityStepper extends ConsumerWidget {
     return Container(
       height: 44,
       decoration: BoxDecoration(
-        color: AppColors.surfaceSoft,
-        borderRadius: BorderRadius.circular(AppleRadii.tile - 2),
-        border: Border.all(color: AppColors.hairlineSoft),
+        // Putih berpil, bukan kotak abu: kontrol yang bisa ditekan dibedakan
+        // dari latar kartunya lewat permukaan dan bayangan, bukan lewat warna
+        // isian yang justru membuatnya tampak nonaktif.
+        color: AppColors.canvas,
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+        border: Border.all(color: AppColors.hairline),
+        boxShadow: AppElevation.subtle,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -646,7 +673,7 @@ class _QuantityStepper extends ConsumerWidget {
               textAlign: TextAlign.center,
               maxLines: 1,
               style: AppTypography.bodyMedium.copyWith(
-                fontSize: 13,
+                fontSize: 14.5,
                 fontWeight: FontWeight.w700,
                 color: AppColors.ink,
               ),
@@ -688,7 +715,7 @@ class _StepperButton extends StatelessWidget {
         height: 44,
         child: Icon(
           icon,
-          size: 16,
+          size: 18,
           color: enabled ? AppColors.ink : AppColors.mutedSoft,
         ),
       ),

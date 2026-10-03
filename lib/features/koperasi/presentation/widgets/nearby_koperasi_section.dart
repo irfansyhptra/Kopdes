@@ -33,21 +33,27 @@ class NearbyKoperasiSection extends ConsumerWidget {
         ),
         const SizedBox(height: AppSpacing.md),
 
-        // Tanpa koordinat, yang ditampilkan adalah ajakan mengaktifkan lokasi
-        // — bukan daftar kosong yang terbaca seperti "tidak ada Kopdes".
-        if (!hasCoordinates)
-          locationStatus == LocationStatus.initial ||
-                  locationStatus == LocationStatus.checkingService ||
-                  locationStatus == LocationStatus.requestingPermission ||
-                  locationStatus == LocationStatus.loadingLocation
-              ? const _CardSkeleton()
-              : const LocationPrompt()
-        else
-          const _NearbyList(),
+        // Lokasi mengurutkan, tidak menyaring: daftarnya tampil dengan atau
+        // tanpa koordinat. Ajakan mengaktifkan lokasi berdiri di atasnya —
+        // dulu ia menggantikan daftar, sehingga Kopdes yang terdaftar
+        // terbaca seperti tidak ada bagi yang menolak izin.
+        if (!hasCoordinates && !_isResolving(locationStatus)) ...[
+          const LocationPrompt(),
+          const SizedBox(height: AppSpacing.md),
+        ],
+        const _NearbyList(),
       ],
     );
   }
 }
+
+/// Lokasi masih dicari: menampilkan ajakan di sini akan berkedip sebentar
+/// lalu hilang begitu koordinatnya tiba.
+bool _isResolving(LocationStatus status) =>
+    status == LocationStatus.initial ||
+    status == LocationStatus.checkingService ||
+    status == LocationStatus.requestingPermission ||
+    status == LocationStatus.loadingLocation;
 
 class _NearbyList extends ConsumerWidget {
   const _NearbyList();
@@ -65,14 +71,14 @@ class _NearbyList extends ConsumerWidget {
         onAction: () => ref.invalidate(nearbyKoperasiProvider),
       ),
       data: (page) {
-        if (page == null || page.items.isEmpty) {
-          return _SectionMessage(
+        if (page.items.isEmpty) {
+          // Daftarnya tidak lagi disaring radius, jadi kosong di sini benar-
+          // benar berarti belum ada Kopdes terdaftar — bukan "tidak ada yang
+          // dekat". Menawarkan "perluas jarak" di keadaan ini menyuruh orang
+          // mengubah hal yang tidak berpengaruh.
+          return const _SectionMessage(
             icon: Icons.store_mall_directory_outlined,
-            message:
-                'Belum ada Kopdes dalam jangkauan ini.\n'
-                'Perluas jarak pencarian atau pilih lokasi lain.',
-            actionLabel: 'Pilih Lokasi',
-            onAction: () => showVillagePicker(context, ref),
+            message: 'Belum ada Kopdes yang terdaftar di sistem.',
           );
         }
 
@@ -166,18 +172,20 @@ class _CardSkeleton extends StatelessWidget {
   }
 }
 
-/// Pesan kosong / error dengan satu aksi lanjutan.
+/// Pesan kosong / error, dengan aksi lanjutan bila memang ada yang bisa
+/// dilakukan pengguna. Keadaan "belum ada Kopdes terdaftar" tidak punya aksi:
+/// tombol di situ hanya mengulang hal yang sama.
 class _SectionMessage extends StatelessWidget {
   final IconData icon;
   final String message;
-  final String actionLabel;
-  final VoidCallback onAction;
+  final String? actionLabel;
+  final VoidCallback? onAction;
 
   const _SectionMessage({
     required this.icon,
     required this.message,
-    required this.actionLabel,
-    required this.onAction,
+    this.actionLabel,
+    this.onAction,
   });
 
   @override
@@ -202,8 +210,10 @@ class _SectionMessage extends StatelessWidget {
               color: AppColors.muted,
             ),
           ),
-          const SizedBox(height: AppSpacing.md),
-          OutlinedButton(onPressed: onAction, child: Text(actionLabel)),
+          if (actionLabel != null && onAction != null) ...[
+            const SizedBox(height: AppSpacing.md),
+            OutlinedButton(onPressed: onAction, child: Text(actionLabel!)),
+          ],
         ],
       ),
     );

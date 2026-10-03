@@ -7,7 +7,6 @@ import '../../../../shared/widgets/apple_ui.dart';
 import '../../../../shared/widgets/shimmer_loading.dart';
 import '../../domain/koperasi.dart';
 import '../providers/koperasi_provider.dart';
-import 'location_prompt.dart';
 import 'mitra_card.dart';
 
 /// Section "Mitra UMKM Terdekat" di beranda, lengkap dengan filter kategori.
@@ -16,20 +15,20 @@ class NearbyMitraSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final hasCoordinates = ref.watch(userCoordinatesProvider) != null;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         AppleSectionHeader(
           title: 'Mitra UMKM Terdekat',
           actionLabel: 'Lihat Semua',
-          onAction: () => context.push('/umkm'),
+          onAction: () => context.push('/mitra'),
         ),
         const SizedBox(height: AppSpacing.sm),
         const _CategoryFilter(),
         const SizedBox(height: AppSpacing.md),
-        if (!hasCoordinates) const LocationPrompt() else const _MitraList(),
+        // Ajakan mengaktifkan lokasi sudah berdiri sekali di section Kopdes
+        // tepat di atas; mengulangnya di sini hanya menumpuk kartu yang sama.
+        const _MitraList(),
       ],
     );
   }
@@ -53,7 +52,9 @@ class _CategoryFilter extends ConsumerWidget {
     ];
 
     return SizedBox(
-      height: 34,
+      // 44, bukan 34: AppleChip kini setinggi area sentuh HIG,
+      // dan wadah 34 justru memotong pil 36-nya sendiri.
+      height: 44,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
@@ -90,12 +91,12 @@ class _MitraList extends ConsumerWidget {
         onAction: () => ref.invalidate(nearbyMitraProvider),
       ),
       data: (page) {
-        if (page == null || page.items.isEmpty) {
-          return _SectionMessage(
+        if (page.items.isEmpty) {
+          // Daftarnya tidak lagi disaring radius: kosong berarti memang belum
+          // ada mitra terdaftar, bukan "tidak ada yang dekat".
+          return const _SectionMessage(
             icon: Icons.storefront_outlined,
-            message: 'Belum ada Mitra UMKM di sekitar lokasi Anda.',
-            actionLabel: 'Pilih Lokasi',
-            onAction: () => showVillagePicker(context, ref),
+            message: 'Belum ada Mitra UMKM yang terdaftar di sistem.',
           );
         }
 
@@ -111,7 +112,7 @@ class _MitraList extends ConsumerWidget {
               final mitra = page.items[index];
               return MitraCard(
                 mitra: mitra,
-                onVisit: () => context.push('/umkm/${mitra.id}'),
+                onVisit: () => context.push('/mitra/${mitra.id}'),
               );
             },
           ),
@@ -177,14 +178,14 @@ class _MitraSkeleton extends StatelessWidget {
 class _SectionMessage extends StatelessWidget {
   final IconData icon;
   final String message;
-  final String actionLabel;
-  final VoidCallback onAction;
+  final String? actionLabel;
+  final VoidCallback? onAction;
 
   const _SectionMessage({
     required this.icon,
     required this.message,
-    required this.actionLabel,
-    required this.onAction,
+    this.actionLabel,
+    this.onAction,
   });
 
   @override
@@ -209,8 +210,10 @@ class _SectionMessage extends StatelessWidget {
               color: AppColors.muted,
             ),
           ),
-          const SizedBox(height: AppSpacing.md),
-          OutlinedButton(onPressed: onAction, child: Text(actionLabel)),
+          if (actionLabel != null && onAction != null) ...[
+            const SizedBox(height: AppSpacing.md),
+            OutlinedButton(onPressed: onAction, child: Text(actionLabel!)),
+          ],
         ],
       ),
     );

@@ -7,9 +7,11 @@ import 'package:image_picker/image_picker.dart';
 import '../../../../core/theme/theme.dart';
 import '../../../../shared/components/loading_widget.dart';
 import '../../../../shared/components/error_state_widget.dart';
+import '../../../../shared/widgets/apple_ui.dart';
 import '../controllers/product_controller.dart';
 import '../../data/models/product_model.dart';
 import 'product_detail_screen.dart'; // To use the detail provider
+import '../widgets/seller_page_ui.dart';
 
 class ProductFormScreen extends ConsumerStatefulWidget {
   final String? productId;
@@ -27,7 +29,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   final _stockController = TextEditingController();
 
   String? _selectedCategoryId;
-  List<XFile> _newImages = [];
+  final List<XFile> _newImages = [];
   List<String> _existingImageUrls = [];
   bool _isInit = false;
   bool _isSaving = false;
@@ -209,222 +211,259 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     return Stack(
       children: [
         Scaffold(
-          backgroundColor: AppColors.canvas,
-          appBar: AppBar(
-            title: Text(isEdit ? 'Edit Produk UMKM' : 'Tambah Produk Baru'),
-            centerTitle: true,
-          ),
-          body: Form(
-            key: _formKey,
-            child: ListView(
-              padding: const EdgeInsets.all(AppSpacing.base),
-              children: [
-                // Product Name Field
-                Text(
-                  'Nama Produk',
-                  style: AppTypography.caption.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.ink,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                TextFormField(
-                  controller: _nameController,
-                  decoration: const InputDecoration(
-                    hintText: 'Contoh: Kopi Bubuk Arabika 250gr',
-                  ),
-                  validator: (val) {
-                    if (val == null || val.trim().isEmpty) {
-                      return 'Nama produk wajib diisi';
-                    }
-                    if (val.trim().length < 3) {
-                      return 'Nama produk minimal 3 karakter';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: AppSpacing.lg),
+          backgroundColor: AppColors.surfaceSoft,
+          body: Column(
+            children: [
+              SellerSubpageHeader(
+                title: isEdit ? 'Edit Produk' : 'Tambah Produk',
+                subtitle: isEdit
+                    ? 'Perbarui informasi etalase'
+                    : 'Siapkan produk untuk ditinjau dan dijual',
+                onBack: () => context.pop(),
+              ),
+              Expanded(
+                child: Form(
+                  key: _formKey,
+                  child: SellerContentBoundary(
+                    child: ListView(
+                      padding: const EdgeInsets.fromLTRB(
+                        0,
+                        AppSpacing.base,
+                        0,
+                        AppSpacing.section,
+                      ),
+                      children: [
+                        SellerSectionCard(
+                          title: 'Informasi produk',
+                          subtitle:
+                              'Gunakan nama yang jelas dan foto yang mudah dikenali pembeli.',
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Product Name Field
+                              Text(
+                                'Nama Produk',
+                                style: AppTypography.caption.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.ink,
+                                ),
+                              ),
+                              const SizedBox(height: AppSpacing.sm),
+                              TextFormField(
+                                controller: _nameController,
+                                decoration: const InputDecoration(
+                                  hintText: 'Contoh: Kopi Bubuk Arabika 250gr',
+                                ),
+                                validator: (val) {
+                                  if (val == null || val.trim().isEmpty) {
+                                    return 'Nama produk wajib diisi';
+                                  }
+                                  if (val.trim().length < 3) {
+                                    return 'Nama produk minimal 3 karakter';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: AppSpacing.lg),
 
-                // Category Dropdown
-                Text(
-                  'Kategori Produk',
-                  style: AppTypography.caption.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.ink,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                categoriesState.when(
-                  data: (categories) {
-                    return DropdownButtonFormField<String>(
-                      value: _selectedCategoryId,
-                      hint: const Text('Pilih Kategori'),
-                      items: categories.map((cat) {
-                        return DropdownMenuItem<String>(
-                          value: cat.id,
-                          child: Text(cat.name),
-                        );
-                      }).toList(),
-                      onChanged: (val) {
-                        setState(() {
-                          _selectedCategoryId = val;
-                        });
-                      },
-                      decoration: const InputDecoration(
-                        contentPadding: EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
+                              // Category Dropdown
+                              Text(
+                                'Kategori Produk',
+                                style: AppTypography.caption.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.ink,
+                                ),
+                              ),
+                              const SizedBox(height: AppSpacing.sm),
+                              categoriesState.when(
+                                data: (categories) {
+                                  return DropdownButtonFormField<String>(
+                                    initialValue: _selectedCategoryId,
+                                    hint: const Text('Pilih Kategori'),
+                                    items: categories.map((cat) {
+                                      return DropdownMenuItem<String>(
+                                        value: cat.id,
+                                        child: Text(cat.name),
+                                      );
+                                    }).toList(),
+                                    onChanged: (val) {
+                                      setState(() {
+                                        _selectedCategoryId = val;
+                                      });
+                                    },
+                                    decoration: const InputDecoration(
+                                      contentPadding: EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                        vertical: 12,
+                                      ),
+                                    ),
+                                  );
+                                },
+                                loading: () => const Center(
+                                  child: CircularProgressIndicator(
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                                error: (err, _) => Text(
+                                  'Gagal memuat kategori',
+                                  style: TextStyle(color: AppColors.error),
+                                ),
+                              ),
+                              const SizedBox(height: AppSpacing.lg),
+
+                              // Row for Price & Stock
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Price
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Harga (Rp)',
+                                          style: AppTypography.caption.copyWith(
+                                            fontWeight: FontWeight.w700,
+                                            color: AppColors.ink,
+                                          ),
+                                        ),
+                                        const SizedBox(height: AppSpacing.sm),
+                                        TextFormField(
+                                          controller: _priceController,
+                                          keyboardType: TextInputType.number,
+                                          decoration: const InputDecoration(
+                                            hintText: 'Contoh: 15000',
+                                          ),
+                                          validator: (val) {
+                                            if (val == null ||
+                                                val.trim().isEmpty) {
+                                              return 'Harga wajib diisi';
+                                            }
+                                            final price = double.tryParse(
+                                              val.trim(),
+                                            );
+                                            if (price == null || price <= 0) {
+                                              return 'Harga harus bernilai positif';
+                                            }
+                                            return null;
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: AppSpacing.md),
+                                  // Stock
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Jumlah Stok',
+                                          style: AppTypography.caption.copyWith(
+                                            fontWeight: FontWeight.w700,
+                                            color: AppColors.ink,
+                                          ),
+                                        ),
+                                        const SizedBox(height: AppSpacing.sm),
+                                        TextFormField(
+                                          controller: _stockController,
+                                          keyboardType: TextInputType.number,
+                                          decoration: const InputDecoration(
+                                            hintText: 'Contoh: 50',
+                                          ),
+                                          validator: (val) {
+                                            if (val == null ||
+                                                val.trim().isEmpty) {
+                                              return 'Stok wajib diisi';
+                                            }
+                                            final stock = int.tryParse(
+                                              val.trim(),
+                                            );
+                                            if (stock == null || stock < 0) {
+                                              return 'Stok tidak boleh negatif';
+                                            }
+                                            return null;
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: AppSpacing.lg),
+
+                              // Description
+                              Text(
+                                'Deskripsi Produk',
+                                style: AppTypography.caption.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.ink,
+                                ),
+                              ),
+                              const SizedBox(height: AppSpacing.sm),
+                              TextFormField(
+                                controller: _descController,
+                                maxLines: 4,
+                                keyboardType: TextInputType.multiline,
+                                decoration: const InputDecoration(
+                                  hintText:
+                                      'Jelaskan keunggulan, rasa, kemasan, atau detail produk Anda...',
+                                ),
+                              ),
+                              const SizedBox(height: AppSpacing.lg),
+
+                              // Image Upload Area
+                              Text(
+                                'Foto Produk (Maksimal 5 Foto)',
+                                style: AppTypography.caption.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.ink,
+                                ),
+                              ),
+                              const SizedBox(height: AppSpacing.sm),
+                              _buildImagePickerArea(),
+                            ],
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                  loading: () => const Center(
-                    child: CircularProgressIndicator(color: AppColors.primary),
-                  ),
-                  error: (err, _) => Text(
-                    'Gagal memuat kategori',
-                    style: TextStyle(color: AppColors.error),
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.lg),
+                        const SizedBox(height: AppSpacing.lg),
 
-                // Row for Price & Stock
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Price
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Harga (Rp)',
-                            style: AppTypography.caption.copyWith(
+                        // Submit Button
+                        ElevatedButton(
+                          onPressed: _submitForm,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: AppColors.onPrimary,
+                            minimumSize: const Size.fromHeight(50),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(
+                                AppRadius.button,
+                              ),
+                            ),
+                          ),
+                          child: Text(
+                            isEdit
+                                ? 'Simpan Perubahan'
+                                : 'Tambah Produk Sekarang',
+                            style: AppTypography.buttonMd.copyWith(
+                              color: AppColors.onPrimary,
                               fontWeight: FontWeight.w700,
-                              color: AppColors.ink,
                             ),
                           ),
-                          const SizedBox(height: AppSpacing.sm),
-                          TextFormField(
-                            controller: _priceController,
-                            keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(
-                              hintText: 'Contoh: 15000',
-                            ),
-                            validator: (val) {
-                              if (val == null || val.trim().isEmpty) {
-                                return 'Harga wajib diisi';
-                              }
-                              final price = double.tryParse(val.trim());
-                              if (price == null || price <= 0) {
-                                return 'Harga harus bernilai positif';
-                              }
-                              return null;
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.md),
-                    // Stock
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Jumlah Stok',
-                            style: AppTypography.caption.copyWith(
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.ink,
-                            ),
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
-                          TextFormField(
-                            controller: _stockController,
-                            keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(
-                              hintText: 'Contoh: 50',
-                            ),
-                            validator: (val) {
-                              if (val == null || val.trim().isEmpty) {
-                                return 'Stok wajib diisi';
-                              }
-                              final stock = int.tryParse(val.trim());
-                              if (stock == null || stock < 0) {
-                                return 'Stok tidak boleh negatif';
-                              }
-                              return null;
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.lg),
-
-                // Description
-                Text(
-                  'Deskripsi Produk',
-                  style: AppTypography.caption.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.ink,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                TextFormField(
-                  controller: _descController,
-                  maxLines: 4,
-                  keyboardType: TextInputType.multiline,
-                  decoration: const InputDecoration(
-                    hintText:
-                        'Jelaskan keunggulan, rasa, kemasan, atau detail produk Anda...',
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.lg),
-
-                // Image Upload Area
-                Text(
-                  'Foto Produk (Maksimal 5 Foto)',
-                  style: AppTypography.caption.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.ink,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                _buildImagePickerArea(),
-                const SizedBox(height: AppSpacing.xl),
-
-                // Submit Button
-                ElevatedButton(
-                  onPressed: _submitForm,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: AppColors.onPrimary,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.button),
-                    ),
-                  ),
-                  child: Text(
-                    isEdit ? 'Simpan Perubahan' : 'Tambah Produk Sekarang',
-                    style: AppTypography.buttonMd.copyWith(
-                      color: AppColors.onPrimary,
-                      fontWeight: FontWeight.w700,
+                        ),
+                      ],
                     ),
                   ),
                 ),
-                const SizedBox(height: AppSpacing.section),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
         if (_isSaving)
-          Container(
-            color: Colors.black.withOpacity(0.5),
-            child: const Center(
-              child: LoadingWidget(message: 'Sedang menyimpan produk...'),
-            ),
+          const SellerLoadingScrim(
+            child: LoadingWidget(message: 'Sedang menyimpan produk...'),
           ),
       ],
     );
@@ -436,20 +475,16 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       children: [
         Row(
           children: [
-            InkWell(
+            ApplePressable(
               onTap: _pickImages,
-              borderRadius: BorderRadius.circular(20),
+              semanticLabel: 'Pilih foto produk',
               child: Container(
                 width: 90,
                 height: 90,
                 decoration: BoxDecoration(
                   color: AppColors.surfaceSoft,
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: AppColors.primary,
-                    width: 1.5,
-                    style: BorderStyle.none,
-                  ),
+                  border: Border.all(color: AppColors.primarySoft, width: 1),
                 ),
                 child: const Column(
                   mainAxisAlignment: MainAxisAlignment.center,

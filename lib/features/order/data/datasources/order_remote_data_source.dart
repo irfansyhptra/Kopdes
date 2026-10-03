@@ -26,7 +26,10 @@ abstract class OrderRemoteDataSource {
     required String deliveryAddressId,
     required String paymentMethod,
   });
-  Future<List<OrderModel>> getOrderHistory();
+
+  /// Satu halaman riwayat beserta metadata paginasinya.
+  Future<({List<OrderModel> orders, int page, int totalPages, int total})>
+  getOrderHistory({int page, int limit});
   Future<OrderModel> getOrderDetail(String orderId);
   Future<OrderModel> updateOrderStatus(String orderId, String status);
   Future<List<Map<String, dynamic>>> getOrderTimeline(String orderId);
@@ -135,12 +138,23 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
   }
 
   @override
-  Future<List<OrderModel>> getOrderHistory() async {
-    final response = await dio.get('/orders/history');
-    final list = response.data['orders'] as List? ?? [];
-    return list
-        .map((o) => OrderModel.fromJson(o as Map<String, dynamic>))
-        .toList();
+  Future<({List<OrderModel> orders, int page, int totalPages, int total})>
+  getOrderHistory({int page = 1, int limit = 10}) async {
+    final response = await dio.get(
+      '/orders/history',
+      queryParameters: {'page': page, 'limit': limit},
+    );
+    final data = response.data as Map<String, dynamic>;
+    final list = data['orders'] as List? ?? [];
+    final meta = data['meta'] as Map<String, dynamic>? ?? const {};
+    return (
+      orders: list
+          .map((o) => OrderModel.fromJson(o as Map<String, dynamic>))
+          .toList(),
+      page: meta['page'] as int? ?? page,
+      totalPages: meta['totalPages'] as int? ?? 1,
+      total: meta['total'] as int? ?? list.length,
+    );
   }
 
   @override

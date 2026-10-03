@@ -6,8 +6,13 @@ import '../../../../shared/components/order_card.dart';
 import '../../../../shared/components/loading_widget.dart';
 import '../../../../shared/components/error_state_widget.dart';
 import '../../../../shared/components/empty_state_widget.dart';
+import '../../../../shared/widgets/app_glass_chrome.dart';
+import '../../../../shared/widgets/apple_feedback.dart';
 import '../controllers/order_controller.dart';
+import '../widgets/seller_page_ui.dart';
 import '../../data/models/order_model.dart';
+import '../../../chat/data/chat_models.dart';
+import '../../../chat/presentation/providers/chat_providers.dart';
 
 class OrderScreen extends ConsumerStatefulWidget {
   const OrderScreen({super.key});
@@ -20,6 +25,7 @@ class _OrderScreenState extends ConsumerState<OrderScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   bool _isUpdating = false;
+  final Set<String> _openingChats = {};
 
   @override
   void initState() {
@@ -65,6 +71,43 @@ class _OrderScreenState extends ConsumerState<OrderScreen>
     }
   }
 
+  Future<void> _openOrderChat(OrderModel order, ChatChannel channel) async {
+    final key = '${order.id}:${channel.apiValue}';
+    if (_openingChats.contains(key)) return;
+    setState(() => _openingChats.add(key));
+
+    try {
+      final conversation = await ref
+          .read(chatServiceProvider)
+          .startOrderConversation(order.id, channel: channel);
+      ref.invalidate(conversationsProvider);
+      ref.invalidate(channelConversationsProvider);
+      if (!mounted) return;
+      final title = channel == ChatChannel.delivery
+          ? order.courier?.name ?? 'Kurir'
+          : order.customer.name;
+      context.push(
+        channel.detailPath(conversation.id),
+        extra: ChatDetailArguments(title: title, channel: channel),
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              channel == ChatChannel.delivery
+                  ? 'Chat kurir belum dapat dibuka.'
+                  : 'Chat pembeli belum dapat dibuka.',
+            ),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _openingChats.remove(key));
+    }
+  }
+
   List<OrderModel> _filterOrders(List<OrderModel> orders, int tabIndex) {
     switch (tabIndex) {
       case 0: // Pesanan Baru
@@ -104,81 +147,122 @@ class _OrderScreenState extends ConsumerState<OrderScreen>
     return Stack(
       children: [
         Scaffold(
-          backgroundColor: AppColors.canvas,
-          appBar: AppBar(
-            title: const Text('Kelola Pesanan'),
-            centerTitle: true,
-            bottom: TabBar(
-              controller: _tabController,
-              isScrollable: true,
-              indicatorColor: AppColors.primary,
-              labelColor: AppColors.primary,
-              unselectedLabelColor: AppColors.muted,
-              tabs: const [
-                Tab(text: 'Baru'),
-                Tab(text: 'Diproses'),
-                Tab(text: 'Siap Kirim'),
-                Tab(text: 'Riwayat'),
-              ],
-            ),
-          ),
-          body: ordersState.when(
-            loading: () => const Center(
-              child: CircularProgressIndicator(color: AppColors.primary),
-            ),
-            error: (error, stack) => ErrorStateWidget(
-              errorMessage: error.toString(),
-              onRetry: () => ref.invalidate(sellerOrdersProvider),
-            ),
-            data: (orders) {
-              return TabBarView(
+          backgroundColor: AppColors.surfaceSoft,
+          body: SellerPageChrome(
+            title: 'Pesanan',
+            subtitle: 'Pantau pesanan dari masuk hingga selesai',
+            actions: [
+              GlassIconButton(
+                icon: Icons.refresh_rounded,
+                label: 'Perbarui pesanan',
+                onDark: true,
+                onTap: () => ref.invalidate(sellerOrdersProvider),
+              ),
+            ],
+            headerChild: Container(
+              height: 42,
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(AppRadius.pill),
+                border: Border.all(color: const Color(0x29FFFFFF)),
+              ),
+              child: TabBar(
                 controller: _tabController,
-                children: List.generate(4, (index) {
-                  final filtered = _filterOrders(orders, index);
+                dividerColor: Colors.transparent,
+                indicatorSize: TabBarIndicatorSize.tab,
+                indicator: BoxDecoration(
+                  color: AppColors.canvas,
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                  boxShadow: AppElevation.subtle,
+                ),
+                labelColor: AppColors.primaryText,
+                unselectedLabelColor: AppColors.onPrimary,
+                labelStyle: AppTypography.captionSmall.copyWith(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                ),
+                unselectedLabelStyle: AppTypography.captionSmall.copyWith(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w500,
+                ),
+                tabs: const [
+                  Tab(text: 'Baru'),
+                  Tab(text: 'Diproses'),
+                  Tab(text: 'Siap Kirim'),
+                  Tab(text: 'Riwayat'),
+                ],
+              ),
+            ),
+            body: ordersState.when(
+              loading: () =>
+                  const Center(child: AppleActivityIndicator(size: 28)),
+              error: (error, stack) => ErrorStateWidget(
+                errorMessage: error.toString(),
+                onRetry: () => ref.invalidate(sellerOrdersProvider),
+              ),
+              data: (orders) {
+                return TabBarView(
+                  controller: _tabController,
+                  children: List.generate(4, (index) {
+                    final filtered = _filterOrders(orders, index);
 
-                  if (filtered.isEmpty) {
-                    return _buildEmptyStateForTab(index);
-                  }
+                    if (filtered.isEmpty) {
+                      return _buildEmptyStateForTab(index);
+                    }
 
-                  return RefreshIndicator(
-                    onRefresh: () async => ref.invalidate(sellerOrdersProvider),
-                    color: AppColors.primary,
-                    child: ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.base,
-                        AppSpacing.base,
-                        AppSpacing.base,
-                        AppSpacing.section,
-                      ),
-                      itemCount: filtered.length,
-                      itemBuilder: (context, idx) {
-                        final order = filtered[idx];
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                          child: OrderCard(
-                            order: order,
-                            onUpdateStatus: (newStatus) =>
-                                _handleUpdateStatus(order.id, newStatus),
-                            onTap: () {
-                              // We can navigate to details or show a modal sheet
-                              _showOrderDetailsSheet(order);
-                            },
+                    return RefreshIndicator(
+                      onRefresh: () async =>
+                          ref.invalidate(sellerOrdersProvider),
+                      color: AppColors.primary,
+                      child: SellerContentBoundary(
+                        child: ListView.builder(
+                          physics: const AlwaysScrollableScrollPhysics(
+                            parent: BouncingScrollPhysics(),
                           ),
-                        );
-                      },
-                    ),
-                  );
-                }),
-              );
-            },
+                          padding: const EdgeInsets.fromLTRB(
+                            0,
+                            AppSpacing.base,
+                            0,
+                            112,
+                          ),
+                          itemCount: filtered.length,
+                          itemBuilder: (context, idx) {
+                            final order = filtered[idx];
+                            return Padding(
+                              padding: const EdgeInsets.only(
+                                bottom: AppSpacing.md,
+                              ),
+                              child: OrderCard(
+                                order: order,
+                                onChatBuyer: () => _openOrderChat(
+                                  order,
+                                  ChatChannel.marketplace,
+                                ),
+                                onChatCourier: order.courier == null
+                                    ? null
+                                    : () => _openOrderChat(
+                                        order,
+                                        ChatChannel.delivery,
+                                      ),
+                                onUpdateStatus: (newStatus) =>
+                                    _handleUpdateStatus(order.id, newStatus),
+                                onTap: () => _showOrderDetailsSheet(order),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    );
+                  }),
+                );
+              },
+            ),
           ),
         ),
         if (_isUpdating)
-          Container(
-            color: Colors.black.withOpacity(0.5),
-            child: const Center(
-              child: LoadingWidget(message: 'Memperbarui status pesanan...'),
-            ),
+          const SellerLoadingScrim(
+            child: LoadingWidget(message: 'Memperbarui status pesanan...'),
           ),
       ],
     );
@@ -221,85 +305,104 @@ class _OrderScreenState extends ConsumerState<OrderScreen>
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: AppColors.canvas,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-          ),
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: AppColors.hairline,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
+        return SafeArea(
+          top: false,
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: 640,
+                maxHeight: MediaQuery.sizeOf(context).height * 0.88,
+              ),
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: AppColors.canvas,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                  boxShadow: AppElevation.modal,
                 ),
-                const SizedBox(height: AppSpacing.lg),
-                Text(
-                  'Rincian Pesanan Lengkap',
-                  style: AppTypography.titleMedium.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  AppSpacing.md,
+                  AppSpacing.lg,
+                  AppSpacing.lg,
                 ),
-                const Divider(height: AppSpacing.lg),
-
-                // Info Customer
-                _buildInfoRow('Nama Pembeli', order.customer.name),
-                _buildInfoRow('Email', order.customer.email),
-                _buildInfoRow('Nomor HP', order.customer.phone),
-                const Divider(height: AppSpacing.lg),
-
-                // Alamat Pengiriman
-                Text(
-                  'Alamat Pengiriman',
-                  style: AppTypography.bodyMedium.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  '${order.deliveryAddress.recipientName} (${order.deliveryAddress.phone})',
-                  style: AppTypography.bodyMedium,
-                ),
-                Text(
-                  '${order.deliveryAddress.street}, ${order.deliveryAddress.city}, ${order.deliveryAddress.state} - ${order.deliveryAddress.postalCode}',
-                  style: AppTypography.caption,
-                ),
-                const Divider(height: AppSpacing.lg),
-
-                // Metode pembayaran
-                _buildInfoRow(
-                  'Metode Pembayaran',
-                  order.paymentMethod.toUpperCase(),
-                ),
-                _buildInfoRow(
-                  'Status Pembayaran',
-                  order.paymentStatus.toUpperCase(),
-                ),
-                const SizedBox(height: AppSpacing.xl),
-
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppRadius.button),
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 40,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: AppColors.hairline,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
                       ),
-                    ),
-                    child: const Text('Tutup'),
+                      const SizedBox(height: AppSpacing.lg),
+                      Text(
+                        'Rincian Pesanan Lengkap',
+                        style: AppTypography.titleMedium.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const Divider(height: AppSpacing.lg),
+
+                      _buildInfoRow('Nama Pembeli', order.customer.name),
+                      _buildInfoRow('Email', order.customer.email),
+                      _buildInfoRow('Nomor HP', order.customer.phone),
+                      const Divider(height: AppSpacing.lg),
+
+                      Text(
+                        'Alamat Pengiriman',
+                        style: AppTypography.bodyMedium.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        '${order.deliveryAddress.recipientName} (${order.deliveryAddress.phone})',
+                        style: AppTypography.bodyMedium,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${order.deliveryAddress.street}, ${order.deliveryAddress.city}, ${order.deliveryAddress.state} - ${order.deliveryAddress.postalCode}',
+                        style: AppTypography.caption,
+                      ),
+                      const Divider(height: AppSpacing.lg),
+
+                      _buildInfoRow(
+                        'Metode Pembayaran',
+                        order.paymentMethod.toUpperCase(),
+                      ),
+                      _buildInfoRow(
+                        'Status Pembayaran',
+                        order.paymentStatus.toUpperCase(),
+                      ),
+                      const SizedBox(height: AppSpacing.xl),
+
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: OutlinedButton.styleFrom(
+                            minimumSize: const Size.fromHeight(48),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(
+                                AppRadius.button,
+                              ),
+                            ),
+                          ),
+                          child: const Text('Tutup'),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
+              ),
             ),
           ),
         );
@@ -310,20 +413,38 @@ class _OrderScreenState extends ConsumerState<OrderScreen>
   Widget _buildInfoRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
+          final shouldStack = constraints.maxWidth < 360 || textScale > 1.25;
+          final labelWidget = Text(
             label,
             style: AppTypography.bodyMedium.copyWith(color: AppColors.muted),
-          ),
-          Text(
+          );
+          final valueWidget = Text(
             value,
+            textAlign: shouldStack ? TextAlign.left : TextAlign.right,
             style: AppTypography.bodyMedium.copyWith(
               fontWeight: FontWeight.bold,
             ),
-          ),
-        ],
+          );
+
+          if (shouldStack) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [labelWidget, const SizedBox(height: 2), valueWidget],
+            );
+          }
+
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Flexible(child: labelWidget),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(child: valueWidget),
+            ],
+          );
+        },
       ),
     );
   }
