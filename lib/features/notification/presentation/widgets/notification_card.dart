@@ -12,6 +12,12 @@ class NotificationCard extends ConsumerWidget {
   // Map NotificationType to icon, background color, and foreground color
   Map<String, dynamic> _getTypeTheme(NotificationType type) {
     switch (type) {
+      case NotificationType.cartAdded:
+        return {
+          'icon': Icons.add_shopping_cart_rounded,
+          'color': const Color(0xFFD32F2F), // Kopdes Red
+          'bgColor': const Color(0xFFFFEBEE),
+        };
       case NotificationType.orderSuccess:
         return {
           'icon': Icons.shopping_bag_outlined,

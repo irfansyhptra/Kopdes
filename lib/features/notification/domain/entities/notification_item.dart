@@ -1,4 +1,6 @@
 enum NotificationType {
+  /// Barang masuk keranjang. Dicatat di perangkat, bukan dari server.
+  cartAdded,
   orderSuccess,
   deliveryConfirmed,
   validationSuccess,

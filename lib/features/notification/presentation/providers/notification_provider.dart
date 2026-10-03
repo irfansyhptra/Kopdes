@@ -1,138 +1,115 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../../core/storage/api_cache.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../data/notification_store.dart';
 import '../../domain/entities/notification_item.dart';
 
-class NotificationsNotifier extends StateNotifier<List<NotificationItem>> {
-  NotificationsNotifier() : super([]) {
-    _seedNotifications();
-  }
+/// Penyimpanan notifikasi, dikunci ke pengguna yang sedang masuk.
+///
+/// Penyimpanan yang gagal dibuka tidak dilempar ke atas: lencana notifikasi
+/// dibaca oleh kepala halaman di hampir setiap peran, dan satu `StateError`
+/// dari Isar di sana akan mengosongkan seluruh layar alih-alih satu angka
+/// kecil. Tanpa penyimpanan, notifikasi tetap jalan selama sesi berlangsung.
+final notificationStoreProvider = Provider<NotificationStore>((ref) {
+  final ownerId = ref.watch(authProvider.select((s) => s.user?.id)) ?? 'anon';
 
-  void _seedNotifications() {
-    state = [
-      NotificationItem(
-        id: '1',
-        type: NotificationType.orderSuccess,
-        title: 'Pesanan Berhasil',
-        description:
-            'Pesanan Anda berhasil diproses dan sedang disiapkan oleh Kopdes Merah Putih.',
-        timestamp: DateTime(2026, 6, 23, 14, 20),
-        isRead: false,
-      ),
-      NotificationItem(
-        id: '2',
-        type: NotificationType.deliveryConfirmed,
-        title: 'Pengiriman Dikonfirmasi',
-        description:
-            'Kurir telah mengonfirmasi bahwa barang sedang dalam perjalanan menuju lokasi Anda.',
-        timestamp: DateTime(2026, 6, 23, 14, 15),
-        isRead: false,
-      ),
-      NotificationItem(
-        id: '3',
-        type: NotificationType.validationSuccess,
-        title: 'Transaksi Selesai',
-        description:
-            'Kurir dan penerima telah melakukan validasi. Transaksi berhasil diselesaikan.',
-        timestamp: DateTime(2026, 6, 23, 14, 10),
-        isRead: true,
-      ),
-      NotificationItem(
-        id: '4',
-        type: NotificationType.newUmkmProduct,
-        title: 'Produk UMKM Baru',
-        description:
-            'Keripik Pisang Desa Lamteh telah tersedia di marketplace UMKM.',
-        timestamp: DateTime(2026, 6, 22, 10, 30),
-        isRead: true,
-      ),
-      NotificationItem(
-        id: '5',
-        type: NotificationType.aiRecommendation,
-        title: 'Rekomendasi AI',
-        description:
-            'AI merekomendasikan stok Mie Instan dan Minyak Goreng untuk ditambah berdasarkan tren penjualan.',
-        timestamp: DateTime(2026, 6, 22, 8, 15),
-        isRead: true,
-      ),
-      NotificationItem(
-        id: '6',
-        type: NotificationType.lowStockAlert,
-        title: 'Stok Menipis',
-        description:
-            'Stok Detergen Rinso tersisa 5 unit. Segera lakukan restock.',
-        timestamp: DateTime(2026, 6, 21, 17, 0),
-        isRead: true,
-      ),
-      NotificationItem(
-        id: '7',
-        type: NotificationType.promoUmkm,
-        title: 'Promo Produk Lokal',
-        description:
-            'Dapatkan diskon hingga 20% untuk produk UMKM pilihan minggu ini.',
-        timestamp: DateTime(2026, 6, 20, 12, 0),
-        isRead: true,
-      ),
-      NotificationItem(
-        id: '8',
-        type: NotificationType.accountActivity,
-        title: 'Akun Berhasil Diperbarui',
-        description: 'Informasi profil Anda berhasil diperbarui.',
-        timestamp: DateTime(2026, 6, 19, 15, 45),
-        isRead: true,
-      ),
-    ];
+  ApiCache? cache;
+  try {
+    cache = ref.watch(apiCacheProvider);
+  } catch (e) {
+    if (kDebugMode) {
+      debugPrint('Notifikasi: penyimpanan tidak tersedia, memakai memori. $e');
+    }
   }
+  return NotificationStore(cache, ownerId);
+});
 
-  void markAsRead(String id) {
-    state = [
-      for (final item in state)
-        if (item.id == id) item.copyWith(isRead: true) else item,
-    ];
-  }
-
-  void markAllAsRead() {
-    state = [for (final item in state) item.copyWith(isRead: true)];
-  }
-
-  void clearAll() {
-    state = [];
-  }
-
-  Future<void> refreshNotifications() async {
-    await Future.delayed(const Duration(milliseconds: 1000));
-    _seedNotifications();
-  }
-
-  Future<void> loadMoreNotifications() async {
-    await Future.delayed(const Duration(milliseconds: 800));
-    // Simulate loading older historical notifications
-    final length = state.length;
-    final additional = [
-      NotificationItem(
-        id: '${length + 1}',
-        type: NotificationType.promoUmkm,
-        title: 'Diskon Hari Koperasi',
-        description:
-            'Dapatkan penawaran menarik menyambut Hari Koperasi Nasional.',
-        timestamp: DateTime(2026, 6, 18, 9, 0),
-        isRead: true,
-      ),
-      NotificationItem(
-        id: '${length + 2}',
-        type: NotificationType.accountActivity,
-        title: 'Keamanan Akun',
-        description: 'Kata sandi Anda berhasil diperbarui 7 hari yang lalu.',
-        timestamp: DateTime(2026, 6, 17, 16, 30),
-        isRead: true,
-      ),
-    ];
-    state = [...state, ...additional];
-  }
-}
-
+/// Riwayat notifikasi pengguna.
+///
+/// Dulu daftar ini diisi delapan notifikasi palsu di konstruktor — lengkap
+/// dengan tanggal yang sudah lewat — sehingga lencana merah "2" selalu ada
+/// sejak pemasangan pertama dan tidak pernah berarti apa pun. Sekarang
+/// kosong sampai sesuatu benar-benar terjadi, dan isinya bertahan di
+/// perangkat lewat [NotificationStore].
 final notificationsProvider =
     StateNotifierProvider<NotificationsNotifier, List<NotificationItem>>((ref) {
-      return NotificationsNotifier();
+      return NotificationsNotifier(ref.watch(notificationStoreProvider));
     });
 
-// Loading state for infinite scrolling
-final isNotificationsLoadingMoreProvider = StateProvider<bool>((ref) => false);
+/// Jumlah yang belum dibaca — sumber tunggal untuk setiap lencana.
+///
+/// Didefinisikan sekali di sini, bukan dihitung ulang di tiap layar: beranda,
+/// halaman pesanan, dan header pegawai dulu masing-masing menulis `.where()`
+/// sendiri, dan satu saja yang lupa disesuaikan sudah cukup membuat dua
+/// lencana di layar yang sama menunjukkan angka berbeda.
+final unreadNotificationCountProvider = Provider<int>((ref) {
+  return ref.watch(notificationsProvider).where((n) => !n.isRead).length;
+});
+
+class NotificationsNotifier extends StateNotifier<List<NotificationItem>> {
+  final NotificationStore _store;
+
+  NotificationsNotifier(this._store) : super(const []) {
+    _restore();
+  }
+
+  Future<void> _restore() async {
+    final saved = await _store.read();
+    if (!mounted || saved.isEmpty) return;
+    state = saved;
+  }
+
+  /// Mencatat satu notifikasi baru, lalu menyimpannya.
+  ///
+  /// Inilah jalur yang dipakai aplikasi untuk menaikkan lencana: menambah
+  /// barang ke keranjang, pesanan berpindah status, dan seterusnya.
+  Future<void> add({
+    required NotificationType type,
+    required String title,
+    required String description,
+    DateTime? timestamp,
+  }) {
+    final item = NotificationItem(
+      // Waktu mikrodetik + panjang daftar: cukup unik untuk kunci lokal,
+      // tanpa menarik paket uuid hanya untuk ini.
+      id: '${DateTime.now().microsecondsSinceEpoch}-${state.length}',
+      type: type,
+      title: title,
+      description: description,
+      timestamp: timestamp ?? DateTime.now(),
+      isRead: false,
+    );
+    return _commit([item, ...state]);
+  }
+
+  Future<void> markAsRead(String id) => _commit([
+    for (final item in state)
+      if (item.id == id) item.copyWith(isRead: true) else item,
+  ]);
+
+  Future<void> markAllAsRead() =>
+      _commit([for (final item in state) item.copyWith(isRead: true)]);
+
+  Future<void> clearAll() async {
+    state = const [];
+    await _store.clear();
+  }
+
+  /// Membaca ulang dari perangkat.
+  ///
+  /// Bukan permintaan jaringan: belum ada endpoint notifikasi. Tarik-untuk-
+  /// muat-ulang tetap berguna supaya daftar ikut berubah setelah tab lain
+  /// menambah sesuatu.
+  Future<void> refreshNotifications() async {
+    final saved = await _store.read();
+    if (!mounted) return;
+    state = saved;
+  }
+
+  Future<void> _commit(List<NotificationItem> next) async {
+    state = next;
+    await _store.write(next);
+  }
+}

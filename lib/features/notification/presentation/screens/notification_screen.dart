@@ -17,29 +17,9 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
   final ScrollController _scrollController = ScrollController();
 
   @override
-  void initState() {
-    super.initState();
-    _scrollController.addListener(_onScroll);
-  }
-
-  @override
   void dispose() {
-    _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();
-  }
-
-  void _onScroll() async {
-    // Detect bottom reach for infinite scroll simulation
-    if (_scrollController.position.pixels >=
-        _scrollController.position.maxScrollExtent - 100) {
-      final isLoadingMore = ref.read(isNotificationsLoadingMoreProvider);
-      if (!isLoadingMore) {
-        ref.read(isNotificationsLoadingMoreProvider.notifier).state = true;
-        await ref.read(notificationsProvider.notifier).loadMoreNotifications();
-        ref.read(isNotificationsLoadingMoreProvider.notifier).state = false;
-      }
-    }
   }
 
   Widget _buildHeaderButton({
@@ -62,7 +42,6 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
   @override
   Widget build(BuildContext context) {
     final notifications = ref.watch(notificationsProvider);
-    final isLoadingMore = ref.watch(isNotificationsLoadingMoreProvider);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -214,7 +193,7 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
                       controller: _scrollController,
                       physics: const AlwaysScrollableScrollPhysics(),
                       padding: const EdgeInsets.only(bottom: 24),
-                      itemCount: notifications.length + (isLoadingMore ? 1 : 0),
+                      itemCount: notifications.length,
                       separatorBuilder: (context, index) => const SizedBox(
                         height: 24,
                       ), // 24px spacing between items
