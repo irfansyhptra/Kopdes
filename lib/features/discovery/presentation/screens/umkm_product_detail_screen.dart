@@ -7,7 +7,12 @@ import '../../../../shared/widgets/apple_ui.dart';
 import '../../../../shared/widgets/product_image_loader.dart';
 import '../../../order/presentation/cart_feedback.dart';
 import '../../../order/presentation/providers/cart_provider.dart';
+import '../../../../shared/widgets/apple_feedback.dart';
 import '../../domain/discovery.dart';
+import '../../../koperasi/presentation/providers/koperasi_store_provider.dart';
+import '../../../order/data/review_repository.dart';
+import '../../../product/presentation/widgets/product_detail_sections.dart';
+import '../../../marketplace/presentation/widgets/marketplace_product_card.dart';
 import '../providers/discovery_provider.dart';
 import '../../../chat/data/chat_models.dart';
 import '../../../chat/presentation/providers/chat_providers.dart';
@@ -226,6 +231,21 @@ class _UmkmProductDetailScreenState
                         ],
                       ),
                     ),
+                    const SizedBox(height: AppSpacing.lg),
+
+                    // Section yang sama dengan halaman produk Kopdes —
+                    // widget dan penyedia yang sama, hanya targetnya yang
+                    // menunjuk tabel produk mitra.
+                    ProductReviewSection(
+                      target: ReviewTarget.umkm(product.id),
+                      ratingAverage: product.ratingAverage,
+                      ratingCount: product.ratingCount,
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    _StoreProducts(
+                      umkmId: product.umkmId,
+                      excludeId: product.id,
+                    ),
                     const SizedBox(height: AppSpacing.xl),
                   ],
                 ),
@@ -318,6 +338,75 @@ class _ErrorView extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Barang lain di toko mitra yang sama.
+class _StoreProducts extends ConsumerWidget {
+  final String umkmId;
+  final String excludeId;
+
+  const _StoreProducts({required this.umkmId, required this.excludeId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(storeProductsProvider((id: umkmId, isUmkm: true)));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const AppleSectionHeader(
+          title: 'Produk Lainnya di Toko',
+          padding: EdgeInsets.zero,
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        async.when(
+          loading: () => const SizedBox(
+            height: 80,
+            child: Center(child: AppleActivityIndicator(size: 22)),
+          ),
+          // Gagal memuat barang lain tidak boleh menjatuhkan halaman
+          // produknya sendiri — bagiannya saja yang kosong.
+          error: (_, __) => const SizedBox.shrink(),
+          data: (page) {
+            final others = page.items
+                .where((p) => p.id != excludeId)
+                .toList(growable: false);
+            if (others.isEmpty) {
+              return Text(
+                'Belum ada produk lain di toko ini.',
+                style: AppTypography.captionSmall.copyWith(fontSize: 12.5),
+              );
+            }
+
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                final width = compactCarouselCardWidth(constraints.maxWidth);
+                return SizedBox(
+                  height: width / compactProductCardAspectRatio(context),
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    physics: const BouncingScrollPhysics(),
+                    itemCount: others.length,
+                    separatorBuilder: (_, __) =>
+                        const SizedBox(width: AppSpacing.sm),
+                    itemBuilder: (context, i) => SizedBox(
+                      width: width,
+                      child: MarketplaceProductCard(
+                        product: others[i],
+                        onTap: () =>
+                            context.push('/mitra/products/${others[i].id}'),
+                        onAddToCart: () {},
+                      ),
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+        ),
+      ],
     );
   }
 }

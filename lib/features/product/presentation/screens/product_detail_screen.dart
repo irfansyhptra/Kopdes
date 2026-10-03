@@ -16,6 +16,7 @@ import '../../domain/entities/product.dart';
 import '../providers/product_provider.dart';
 import '../widgets/compact_product_carousel.dart';
 import '../widgets/product_action_bar.dart';
+import '../../../order/data/review_repository.dart';
 import '../widgets/product_detail_sections.dart';
 import '../widgets/purchase_bottom_sheet.dart';
 
@@ -216,7 +217,13 @@ class _Body extends ConsumerWidget {
               distanceLabel: distanceLabel,
             ),
           ),
-        _Block(child: ProductReviewSection(product: product)),
+        _Block(
+          child: ProductReviewSection(
+            target: ReviewTarget.kopdes(product.id),
+            ratingAverage: product.ratingAverage,
+            ratingCount: product.ratingCount,
+          ),
+        ),
         if (store != null)
           _StoreCarousel(
             title: 'Produk Lainnya di Toko',

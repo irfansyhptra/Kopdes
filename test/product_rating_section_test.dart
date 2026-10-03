@@ -7,8 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:kopdes/core/network/dio_client.dart';
 import 'package:kopdes/core/theme/theme.dart';
-import 'package:kopdes/features/product/domain/entities/product.dart';
-import 'package:kopdes/features/product/presentation/providers/product_review_provider.dart';
+import 'package:kopdes/features/order/data/review_repository.dart';
 import 'package:kopdes/features/product/presentation/widgets/product_detail_sections.dart';
 
 /// Menjawab /reviews dengan sejumlah ulasan, sambil merekam permintaannya.
@@ -49,20 +48,6 @@ class _ReviewAdapter implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
-Product _product({double? rating, int ratingCount = 0}) => Product(
-  id: 'p1',
-  name: 'Beras Premium',
-  description: 'x',
-  price: 64000,
-  stock: 10,
-  categoryId: 'c1',
-  images: const [],
-  ratingAverage: rating,
-  ratingCount: ratingCount,
-  createdAt: DateTime(2026, 10, 1),
-  updatedAt: DateTime(2026, 10, 1),
-);
-
 Future<_ReviewAdapter> _pump(
   WidgetTester tester, {
   required int reviewCount,
@@ -88,7 +73,9 @@ Future<_ReviewAdapter> _pump(
             child: Padding(
               padding: const EdgeInsets.all(AppSpacing.base),
               child: ProductReviewSection(
-                product: _product(rating: rating, ratingCount: ratingCount),
+                target: const ReviewTarget.kopdes('p1'),
+                ratingAverage: rating,
+                ratingCount: ratingCount,
               ),
             ),
           ),
@@ -141,7 +128,6 @@ void main() {
 
       expect(adapter.last!.queryParameters['limit'], 5);
       expect(adapter.last!.queryParameters['productId'], 'p1');
-      expect(productReviewPreviewLimit, 5);
     });
 
     testWidgets('lima ulasan tampil semua', (tester) async {
@@ -167,6 +153,44 @@ void main() {
 
       expect(find.text('1,0'), findsOneWidget);
       expect(find.bySemanticsLabel('Penilaian 1,0 dari 5'), findsOneWidget);
+    });
+  });
+
+  group('section penilaian pada produk mitra UMKM', () {
+    // Barang Kopdes dan barang mitra adalah dua tabel berbeda dengan dua
+    // parameter berbeda di endpoint ulasan. Salah kirim dijawab 400.
+    testWidgets('meminta ulasan lewat umkmProductId', (tester) async {
+      tester.view.physicalSize = const Size(390, 1400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      final adapter = _ReviewAdapter(count: 2, average: 4.0);
+      final dio = Dio(BaseOptions(baseUrl: 'https://example.test'));
+      dio.httpClientAdapter = adapter;
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [dioProvider.overrideWithValue(dio)],
+          child: MaterialApp(
+            theme: AppTheme.lightTheme,
+            home: const Scaffold(
+              body: SingleChildScrollView(
+                child: ProductReviewSection(
+                  target: ReviewTarget.umkm('u1'),
+                  ratingAverage: 4.0,
+                  ratingCount: 9,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(adapter.last!.queryParameters['umkmProductId'], 'u1');
+      expect(adapter.last!.queryParameters.containsKey('productId'), isFalse);
+      expect(find.text('4,0'), findsOneWidget);
+      expect(find.text('9 orang memberi penilaian'), findsOneWidget);
     });
   });
 }

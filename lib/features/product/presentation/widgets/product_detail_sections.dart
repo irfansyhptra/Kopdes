@@ -5,11 +5,10 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/theme/theme.dart';
 import '../../../../shared/widgets/apple_feedback.dart';
+import '../../../order/data/review_repository.dart';
 import '../../../../shared/widgets/apple_ui.dart';
 import '../../../../shared/widgets/product_image_loader.dart';
 import '../../domain/entities/product.dart';
-import '../../domain/entities/product_review.dart';
-import '../providers/product_review_provider.dart';
 
 /// Bagian-bagian halaman detail produk.
 ///
@@ -348,14 +347,27 @@ class _ShippingRow extends StatelessWidget {
 // Ulasan
 // ─────────────────────────────────────────────────────────────
 
+/// Penilaian dan ulasan sebuah produk.
+///
+/// Menerima [target], bukan entitas produk: barang Kopdes dan barang mitra
+/// UMKM adalah dua tabel berbeda dengan dua parameter berbeda di endpoint
+/// ulasan, tetapi tampilannya satu dan sama. Sebelumnya tiap halaman punya
+/// penyedia dan modelnya sendiri untuk endpoint yang sama persis.
 class ProductReviewSection extends ConsumerWidget {
-  final Product product;
+  final ReviewTarget target;
+  final double? ratingAverage;
+  final int ratingCount;
 
-  const ProductReviewSection({super.key, required this.product});
+  const ProductReviewSection({
+    super.key,
+    required this.target,
+    required this.ratingAverage,
+    required this.ratingCount,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final async = ref.watch(productReviewsProvider(product.id));
+    final async = ref.watch(productReviewsProvider(target));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -365,7 +377,7 @@ class ProductReviewSection extends ConsumerWidget {
           padding: EdgeInsets.zero,
         ),
         const SizedBox(height: AppSpacing.sm),
-        _RatingSummary(product: product),
+        _RatingSummary(average: ratingAverage, count: ratingCount),
         const SizedBox(height: AppSpacing.md),
         async.when(
           loading: () => const Padding(
@@ -377,8 +389,8 @@ class ProductReviewSection extends ConsumerWidget {
             title: 'Ulasan belum berhasil dimuat',
             message: 'Periksa koneksi lalu tarik halaman untuk memuat ulang.',
           ),
-          data: (reviews) {
-            if (reviews.isEmpty) {
+          data: (page) {
+            if (page.items.isEmpty) {
               return const _NoReviews(
                 icon: Icons.rate_review_outlined,
                 title: 'Belum ada ulasan',
@@ -390,7 +402,7 @@ class ProductReviewSection extends ConsumerWidget {
             return AppleListGroup(
               indent: 0,
               children: [
-                for (final review in reviews) _ReviewRow(review: review),
+                for (final review in page.items) _ReviewRow(review: review),
               ],
             );
           },
@@ -407,14 +419,14 @@ class ProductReviewSection extends ConsumerWidget {
 /// penilai memberi tahu seberapa jauh angka itu layak dipercaya — 5,0 dari
 /// satu orang bukan hal yang sama dengan 4,6 dari dua ratus orang.
 class _RatingSummary extends StatelessWidget {
-  final Product product;
+  final double? average;
+  final int count;
 
-  const _RatingSummary({required this.product});
+  const _RatingSummary({required this.average, required this.count});
 
   @override
   Widget build(BuildContext context) {
-    final average = product.ratingAverage;
-    final count = product.ratingCount;
+    final average = this.average;
     final hasRating = average != null && count > 0;
 
     return Container(
