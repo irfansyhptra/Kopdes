@@ -5,6 +5,7 @@ import 'package:kopdes/core/theme/theme.dart';
 import 'package:kopdes/features/home/presentation/widgets/compact_home_header.dart';
 import 'package:kopdes/features/home/presentation/widgets/category_list_widget.dart';
 import 'package:kopdes/features/home/presentation/widgets/compact_promo_banner.dart';
+import 'package:kopdes/features/home/domain/membership_summary.dart';
 import 'package:kopdes/features/home/presentation/widgets/membership_summary_card.dart';
 
 /// Lebar perangkat yang harus didukung, dari ponsel kecil sampai tablet.
@@ -48,10 +49,35 @@ Widget _header() => CompactHomeHeader(
   onFilterTap: () {},
 );
 
-Widget _card() => MembershipSummaryCard(
-  balance: 'Rp250.000',
-  points: '1.250',
-  statusLabel: 'VIP',
+Widget _headerWith({
+  int notificationCount = 0,
+  int chatCount = 0,
+  int cartCount = 0,
+  VoidCallback? onSearchTap,
+  VoidCallback? onFilterTap,
+}) => CompactHomeHeader(
+  userName: 'Budi Santoso',
+  userLocation: 'Desa Lamteh, Banda Aceh',
+  notificationCount: notificationCount,
+  cartCount: cartCount,
+  chatCount: chatCount,
+  onNotificationTap: () {},
+  onCartTap: () {},
+  onChatTap: () {},
+  onSearchTap: onSearchTap ?? () {},
+  onFilterTap: onFilterTap ?? () {},
+);
+
+/// Anggota dengan angka terpanjang yang mungkin: itulah kasus tata letak
+/// yang menentukan, bukan keadaan kosongnya.
+Widget _card([
+  MembershipSummary summary = const MembershipSummary(
+    balance: 1250000,
+    points: 12500,
+    isMember: true,
+  ),
+]) => MembershipSummaryCard(
+  summary: summary,
   onTopUpTap: () {},
   onHistoryTap: () {},
   onCouponTap: () {},
@@ -67,6 +93,8 @@ Widget _categories() =>
     CategoryListWidget(onCategoryTap: (_) {}, onSeeAllTap: () {});
 
 void main() {
+  _badgeTests();
+
   group('Beranda tidak overflow', () {
     for (final width in _widths) {
       testWidgets('header pada ${width.toInt()}dp', (tester) async {
@@ -187,6 +215,64 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(tapped?.badge, 'GRATIS ONGKIR');
+    });
+  });
+}
+
+/// Kapsul di kepala beranda.
+///
+/// Angkanya sempat ditulis tetap di layar (`chatCount: 2`) sementara nilainya
+/// sudah dihitung dari provider dan dibuang. Lencana yang salah lebih buruk
+/// daripada tidak ada lencana: ia menyuruh orang membuka sesuatu yang tidak
+/// ada isinya.
+void _badgeTests() {
+  group('Lencana kapsul', () {
+    testWidgets('tanpa yang belum dibaca, tidak ada angka sama sekali', (
+      tester,
+    ) async {
+      await _pumpAt(tester, 390, _headerWith());
+      expect(find.text('0'), findsNothing);
+    });
+
+    testWidgets('angkanya persis yang diberikan, bukan nilai tetap', (
+      tester,
+    ) async {
+      await _pumpAt(
+        tester,
+        390,
+        _headerWith(notificationCount: 7, chatCount: 4, cartCount: 1),
+      );
+      expect(find.text('7'), findsOneWidget);
+      expect(find.text('4'), findsOneWidget);
+      expect(find.text('1'), findsOneWidget);
+    });
+
+    testWidgets('di atas 99 dipendekkan, bukan melebarkan kapsul', (
+      tester,
+    ) async {
+      await _pumpAt(tester, 390, _headerWith(notificationCount: 128));
+      expect(find.text('99+'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  });
+
+  group('Kolom pencarian dan Filter benar-benar menanggapi', () {
+    testWidgets('menekan kolom pencarian memanggil onSearchTap', (
+      tester,
+    ) async {
+      var tapped = false;
+      await _pumpAt(tester, 390, _headerWith(onSearchTap: () => tapped = true));
+      await tester.tap(find.text('Cari produk kebutuhanmu...'));
+      await tester.pump();
+      expect(tapped, isTrue);
+    });
+
+    testWidgets('menekan Filter memanggil onFilterTap', (tester) async {
+      var tapped = false;
+      await _pumpAt(tester, 390, _headerWith(onFilterTap: () => tapped = true));
+      await tester.tap(find.text('Filter'));
+      await tester.pump();
+      expect(tapped, isTrue);
     });
   });
 }

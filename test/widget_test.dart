@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kopdes/app/app.dart';
@@ -9,6 +10,7 @@ import 'package:kopdes/features/auth/data/models/login_response.dart';
 import 'package:kopdes/core/network/health_provider.dart';
 import 'package:kopdes/features/product/presentation/providers/product_provider.dart';
 import 'package:kopdes/features/onboarding/presentation/providers/onboarding_provider.dart';
+import 'package:kopdes/features/onboarding/presentation/providers/permission_provider.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class FakeAuthLocalDataSource implements AuthLocalDataSource {
@@ -76,6 +78,15 @@ class FakeOnboardingNotifier extends OnboardingCompletedNotifier {
   }
 }
 
+/// Layar izin sudah dilewati. Uji ini tentang tujuan sesudah perkenalan, dan
+/// tanpa penanda ini router berhenti di `/permissions` — benar untuk pemasangan
+/// baru, tetapi bukan yang sedang diperiksa di sini.
+class FakePermissionsPrimedNotifier extends PermissionsPrimedNotifier {
+  FakePermissionsPrimedNotifier() : super(const FlutterSecureStorage()) {
+    state = true;
+  }
+}
+
 void main() {
   testWidgets('App smoke test', (WidgetTester tester) async {
     final fakeLocalDataSource = FakeAuthLocalDataSource();
@@ -90,6 +101,9 @@ void main() {
           onboardingCompletedProvider.overrideWith(
             (ref) => FakeOnboardingNotifier(),
           ),
+          permissionsPrimedProvider.overrideWith(
+            (ref) => FakePermissionsPrimedNotifier(),
+          ),
         ],
         child: const KopdesApp(),
       ),
@@ -97,6 +111,31 @@ void main() {
 
     // Verify that KopdesApp is present.
     expect(find.byType(KopdesApp), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('kmp-flash-reveal')),
+      findsOneWidget,
+      reason: 'Splash harus memakai animasi logo KMP Mitra yang baru.',
+    );
+    final entranceFinder = find.byKey(const ValueKey('kmp-splash-entrance'));
+    expect(entranceFinder, findsOneWidget);
+    expect(
+      tester.widget<FadeTransition>(entranceFinder).opacity.value,
+      lessThan(1),
+      reason: 'Logo harus mulai dari kondisi transparan.',
+    );
+    await tester.pump(const Duration(milliseconds: 450));
+    final halfwayOpacity = tester
+        .widget<FadeTransition>(entranceFinder)
+        .opacity
+        .value;
+    expect(halfwayOpacity, greaterThan(0));
+    expect(halfwayOpacity, lessThan(1));
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(
+      tester.widget<FadeTransition>(entranceFinder).opacity.value,
+      closeTo(1, 0.001),
+      reason: 'Logo harus berhenti dalam kondisi terlihat penuh.',
+    );
 
     // Wait for the splash screen minimum display duration (3.4 seconds) and process async events incrementally.
     for (int i = 0; i < 10; i++) {

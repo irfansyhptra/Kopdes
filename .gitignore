@@ -70,3 +70,6 @@ backend/.git_backup/
 website/
 android/build/
 .claude/settings.local.json
+
+# Keluaran diff golden yang gagal — artefak lokal, bukan sumber.
+test/failures/

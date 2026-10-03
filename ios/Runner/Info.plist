@@ -4,6 +4,10 @@
 <dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Lokasi Anda dipakai untuk menemukan Kopdes dan Mitra UMKM terdekat. Lokasi tidak dipakai saat aplikasi ditutup.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Galeri dipakai untuk memilih foto profil, bukti penerimaan pesanan, dan foto produk bila Anda berjualan.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Kamera dipakai untuk memotret bukti penerimaan pesanan dan foto produk.</string>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>comgooglemaps</string>

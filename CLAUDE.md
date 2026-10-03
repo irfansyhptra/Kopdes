@@ -172,6 +172,60 @@ mencetak token ke log.
 - Commit conventional (`feat:`, `fix:`, `docs:`, `chore:`). Backend punya git sendiri.
 - `backend/.env` berisi secret — jangan commit / jangan tampilkan isinya.
 
+## Panduan desain aplikasi (Apple HIG)
+
+Berlaku untuk aplikasi Flutter di `lib/`. Diturunkan dari Apple Human
+Interface Guidelines, disaring ke delapan prioritas yang paling menentukan
+apakah warga desa dan pegawai Kopdes bisa menyelesaikan tugasnya di ponsel
+kecil: **Accessibility, Layout, Typography, Color, Privacy, Navigation,
+Selection and input, Status.** Panduan visionOS, siaran langsung, dan
+workouts tidak berlaku sampai fiturnya benar-benar ada.
+
+### Aturan keras — periksa sebelum menulis UI
+
+1. **Target sentuh 44×44pt.** Ikonnya boleh kecil; area sentuhnya tidak.
+   Kalau empat kendali tidak muat, kurangi kendalinya atau biarkan
+   membungkus — jangan kecilkan area sentuhnya.
+2. **Status tidak pernah hanya warna.** "Diproses", "Menunggu verifikasi",
+   "Stok menipis" wajib punya teks atau ikon. `Tooltip` TIDAK cukup: ia
+   tidak muncul pada sentuhan, jadi pengguna awas berjari tidak mendapat
+   apa-apa.
+3. **Tata letak diukur, bukan ditebak.** Sapu 320–768dp × skala teks
+   1,0–2,0× dengan `tester.takeException()`. Tinggi kartu pakai
+   `mainAxisExtent` dalam piksel, bukan `childAspectRatio` — rasio mengikat
+   tinggi pada lebar, lalu meluber di layar sempit.
+4. **Jangan mengecilkan teks demi mempertahankan jumlah kolom.** Kurangi
+   kolomnya.
+5. **Hierarki tipografi lewat ukuran/ketebalan/jarak**, dan selalu beri
+   ruang untuk nama Kopdes atau UMKM yang panjang (elipsis, bukan luber).
+6. **Pemuatan per-section.** Satu API lambat tidak boleh mengosongkan
+   seluruh halaman; tiap section punya skeleton sebentuk isinya.
+7. **Aksi yang menunggu jaringan selalu memakai `runWithFeedback`** —
+   modal tunggu lalu modal hasil. Lihat `shared/widgets/apple_feedback.dart`.
+8. **Tulisan menjelaskan hasil tindakan**: "Tambah ke Keranjang", "Lacak
+   Pesanan". Pesan kesalahan menyebut apa yang terjadi DAN langkah
+   berikutnya — lihat `core/network/error_message.dart`.
+
+### Pengecualian yang disengaja
+
+- **Izin lokasi diminta tanpa layar konteks lebih dulu.** HIG menyarankan
+  memberi konteks sebelum dialog sistem; di sini izin diminta langsung saat
+  beranda terbuka, dan layar penjelasan hanya muncul bila ditolak. Ini
+  keputusan pemilik produk, bukan kelalaian — jangan "perbaiki" tanpa
+  diminta.
+
+### Di luar lingkup
+
+- **Mode gelap tidak ada dan tidak akan ada.** Keputusan pemilik produk.
+  `AppTheme.darkTheme`, token `darkBg`/`darkSurface`/`darkBorder`,
+  `AppGlass.fillDark`/`strokeDark`, seluruh cabang
+  `Theme.of(context).brightness`, serta `darkTheme`/`themeMode` di
+  `app/app.dart` sudah dihapus. Jangan menambahkannya kembali, dan jangan
+  menulis cabang warna berdasarkan brightness.
+
+  Catatan penamaan: `AppColors.darkRed` dan `AppColors.onDark` **bukan**
+  sisa mode gelap — keduanya milik gradien merah merek dan teks di atasnya.
+
 ## Skill desain
 
 Lima skill terpasang global (`~/.claude/skills/`) dan dipakai saat menyentuh
@@ -239,5 +293,5 @@ target sentuh; Core Web Vitals lewat Chrome headless dengan CPU 4x dan 4G
 lambat — angka tanpa throttling tidak berarti apa-apa untuk ponsel desa.
 
 ## Docs
-`requirements.md`, `tasks.md`, `design.md`, `new_design.md`, `report.md` — spec &
-perencanaan produk. Rujuk saat butuh konteks fitur yang belum ada di kode.
+`requirements.md`, `tasks.md`, `report.md` — spec & perencanaan produk. Rujuk
+saat butuh konteks fitur yang belum ada di kode.

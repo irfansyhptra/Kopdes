@@ -1,3 +1,8 @@
+import 'package:kopdes/features/order/presentation/providers/order_provider.dart';
+import 'package:kopdes/features/order/presentation/widgets/order_summary.dart';
+import 'package:kopdes/features/order/data/review_repository.dart';
+import 'package:kopdes/features/order/data/models/order_model.dart';
+import 'package:kopdes/features/order/domain/order_totals.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -92,7 +97,7 @@ final _mixedCart = _cart([
 
 /// Keranjang palsu yang tidak menyentuh jaringan maupun Isar.
 class _StubCartNotifier extends CartNotifier {
-  _StubCartNotifier(Cart cart) : super(_NullRepository()) {
+  _StubCartNotifier(Cart cart, Ref ref) : super(_NullRepository(), ref) {
     state = AsyncValue.data(cart);
   }
 
@@ -110,7 +115,9 @@ class _NullRepository implements OrderRepository {
 
 ProviderContainer _container(Cart cart) {
   final container = ProviderContainer(
-    overrides: [cartProvider.overrideWith((ref) => _StubCartNotifier(cart))],
+    overrides: [
+      cartProvider.overrideWith((ref) => _StubCartNotifier(cart, ref)),
+    ],
   );
   addTearDown(container.dispose);
   // Pilihan menyelaraskan diri lewat ref.listen; membaca providernya sekali
@@ -120,6 +127,8 @@ ProviderContainer _container(Cart cart) {
 }
 
 void main() {
+  _moneyAndPagingTests();
+
   group('Pilihan produk', () {
     test('semua produk tercentang saat keranjang pertama kali dimuat', () {
       final container = _container(_mixedCart);
@@ -376,6 +385,46 @@ void main() {
       expect(find.text('Pilih Semua'), findsNWidgets(2));
     });
 
+    testWidgets('harga yang besar adalah total baris, bukan harga satuan', (
+      tester,
+    ) async {
+      await _pumpCart(
+        tester,
+        390,
+        844,
+        cart: _cart([_item(id: 'a', price: 65000, quantity: 3)]),
+      );
+
+      // Yang dibayar untuk baris ini, bukan harga satuannya: keranjang berisi
+      // 3 × Rp65.000 sempat terbaca "Rp65.000".
+      expect(find.text('Rp195.000'), findsOneWidget);
+      // Perkaliannya tetap terlihat, sebagai keterangan kecil.
+      expect(find.text('Rp65.000 × 3'), findsOneWidget);
+    });
+
+    testWidgets('satu barang tidak menampilkan perkalian', (tester) async {
+      await _pumpCart(
+        tester,
+        390,
+        844,
+        cart: _cart([_item(id: 'a', price: 65000)]),
+      );
+      expect(find.text('Rp65.000'), findsOneWidget);
+      expect(find.textContaining('×'), findsNothing);
+    });
+
+    testWidgets('harga ditulis merah, bukan warna teks biasa', (tester) async {
+      await _pumpCart(
+        tester,
+        390,
+        844,
+        cart: _cart([_item(id: 'a', price: 65000, quantity: 2)]),
+      );
+
+      final price = tester.widget<Text>(find.text('Rp130.000'));
+      expect(price.style?.color, AppColors.primary);
+    });
+
     testWidgets('stok habis ditandai teks, bukan hanya warna', (tester) async {
       await _pumpCart(
         tester,
@@ -514,3 +563,225 @@ Future<void> _pumpSummary(
     textScale: textScale,
   );
 }
+
+// ─────────────────────────────────────────────────────────────
+// Perbaikan lanjutan: komponen uang, paginasi riwayat, ulasan
+// ─────────────────────────────────────────────────────────────
+
+void _moneyAndPagingTests() {
+  group('OrderTotals', () {
+    test('total = subtotal + ongkir - diskon', () {
+      const t = OrderTotals(
+        subtotal: 116000,
+        shippingFee: 8000,
+        discountAmount: 5000,
+      );
+      expect(t.total, 119000);
+    });
+
+    test('tanpa ongkir, labelnya "Gratis" bukan "Rp0"', () {
+      const t = OrderTotals(subtotal: 64000);
+      expect(t.shippingLabel, 'Gratis');
+      expect(t.hasShipping, isFalse);
+      expect(t.total, 64000);
+    });
+
+    test('diskon tidak membuat total negatif', () {
+      const t = OrderTotals(subtotal: 20000, discountAmount: 50000);
+      expect(t.effectiveDiscount, 20000);
+      expect(t.total, 0);
+    });
+
+    test('diskon dipotong tetap menyisakan ongkir yang ditagihkan', () {
+      const t = OrderTotals(
+        subtotal: 20000,
+        shippingFee: 9000,
+        discountAmount: 50000,
+      );
+      expect(t.total, 9000);
+    });
+
+    test('diskon nol tidak dianggap ada potongan', () {
+      const t = OrderTotals(subtotal: 10000);
+      expect(t.hasDiscount, isFalse);
+    });
+  });
+
+  group('formatRupiah', () {
+    test('memakai pemisah ribuan Indonesia', () {
+      expect(formatRupiah(3450000), 'Rp3.450.000');
+      expect(formatRupiah(116000), 'Rp116.000');
+      expect(formatRupiah(1000), 'Rp1.000');
+      expect(formatRupiah(999), 'Rp999');
+      expect(formatRupiah(0), 'Rp0');
+    });
+
+    test('nominal negatif diberi tanda di depan', () {
+      expect(formatRupiah(-5000), '-Rp5.000');
+    });
+
+    test('nominal sangat besar tidak kehilangan digit', () {
+      expect(formatRupiah(98765432109), 'Rp98.765.432.109');
+    });
+  });
+
+  group('Rincian pembayaran pesanan', () {
+    test('pesanan lama tanpa komponen tidak menampilkan rincian', () {
+      final order = _order(subtotal: 0, totalAmount: 64000);
+      expect(order.hasPaymentBreakdown, isFalse);
+    });
+
+    test('pesanan dengan komponen menampilkan rincian', () {
+      final order = _order(subtotal: 64000, totalAmount: 64000);
+      expect(order.hasPaymentBreakdown, isTrue);
+    });
+
+    test(
+      'komponen string Decimal dari backend dibaca sebagai rupiah bulat',
+      () {
+        final model = OrderModel.fromJson({
+          'id': 'o1',
+          'customerId': 'c1',
+          'subtotal': '116000.00',
+          'shippingFee': '8000.00',
+          'discountAmount': '5000.00',
+          'totalAmount': '119000.00',
+          'status': 'COMPLETED',
+          'paymentMethod': 'QRIS',
+          'paymentStatus': 'PAID',
+          'deliveryAddressId': 'a1',
+          'items': <dynamic>[],
+        });
+        expect(model.subtotal, 116000);
+        expect(model.shippingFee, 8000);
+        expect(model.discountAmount, 5000);
+      },
+    );
+
+    test('komponen yang tidak dikirim backend lama dibaca nol', () {
+      final model = OrderModel.fromJson({
+        'id': 'o1',
+        'customerId': 'c1',
+        'totalAmount': 64000,
+        'status': 'COMPLETED',
+        'paymentMethod': 'COD',
+        'paymentStatus': 'PAID',
+        'deliveryAddressId': 'a1',
+        'items': <dynamic>[],
+      });
+      expect(model.subtotal, 0);
+      expect(model.shippingFee, 0);
+      expect(model.discountAmount, 0);
+    });
+  });
+
+  group('OrderSummary', () {
+    testWidgets('menampilkan subtotal, ongkir, diskon, dan total', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: OrderSummary(
+              totals: OrderTotals(
+                subtotal: 116000,
+                shippingFee: 8000,
+                discountAmount: 5000,
+              ),
+            ),
+          ),
+        ),
+      );
+      expect(find.text('Rp116.000'), findsOneWidget);
+      expect(find.text('Rp8.000'), findsOneWidget);
+      expect(find.text('-Rp5.000'), findsOneWidget);
+      expect(find.text('Rp119.000'), findsOneWidget);
+    });
+
+    testWidgets('tanpa diskon, barisnya tidak digambar', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: OrderSummary(totals: OrderTotals(subtotal: 64000)),
+          ),
+        ),
+      );
+      expect(find.text('Diskon'), findsNothing);
+      expect(find.text('Gratis'), findsOneWidget);
+      // Total sama dengan subtotal — tidak ada biaya yang ditambahkan layar.
+      expect(find.text('Rp64.000'), findsNWidgets(2));
+    });
+  });
+
+  group('OrderHistoryState', () {
+    test('halaman pertama tanpa lanjutan tidak menawarkan muat-lebih', () {
+      const state = OrderHistoryState(orders: [], hasMore: false, total: 0);
+      expect(state.hasMore, isFalse);
+      expect(state.isLoadingMore, isFalse);
+    });
+
+    test('copyWith mempertahankan daftar saat menandai sedang memuat', () {
+      final state = OrderHistoryState(
+        orders: [_order(subtotal: 1000, totalAmount: 1000)],
+        hasMore: true,
+        total: 25,
+      );
+      final loading = state.copyWith(isLoadingMore: true);
+      expect(loading.orders, hasLength(1));
+      expect(loading.total, 25);
+      expect(loading.hasMore, isTrue);
+    });
+
+    test(
+      'gagal memuat halaman berikutnya tidak menghapus yang sudah tampil',
+      () {
+        final state = OrderHistoryState(
+          orders: [_order(subtotal: 1000, totalAmount: 1000)],
+          hasMore: true,
+          isLoadingMore: true,
+          total: 25,
+        );
+        final failed = state.copyWith(
+          isLoadingMore: false,
+          loadMoreFailed: true,
+        );
+        expect(failed.orders, hasLength(1));
+        expect(failed.loadMoreFailed, isTrue);
+      },
+    );
+  });
+
+  group('ReviewableItem', () {
+    test('kunci memakai id produk yang terisi', () {
+      const kopdes = ReviewableItem(productId: 'p1', name: 'Beras');
+      const umkm = ReviewableItem(umkmProductId: 'u1', name: 'Kue Adee');
+      expect(kopdes.key, 'p1');
+      expect(umkm.key, 'u1');
+    });
+
+    test('dibaca dari respons backend', () {
+      final item = ReviewableItem.fromJson({
+        'productId': null,
+        'umkmProductId': 'u9',
+        'name': 'Kue Adee',
+      });
+      expect(item.umkmProductId, 'u9');
+      expect(item.productId, isNull);
+      expect(item.name, 'Kue Adee');
+    });
+  });
+}
+
+Order _order({required int subtotal, required double totalAmount}) => Order(
+  id: 'order-1',
+  customerId: 'c1',
+  subtotal: subtotal,
+  totalAmount: totalAmount,
+  status: 'COMPLETED',
+  paymentMethod: 'QRIS',
+  paymentStatus: 'PAID',
+  deliveryAddressId: 'a1',
+  items: const [],
+  createdAt: DateTime(2026, 9, 17),
+  updatedAt: DateTime(2026, 9, 17),
+);

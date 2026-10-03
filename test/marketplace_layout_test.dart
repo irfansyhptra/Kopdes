@@ -10,6 +10,7 @@ import 'package:kopdes/features/discovery/presentation/widgets/discovery_section
 import 'package:kopdes/features/marketplace/domain/marketplace.dart';
 import 'package:kopdes/features/marketplace/presentation/providers/marketplace_provider.dart';
 import 'package:kopdes/features/marketplace/presentation/widgets/marketplace_filters.dart';
+import 'package:kopdes/shared/widgets/category_image_card.dart';
 import 'package:kopdes/features/marketplace/presentation/widgets/marketplace_product_card.dart';
 import 'package:kopdes/features/product/domain/entities/category.dart';
 
@@ -35,6 +36,7 @@ MarketplaceProduct _product({
   double? rating = 4.8,
   int ratingCount = 128,
   double? discountPrice,
+  int soldCount = 0,
 }) => MarketplaceProduct(
   id: 'p1',
   name: name,
@@ -46,6 +48,7 @@ MarketplaceProduct _product({
   isUmkm: isUmkm,
   ratingAverage: rating,
   ratingCount: ratingCount,
+  soldCount: soldCount,
 );
 
 /// Merender grid seperti di layar: lebar kolom dihitung dari lebar layar.
@@ -122,7 +125,6 @@ Future<void> _pumpFilterRow(
             backgroundColor: AppColors.surfaceSoft,
             body: CategoryFilterRow(
               title: 'Filter Makanan',
-              icon: Icons.restaurant_rounded,
               categories: const [
                 Category(id: 'c1', name: 'Minuman', group: 'FOOD'),
                 Category(id: 'c2', name: 'Cemilan', group: 'FOOD'),
@@ -188,12 +190,15 @@ void main() {
 
   group('Isi kartu', () {
     testWidgets('menampilkan nama, penjual, rating, dan harga', (tester) async {
-      await _pumpGrid(tester, 390, 844, [_product()]);
+      await _pumpGrid(tester, 390, 844, [_product(soldCount: 42)]);
 
       expect(find.text('Beras Premium 5 kg'), findsOneWidget);
       expect(find.text('Kopdes Lamteh'), findsOneWidget);
-      expect(find.text('4,8 (128)'), findsOneWidget);
+      expect(find.text('4,8'), findsOneWidget);
       expect(find.text('Rp64.000'), findsOneWidget);
+      // Keterangan yang benar-benar dipakai pembeli untuk memutuskan.
+      expect(find.textContaining('Stok 10'), findsOneWidget);
+      expect(find.textContaining('42 terjual'), findsOneWidget);
     });
 
     // Warna saja tidak cukup membedakan sumber penjual.
@@ -217,8 +222,28 @@ void main() {
         _product(rating: null, ratingCount: 0),
       ]);
 
-      expect(find.text('Belum ada ulasan'), findsOneWidget);
+      expect(find.byIcon(Icons.star_rounded), findsNothing);
       expect(find.text('0,0 (0)'), findsNothing);
+      // Kalimat yang memakan satu baris penuh untuk mengatakan tidak ada
+      // yang bisa dikatakan — diganti keterangan yang selalu punya isi.
+      expect(find.text('Belum ada ulasan'), findsNothing);
+      expect(find.textContaining('Stok 10'), findsOneWidget);
+    });
+
+    testWidgets('belum ada yang terjual tidak menampilkan "0 terjual"', (
+      tester,
+    ) async {
+      await _pumpGrid(tester, 390, 844, [_product(soldCount: 0)]);
+      expect(find.textContaining('terjual'), findsNothing);
+    });
+
+    testWidgets('stok habis tidak diulang di baris keterangan', (tester) async {
+      await _pumpGrid(tester, 390, 844, [_product(stock: 0, soldCount: 7)]);
+
+      // Lencana di atas gambar sudah menyampaikannya.
+      expect(find.text('Stok habis'), findsOneWidget);
+      expect(find.textContaining('Stok 0'), findsNothing);
+      expect(find.textContaining('7 terjual'), findsOneWidget);
     });
   });
 
@@ -405,10 +430,30 @@ void main() {
       handle.dispose();
     });
 
-    test('kategori yang belum dikenali tetap dapat ikon', () {
-      expect(categoryIcon('Kategori Baru'), Icons.category_rounded);
-      expect(categoryIcon('Minuman'), Icons.local_cafe_rounded);
-      expect(categoryIcon('Bahan Pokok'), Icons.rice_bowl_rounded);
+    // Ukurannya dikunci: kedua baris filter duduk di ATAS katalog, dan kartu
+    // yang terlalu besar memakan layar sebelum satu produk pun terlihat.
+    testWidgets('kartu filter berukuran ringkas', (tester) async {
+      await _pumpFilterRow(tester, 390, 844);
+
+      final card = tester.getSize(find.byType(FilterOptionCard).first);
+      expect(card.width, 80);
+      expect(card.height, 88);
+    });
+
+    testWidgets('tinggi baris mengikuti tinggi kartunya', (tester) async {
+      await _pumpFilterRow(tester, 390, 844);
+
+      final card = tester.getSize(find.byType(FilterOptionCard).first);
+      final row = tester.getSize(find.byType(ListView));
+      // Baris tidak boleh menyisakan ruang kosong di bawah kartu.
+      expect(row.height, card.height);
+    });
+
+    test('setiap kategori mendapat aset gambar yang sesuai', () {
+      expect(categoryImageAsset('Kategori Baru'), endsWith('/all.webp'));
+      expect(categoryImageAsset('Minuman'), endsWith('/drinks.webp'));
+      expect(categoryImageAsset('Bahan Pokok'), endsWith('/staples.webp'));
+      expect(categoryImageAsset('Cemilan'), endsWith('/snacks.webp'));
     });
   });
 

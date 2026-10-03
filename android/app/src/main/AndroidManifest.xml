@@ -4,6 +4,20 @@
     <!-- Lokasi hanya saat aplikasi dipakai; TIDAK meminta background location. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+
+    <!-- Notifikasi status pesanan. Runtime sejak Android 13; di bawah itu
+         diberikan otomatis saat pemasangan. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+
+    <!-- Galeri. Android 13 memecah READ_EXTERNAL_STORAGE menjadi per jenis
+         media, jadi keduanya dideklarasikan dengan batas versinya sendiri —
+         tanpa `maxSdkVersion`, Play Console menandainya sebagai izin luas
+         yang tidak lagi dipakai. -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32"/>
+
     <application
         android:label="kopdes"
         android:name="${applicationName}"
