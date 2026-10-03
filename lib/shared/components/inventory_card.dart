@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/theme.dart';
 import '../../features/umkm/data/models/inventory_model.dart';
+import '../widgets/apple_ui.dart';
 
 class InventoryCard extends StatefulWidget {
   final InventoryModel inventory;
@@ -61,14 +62,8 @@ class _InventoryCardState extends State<InventoryCard> {
   Widget build(BuildContext context) {
     final isLowStock = _localStock <= 5;
 
-    return Container(
+    return AppleCard(
       padding: const EdgeInsets.all(AppSpacing.base),
-      decoration: BoxDecoration(
-        color: AppColors.canvas,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.hairlineSoft),
-        boxShadow: AppElevation.card,
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -102,137 +97,194 @@ class _InventoryCardState extends State<InventoryCard> {
               ),
               const SizedBox(width: AppSpacing.md),
               Container(
+                constraints: const BoxConstraints(minHeight: 28),
                 padding: const EdgeInsets.symmetric(
                   horizontal: AppSpacing.sm,
                   vertical: AppSpacing.xs,
                 ),
                 decoration: BoxDecoration(
                   color: isLowStock
-                      ? AppColors.error.withOpacity(0.08)
-                      : AppColors.success.withOpacity(0.08),
+                      ? AppColors.error.withValues(alpha: 0.08)
+                      : AppColors.success.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(AppRadius.pill),
-                ),
-                child: Text(
-                  _localStock == 0
-                      ? 'Habis'
-                      : (isLowStock ? 'Stok Tipis' : 'Stok Aman'),
-                  style: AppTypography.badge.copyWith(
-                    color: isLowStock ? AppColors.error : AppColors.success,
-                    fontSize: 10,
+                  border: Border.all(
+                    color: (isLowStock ? AppColors.error : AppColors.success)
+                        .withValues(alpha: 0.16),
                   ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      isLowStock
+                          ? Icons.error_outline_rounded
+                          : Icons.check_circle_outline_rounded,
+                      size: 13,
+                      color: isLowStock ? AppColors.error : AppColors.success,
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
+                    Text(
+                      _localStock == 0
+                          ? 'Habis'
+                          : (isLowStock ? 'Stok tipis' : 'Stok aman'),
+                      style: AppTypography.badge.copyWith(
+                        color: isLowStock
+                            ? AppColors.errorText
+                            : AppColors.success,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
           const Divider(height: AppSpacing.lg),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Stok Saat Ini:', style: AppTypography.captionSmall),
-                  const SizedBox(height: 2),
-                  Text(
-                    '$_localStock Pcs',
-                    style: AppTypography.titleMedium.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: isLowStock ? AppColors.errorText : AppColors.ink,
-                    ),
-                  ),
-                ],
-              ),
-              if (!_isEditing)
-                ElevatedButton.icon(
-                  onPressed: () {
-                    setState(() {
-                      _isEditing = true;
-                    });
-                  },
-                  icon: const Icon(
-                    Icons.edit_outlined,
-                    size: 16,
+          Text('Stok saat ini', style: AppTypography.captionSmall),
+          const SizedBox(height: 2),
+          Text(
+            '$_localStock Pcs',
+            style: AppTypography.titleMedium.copyWith(
+              fontWeight: FontWeight.w800,
+              color: isLowStock ? AppColors.errorText : AppColors.ink,
+            ),
+          ),
+          if (!_isEditing) ...[
+            const SizedBox(height: AppSpacing.md),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => setState(() => _isEditing = true),
+                icon: const Icon(
+                  Icons.edit_outlined,
+                  size: 17,
+                  color: AppColors.primary,
+                ),
+                label: Text(
+                  'Perbarui stok',
+                  style: AppTypography.buttonSm.copyWith(
                     color: AppColors.primary,
                   ),
-                  label: Text(
-                    'Update Cepat',
-                    style: AppTypography.buttonSm.copyWith(
-                      color: AppColors.primary,
-                    ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primarySoft.withOpacity(0.3),
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.md,
-                      vertical: 8,
-                    ),
-                    minimumSize: Size.zero,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.button),
-                    ),
-                  ),
-                )
-              else
-                Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.remove_circle_outline_rounded),
-                      color: AppColors.primary,
-                      onPressed: _decrement,
-                    ),
-                    SizedBox(
-                      width: 48,
-                      height: 36,
-                      child: TextField(
-                        controller: _controller,
-                        keyboardType: TextInputType.number,
-                        textAlign: TextAlign.center,
-                        style: AppTypography.bodyLarge.copyWith(
-                          fontWeight: FontWeight.bold,
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryTint,
+                  elevation: 0,
+                  minimumSize: const Size.fromHeight(44),
+                ),
+              ),
+            ),
+          ],
+          if (_isEditing) ...[
+            const SizedBox(height: AppSpacing.md),
+            Row(
+              children: [
+                _StockIconButton(
+                  icon: Icons.remove_rounded,
+                  label: 'Kurangi stok',
+                  onTap: _localStock > 0 ? _decrement : null,
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: SizedBox(
+                    height: 46,
+                    child: TextField(
+                      controller: _controller,
+                      keyboardType: TextInputType.number,
+                      textAlign: TextAlign.center,
+                      style: AppTypography.bodyLarge.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                      decoration: InputDecoration(
+                        contentPadding: EdgeInsets.zero,
+                        filled: true,
+                        fillColor: AppColors.surfaceSoft,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(AppRadius.sm),
+                          borderSide: BorderSide.none,
                         ),
-                        decoration: InputDecoration(
-                          contentPadding: EdgeInsets.zero,
-                          filled: true,
-                          fillColor: AppColors.surfaceSoft,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(AppRadius.sm),
-                            borderSide: BorderSide.none,
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(AppRadius.sm),
+                          borderSide: const BorderSide(
+                            color: AppColors.primary,
+                            width: 1.5,
                           ),
                         ),
-                        onChanged: (val) {
-                          final parsed = int.tryParse(val);
-                          if (parsed != null && parsed >= 0) {
-                            setState(() {
-                              _localStock = parsed;
-                            });
-                          }
-                        },
                       ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.add_circle_outline_rounded),
-                      color: AppColors.primary,
-                      onPressed: _increment,
-                    ),
-                    const SizedBox(width: AppSpacing.xs),
-                    IconButton(
-                      icon: const Icon(Icons.check_circle_rounded),
-                      color: AppColors.success,
-                      onPressed: () {
-                        setState(() {
-                          _isEditing = false;
-                        });
-                        if (widget.onUpdateStock != null) {
-                          widget.onUpdateStock!(_localStock);
+                      onChanged: (val) {
+                        final parsed = int.tryParse(val);
+                        if (parsed != null && parsed >= 0) {
+                          setState(() => _localStock = parsed);
                         }
                       },
                     ),
-                  ],
+                  ),
                 ),
-            ],
-          ),
+                const SizedBox(width: AppSpacing.sm),
+                _StockIconButton(
+                  icon: Icons.add_rounded,
+                  label: 'Tambah stok',
+                  onTap: _increment,
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                ApplePressable(
+                  onTap: () {
+                    setState(() => _isEditing = false);
+                    widget.onUpdateStock?.call(_localStock);
+                  },
+                  semanticLabel: 'Simpan jumlah stok',
+                  pressedScale: 0.92,
+                  child: Container(
+                    width: 46,
+                    height: 46,
+                    decoration: const BoxDecoration(
+                      color: AppColors.primary,
+                      shape: BoxShape.circle,
+                      boxShadow: AppElevation.accent,
+                    ),
+                    child: const Icon(
+                      Icons.check_rounded,
+                      color: AppColors.onPrimary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
+      ),
+    );
+  }
+}
+
+class _StockIconButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback? onTap;
+
+  const _StockIconButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ApplePressable(
+      onTap: onTap,
+      semanticLabel: label,
+      pressedScale: 0.92,
+      child: Container(
+        width: 46,
+        height: 46,
+        decoration: BoxDecoration(
+          color: onTap == null ? AppColors.hairlineSoft : AppColors.canvas,
+          shape: BoxShape.circle,
+          border: Border.all(color: AppColors.hairline),
+        ),
+        child: Icon(
+          icon,
+          color: onTap == null ? AppColors.mutedSoft : AppColors.primary,
+        ),
       ),
     );
   }

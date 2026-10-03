@@ -18,12 +18,17 @@ import 'product_image_loader.dart';
 // ─────────────────────────────────────────────────────────────
 
 /// Skala radius Apple: radius dalam = radius luar − inset.
+///
+/// Nilainya diturunkan dari [AppRadius], bukan ditulis ulang. Dua skala radius
+/// yang hidup berdampingan sudah sempat menyimpang — kartu di aplikasi 20px
+/// sementara kartu yang sama di web 24px — dan selisih itu tidak pernah
+/// ketahuan dari membaca satu berkas saja.
 class AppleRadii {
-  static const double control = 12.0;
-  static const double tile = 18.0;
-  static const double card = 20.0;
-  static const double group = 22.0;
-  static const double floating = 28.0;
+  static const double control = AppRadius.sm; // 12
+  static const double tile = AppRadius.lg; // 20
+  static const double card = AppRadius.card; // 24
+  static const double group = AppRadius.card; // 24
+  static const double floating = AppRadius.xxl; // 28
 }
 
 bool _reduceMotion(BuildContext context) =>
@@ -132,8 +137,7 @@ class GlassSurface extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    final fill = tint ?? (dark ? AppGlass.fillDark : AppGlass.fill);
+    final fill = tint ?? AppGlass.fill;
     final br = BorderRadius.circular(radius);
 
     return DecoratedBox(
@@ -151,12 +155,7 @@ class GlassSurface extends StatelessWidget {
               // Fallback solid tetap terbaca kalau blur tidak dirender.
               color: fill,
               borderRadius: br,
-              border:
-                  border ??
-                  Border.all(
-                    color: dark ? AppGlass.strokeDark : AppGlass.stroke,
-                    width: 1,
-                  ),
+              border: border ?? Border.all(color: AppGlass.stroke, width: 1),
             ),
             child: child,
           ),
@@ -185,19 +184,17 @@ class AppleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
     final br = BorderRadius.circular(radius);
 
     Widget body = Container(
       padding: padding,
       decoration: BoxDecoration(
-        color: dark ? AppColors.darkSurface : AppColors.canvas,
+        color: AppColors.canvas,
         borderRadius: br,
-        border: Border.all(
-          color: dark ? AppColors.darkBorder : AppColors.hairlineSoft,
-          width: 1,
-        ),
-        boxShadow: dark ? null : AppElevation.hairline,
+        border: Border.all(color: AppColors.hairlineSoft, width: 1),
+        // `soft`, sepadan dengan `--sh-soft` pada `.kc-card` di web; `hairline`
+        // membuat kartu aplikasi tampak rata sementara kartu web terangkat.
+        boxShadow: AppElevation.soft,
       ),
       child: clip ? ClipRRect(borderRadius: br, child: child) : child,
     );
@@ -303,6 +300,10 @@ class AppleMenuTile extends StatelessWidget {
   final VoidCallback? onTap;
   final double size;
 
+  /// Lebar tile. Default mengikuti ukuran ikonnya — pas untuk rail mendatar.
+  /// Grid mengisinya dengan lebar selnya supaya label punya ruang penuh.
+  final double? width;
+
   const AppleMenuTile({
     super.key,
     required this.icon,
@@ -311,20 +312,16 @@ class AppleMenuTile extends StatelessWidget {
     this.selected = false,
     this.onTap,
     this.size = 58,
+    this.width,
   });
 
   @override
   Widget build(BuildContext context) {
     final reduce = _reduceMotion(context);
-    final dark = Theme.of(context).brightness == Brightness.dark;
     final filled = tint != null;
 
-    final bg = filled
-        ? tint!
-        : (dark ? AppColors.darkSurface : AppColors.surfaceSoft);
-    final fg = filled
-        ? AppColors.onPrimary
-        : (dark ? AppColors.onDark : AppColors.body);
+    final bg = filled ? tint! : AppColors.surfaceSoft;
+    final fg = filled ? AppColors.onPrimary : AppColors.body;
 
     return ApplePressable(
       onTap: onTap,
@@ -332,7 +329,7 @@ class AppleMenuTile extends StatelessWidget {
       child: SizedBox(
         // Lebar mengikuti ukuran ikon supaya tile bisa dipadatkan dari
         // pemanggilnya tanpa label jadi berdesakan.
-        width: size + 16,
+        width: width ?? size + 16,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -357,12 +354,7 @@ class AppleMenuTile extends StatelessWidget {
                   borderRadius: BorderRadius.circular(AppleRadii.tile - 3),
                   border: filled
                       ? null
-                      : Border.all(
-                          color: dark
-                              ? AppColors.darkBorder
-                              : AppColors.hairlineSoft,
-                          width: 1,
-                        ),
+                      : Border.all(color: AppColors.hairlineSoft, width: 1),
                 ),
                 child: Icon(icon, color: fg, size: 24),
               ),
@@ -422,38 +414,40 @@ class AppleChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final reduce = _reduceMotion(context);
-    final dark = Theme.of(context).brightness == Brightness.dark;
 
+    // Pil tetap terlihat 36, area sentuhnya 44 — batas Apple HIG. Yang boleh
+    // ringkas tampilannya, bukan sasaran jarinya. Wadah chip di layar juga
+    // dinaikkan ke 44; sebelumnya `SizedBox(height: 34)` bahkan memotong
+    // pil 36-nya sendiri.
     return ApplePressable(
       onTap: onTap,
       pressedScale: 0.96,
       semanticLabel: label,
-      child: AnimatedContainer(
-        duration: reduce ? Duration.zero : AppAnimation.fast,
-        curve: Curves.easeOut,
-        height: 36,
-        alignment: Alignment.center,
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.base),
-        decoration: BoxDecoration(
-          color: selected
-              ? AppColors.primary
-              : (dark ? AppColors.darkSurface : AppColors.canvas),
-          borderRadius: BorderRadius.circular(AppRadius.pill),
-          border: Border.all(
-            color: selected
-                ? AppColors.primary
-                : (dark ? AppColors.darkBorder : AppColors.hairline),
-            width: 1,
-          ),
-        ),
-        child: Text(
-          label,
-          style: AppTypography.buttonSm.copyWith(
-            fontSize: 13.5,
-            fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-            color: selected
-                ? AppColors.onPrimary
-                : (dark ? AppColors.onDark : AppColors.body),
+      child: SizedBox(
+        height: 44,
+        child: Center(
+          child: AnimatedContainer(
+            duration: reduce ? Duration.zero : AppAnimation.fast,
+            curve: Curves.easeOut,
+            height: 36,
+            alignment: Alignment.center,
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.base),
+            decoration: BoxDecoration(
+              color: selected ? AppColors.primary : AppColors.canvas,
+              borderRadius: BorderRadius.circular(AppRadius.pill),
+              border: Border.all(
+                color: selected ? AppColors.primary : AppColors.hairline,
+                width: 1,
+              ),
+            ),
+            child: Text(
+              label,
+              style: AppTypography.buttonSm.copyWith(
+                fontSize: 13.5,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                color: selected ? AppColors.onPrimary : AppColors.body,
+              ),
+            ),
           ),
         ),
       ),
@@ -578,6 +572,63 @@ class AppleBadge extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────
 // Card item — kartu produk untuk grid & carousel
 // ─────────────────────────────────────────────────────────────
+
+/// Rasio lebar:tinggi kartu produk.
+///
+/// Dipakai bersama oleh grid dan carousel supaya kartu yang sama tidak punya
+/// dua tinggi tergantung siapa yang menggambarnya.
+///
+/// Angkanya ikut skala teks: pada teks besar kartu perlu lebih tinggi, kalau
+/// tidak isinya meluber. Batas bawah 0,30 menahan kartu agar tidak jadi tiang
+/// sempit pada skala teks ekstrem.
+double productCardAspectRatio(BuildContext context) {
+  final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
+  // 0,565 — dinaikkan dari 0,53 setelah baris keterangan diringkas dan
+  // isinya dirapatkan ke atas. Rasio yang lebih besar berarti kartu lebih
+  // pendek pada lebar yang sama; sisa ruang yang dulu menganga antara
+  // keterangan dan harga sekarang tidak ada lagi.
+  return (0.565 / textScale.clamp(1.0, 1.8)).clamp(0.30, 0.565);
+}
+
+/// Rasio untuk [AppleProductTile], yang isinya lebih pendek.
+///
+/// Kartu Marketplace punya baris rating dan jarak serta kemungkinan baris
+/// harga coret; [AppleProductTile] tidak. Memakai satu rasio untuk keduanya
+/// menyisakan lubang kosong di tengah kartu yang lebih pendek — jadi keduanya
+/// punya anggaran tingginya sendiri, dan keduanya tetap ikut skala teks.
+double compactProductCardAspectRatio(BuildContext context) {
+  final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
+  // 0,62 diukur, bukan ditebak: 0,66 meluber 6px pada kartu 196dp, dan 0,64
+  // masih meluber 4,3px pada kartu 172dp — nama panjang membungkus lebih
+  // banyak baris justru ketika kartunya paling sempit.
+  return (0.62 / textScale.clamp(1.0, 1.8)).clamp(0.34, 0.62);
+}
+
+/// Lebar satu kartu pada carousel mendatar.
+///
+/// [availableWidth] adalah lebar yang benar-benar diberikan kepada daftarnya —
+/// dari `LayoutBuilder`, bukan dari `MediaQuery.sizeOf`. Kartu di dalam panel
+/// selebar 400dp pada tablet 1024dp harus mengikuti panelnya, bukan layarnya.
+///
+/// Sekitar 1,75 kartu terlihat sekaligus, sehingga potongan kartu berikutnya
+/// di tepi menandakan daftarnya bisa digeser. Dijepit 172–200dp supaya pada
+/// 320dp kartunya tidak menyempit sampai namanya tinggal satu kata per baris,
+/// dan pada 430dp tidak melebar sampai hanya satu kartu yang muat.
+double productCardWidth(double availableWidth) {
+  final usable = availableWidth - AppSpacing.base * 2;
+  return (usable / 1.75).clamp(172.0, 200.0);
+}
+
+/// Lebar kartu untuk carousel rapat — tiga kartu muat dalam satu layar.
+///
+/// Dipakai di halaman detail produk, tempat carousel produk lain hanyalah
+/// pelengkap: kartu selebar etalase akan menyaingi barang yang sedang dilihat.
+/// Tanpa jepitan bawah, pada 320dp kartunya menyempit sampai namanya tinggal
+/// satu kata per baris.
+double compactCarouselCardWidth(double availableWidth) {
+  final usable = availableWidth - AppSpacing.base * 2 - AppSpacing.sm * 2;
+  return (usable / 3).clamp(96.0, 132.0);
+}
 
 class AppleProductTile extends StatelessWidget {
   final String imageUrl;
@@ -783,7 +834,6 @@ class AppleListGroup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (children.isEmpty) return const SizedBox.shrink();
-    final dark = Theme.of(context).brightness == Brightness.dark;
 
     final rows = <Widget>[];
     for (var i = 0; i < children.length; i++) {
@@ -794,7 +844,7 @@ class AppleListGroup extends StatelessWidget {
             height: 1,
             thickness: 1,
             indent: indent,
-            color: dark ? AppColors.darkBorder : AppColors.hairlineSoft,
+            color: AppColors.hairlineSoft,
           ),
         );
       }
@@ -803,13 +853,12 @@ class AppleListGroup extends StatelessWidget {
     return Container(
       margin: margin,
       decoration: BoxDecoration(
-        color: dark ? AppColors.darkSurface : AppColors.canvas,
+        color: AppColors.canvas,
         borderRadius: BorderRadius.circular(AppleRadii.group),
-        border: Border.all(
-          color: dark ? AppColors.darkBorder : AppColors.hairlineSoft,
-          width: 1,
-        ),
-        boxShadow: dark ? null : AppElevation.hairline,
+        border: Border.all(color: AppColors.hairlineSoft, width: 1),
+        // `soft`, sepadan dengan `--sh-soft` pada `.kc-card` di web; `hairline`
+        // membuat kartu aplikasi tampak rata sementara kartu web terangkat.
+        boxShadow: AppElevation.soft,
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(AppleRadii.group),
@@ -940,5 +989,51 @@ class AppleProductRow extends StatelessWidget {
 /// per frame saat menggulir.
 final RegExp _thousands = RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))');
 
-String formatRupiah(num value) =>
-    'Rp${value.toStringAsFixed(0).replaceAllMapped(_thousands, (m) => '${m[1]}.')}';
+String formatRupiah(num value) => 'Rp${formatThousands(value)}';
+
+/// Angka dengan pemisah ribuan, tanpa "Rp" — untuk poin, jumlah, dan sejenisnya.
+String formatThousands(num value) =>
+    value.toStringAsFixed(0).replaceAllMapped(_thousands, (m) => '${m[1]}.');
+
+/// Lebar maksimum satu kartu produk di konsol penjual.
+///
+/// 420 berarti satu kolom pada ponsel dan dua kolom mulai dari tablet. Dulu
+/// kolomnya dipaksa dua di semua lebar, dan di situlah tabrakannya: baris
+/// kontrol berisi Switch (51px) dan dua tombol 44px — 139px perabot tetap —
+/// sedangkan kartu di layar 320dp hanya selebar 106dp di dalam paddingnya.
+/// Tidak ada rasio yang bisa memperbaiki itu; yang salah jumlah kolomnya.
+const double sellerProductCardMaxWidth = 420;
+
+/// Tinggi kartu produk penjual, dalam piksel.
+///
+/// `mainAxisExtent`, bukan `childAspectRatio`: isinya mendatar — gambar di
+/// kiri, teks dan kendali di kanan — jadi tingginya ditentukan kolom kanan,
+/// bukan lebar kartu. Rasio mengikat keduanya, lalu meluber begitu kartunya
+/// menyempit.
+///
+/// Angkanya diukur, bukan ditebak — lihat test/seller_product_card_test.dart,
+/// yang menyapu 320–768dp dan skala teks 1,0–2,0x.
+double sellerProductCardHeight(BuildContext context) {
+  final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
+  // Hanya bagian teks yang ikut skala; gambar dan target sentuh tidak.
+  const fixed = 104.0; // kendali 44pt yang membungkus, plus padding
+  const text = 112.0; // nama, meta (bisa dua baris), dan harga
+  return fixed + text * textScale.clamp(1.0, 2.0);
+}
+
+/// Tinggi tile angka pada dasbor (KPI 2 kolom).
+///
+/// Sama alasannya dengan [sellerProductCardHeight]: isinya — ikon, label, dan
+/// satu angka — tingginya tidak bergantung pada lebar kartu, jadi mengikatnya
+/// lewat `childAspectRatio` hanya membuat tile meluber di layar sempit dan
+/// berlubang di tablet.
+double dashboardTileHeight(BuildContext context) {
+  final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
+  return 64.0 + 52.0 * textScale.clamp(1.0, 2.0);
+}
+
+/// Tinggi tile pintasan fitur, yang punya subjudul dua baris.
+double featureTileHeight(BuildContext context) {
+  final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
+  return 68.0 + 64.0 * textScale.clamp(1.0, 2.0);
+}

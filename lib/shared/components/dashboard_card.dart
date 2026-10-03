@@ -34,25 +34,35 @@ class DashboardCard extends StatelessWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                title,
-                style: AppTypography.captionSmall.copyWith(
-                  color: isDarkBg
-                      ? AppColors.onDark.withOpacity(0.7)
-                      : AppColors.muted,
-                  fontWeight: FontWeight.w600,
+              // Expanded, bukan Text telanjang di dalam spaceBetween: judul
+              // seperti "Pendapatan Bulan Ini" mendorong ikonnya keluar kartu
+              // — 55px di layar 320dp — karena Row tidak pernah menyuruhnya
+              // mengalah.
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.captionSmall.copyWith(
+                    color: isDarkBg
+                        ? AppColors.onDark.withValues(alpha: 0.7)
+                        : AppColors.muted,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
+              const SizedBox(width: AppSpacing.xs),
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
                   color: isDarkBg
-                      ? AppColors.canvas.withOpacity(0.12)
-                      : iconColor.withOpacity(0.08),
+                      ? AppColors.canvas.withValues(alpha: 0.12)
+                      : iconColor.withValues(alpha: 0.08),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -64,23 +74,34 @@ class DashboardCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
-          Text(
-            value,
-            style: AppTypography.titleLarge.copyWith(
-              color: isDarkBg ? AppColors.onDark : AppColors.ink,
-              fontWeight: FontWeight.w800,
-              fontSize: 20,
+          // Angka mengecil agar muat, bukan terpotong: "Rp2.450.000" di
+          // kartu seperempat layar adalah hal pertama yang dicari pemiliknya.
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              maxLines: 1,
+              style: AppTypography.titleLarge.copyWith(
+                color: isDarkBg ? AppColors.onDark : AppColors.ink,
+                fontWeight: FontWeight.w800,
+                fontSize: 20,
+              ),
             ),
           ),
           if (subtitle != null) ...[
             const SizedBox(height: AppSpacing.xs),
-            Text(
-              subtitle!,
-              style: AppTypography.captionSmall.copyWith(
-                color: isDarkBg
-                    ? AppColors.onDark.withOpacity(0.5)
-                    : AppColors.mutedSoft,
-                fontSize: 11,
+            Flexible(
+              child: Text(
+                subtitle!,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.captionSmall.copyWith(
+                  color: isDarkBg
+                      ? AppColors.onDark.withValues(alpha: 0.5)
+                      : AppColors.mutedSoft,
+                  fontSize: 11,
+                ),
               ),
             ),
           ],

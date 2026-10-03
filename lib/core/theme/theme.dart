@@ -56,11 +56,6 @@ class AppColors {
   static const Color warning = Color(0xFFFF9F0A);
   static const Color error = Color(0xFFFF3B30);
   static const Color errorText = Color(0xFFC13515);
-
-  // Dark mode surfaces
-  static const Color darkBg = Color(0xFF111111);
-  static const Color darkSurface = Color(0xFF1A1A1A);
-  static const Color darkBorder = Color(0xFF333333);
 }
 
 class AppRadius {
@@ -170,7 +165,10 @@ class AppGlass {
   static const double blurSubtle = 12.0;
 
   // Light
-  static const Color fill = Color(0xF0FFFFFF); // 94% putih
+  /// 82% putih — sepadan dengan `--glass-strong` di web. Sebelumnya 94%, yang
+  /// membuat lapisan mengambang di aplikasi tampak nyaris padat sementara
+  /// lapisan yang sama di web jelas tembus pandang.
+  static const Color fill = Color(0xD1FFFFFF);
   static const Color fillSolid = Color(0xFFFFFFFF);
 
   /// Isian translusen tanpa blur — untuk kontrol kecil di atas media.
@@ -179,9 +177,6 @@ class AppGlass {
   static const Color hairline = Color(0x1F3C3C43); // separator iOS
 
   // Dark
-  static const Color fillDark = Color(0xCC1C1C1E);
-  static const Color fillDarkSolid = Color(0xFF1C1C1E);
-  static const Color strokeDark = Color(0x1FFFFFFF);
 
   /// Elevasi tunggal untuk material mengambang.
   static const List<BoxShadow> lift = [
@@ -513,128 +508,6 @@ class AppTheme {
       bodyMedium: AppTypography.bodyMedium,
       bodySmall: AppTypography.caption,
       labelSmall: AppTypography.captionSmall,
-    ),
-  );
-
-  static final ThemeData darkTheme = ThemeData(
-    useMaterial3: true,
-    brightness: Brightness.dark,
-    fontFamily: AppTypography.fontFamily,
-    primaryColor: AppColors.primary,
-    scaffoldBackgroundColor: AppColors.darkBg,
-    colorScheme: const ColorScheme.dark(
-      primary: AppColors.primary,
-      onPrimary: AppColors.onPrimary,
-      secondary: AppColors.primary,
-      surface: AppColors.darkSurface,
-      onSurface: AppColors.onDark,
-      error: AppColors.error,
-      outline: AppColors.darkBorder,
-    ),
-    appBarTheme: const AppBarTheme(
-      backgroundColor: AppColors.darkBg,
-      elevation: 0,
-      scrolledUnderElevation: 0,
-      centerTitle: false,
-      titleTextStyle: TextStyle(
-        fontFamily: AppTypography.fontFamily,
-        fontSize: 20,
-        fontWeight: FontWeight.w600,
-        color: AppColors.onDark,
-      ),
-      iconTheme: IconThemeData(color: AppColors.onDark),
-    ),
-    cardTheme: CardThemeData(
-      color: AppColors.darkSurface,
-      elevation: 0,
-      margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadius.card),
-      ),
-    ),
-    elevatedButtonTheme: ElevatedButtonThemeData(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.primary,
-        foregroundColor: AppColors.onPrimary,
-        elevation: 0,
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.button),
-        ),
-        textStyle: const TextStyle(
-          fontFamily: AppTypography.fontFamily,
-          fontSize: 16,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-    ),
-    inputDecorationTheme: InputDecorationTheme(
-      filled: true,
-      fillColor: AppColors.canvas,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(AppRadius.button),
-        borderSide: const BorderSide(color: AppColors.primary, width: 1.0),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(AppRadius.button),
-        borderSide: const BorderSide(color: AppColors.primary, width: 1.0),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(AppRadius.button),
-        borderSide: const BorderSide(
-          color: AppColors.primaryActive,
-          width: 2.0,
-        ),
-      ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(AppRadius.button),
-        borderSide: const BorderSide(color: AppColors.errorText, width: 2.0),
-      ),
-      focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(AppRadius.button),
-        borderSide: const BorderSide(color: AppColors.error, width: 2.5),
-      ),
-      hintStyle: AppTypography.bodyMedium.copyWith(color: AppColors.mutedSoft),
-      labelStyle: AppTypography.caption.copyWith(color: AppColors.muted),
-      floatingLabelStyle: AppTypography.caption.copyWith(
-        color: AppColors.primary,
-      ),
-    ),
-    navigationBarTheme: NavigationBarThemeData(
-      backgroundColor: AppColors.darkBg,
-      elevation: 0,
-      indicatorColor: AppColors.primary.withOpacity(0.15),
-      labelTextStyle: WidgetStateProperty.resolveWith((states) {
-        if (states.contains(WidgetState.selected)) {
-          return AppTypography.captionSmall.copyWith(
-            color: AppColors.primary,
-            fontWeight: FontWeight.w600,
-          );
-        }
-        return AppTypography.captionSmall.copyWith(color: AppColors.mutedSoft);
-      }),
-    ),
-    dividerTheme: const DividerThemeData(
-      color: AppColors.darkBorder,
-      thickness: 1,
-      space: 0,
-    ),
-    textTheme: TextTheme(
-      displayLarge: AppTypography.displayLarge.copyWith(
-        color: AppColors.onDark,
-      ),
-      displayMedium: AppTypography.displayMedium.copyWith(
-        color: AppColors.onDark,
-      ),
-      titleLarge: AppTypography.titleLarge.copyWith(color: AppColors.onDark),
-      titleMedium: AppTypography.titleMedium.copyWith(color: AppColors.onDark),
-      bodyLarge: AppTypography.bodyLarge.copyWith(color: AppColors.onDark),
-      bodyMedium: AppTypography.bodyMedium.copyWith(color: AppColors.mutedSoft),
-      bodySmall: AppTypography.caption.copyWith(color: AppColors.mutedSoft),
-      labelSmall: AppTypography.captionSmall.copyWith(
-        color: AppColors.mutedSoft,
-      ),
     ),
   );
 
