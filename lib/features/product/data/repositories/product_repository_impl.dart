@@ -1,3 +1,4 @@
+import '../../domain/entities/product_draft.dart';
 import '../../../../core/network/paginated.dart';
 import '../../../../core/storage/api_cache.dart';
 import '../../domain/entities/product.dart';
@@ -107,6 +108,7 @@ class ProductRepositoryImpl implements ProductRepository {
     required int stock,
     required String categoryId,
     List<dynamic>? images,
+    ProductDraft? draft,
   }) async {
     final product = await remoteDataSource.createProduct(
       name: name,
@@ -115,6 +117,7 @@ class ProductRepositoryImpl implements ProductRepository {
       stock: stock,
       categoryId: categoryId,
       images: images,
+      draft: draft,
     );
     await _invalidateProductCaches();
     return product.toEntity();
@@ -130,6 +133,7 @@ class ProductRepositoryImpl implements ProductRepository {
     String? categoryId,
     bool? isActive,
     List<dynamic>? newImages,
+    ProductDraft? draft,
   }) async {
     final product = await remoteDataSource.updateProduct(
       id: id,
@@ -140,6 +144,7 @@ class ProductRepositoryImpl implements ProductRepository {
       categoryId: categoryId,
       isActive: isActive,
       newImages: newImages,
+      draft: draft,
     );
     await _invalidateProductCaches(id);
     return product.toEntity();

@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/theme.dart';
 import '../../../../shared/widgets/apple_ui.dart';
+import '../../../../shared/widgets/category_image_card.dart';
 
-/// Card menu kategori — deretan tile squircle bergaya ikon iOS.
+/// Kategori beranda dalam kartu foto ringkas dengan label overlay.
 class CategoryListWidget extends StatelessWidget {
   final ValueChanged<String> onCategoryTap;
   final VoidCallback onSeeAllTap;
@@ -16,12 +17,12 @@ class CategoryListWidget extends StatelessWidget {
     this.selectedCategory,
   });
 
-  static const List<({String name, IconData icon})> _categories = [
-    (name: 'Sembako', icon: Icons.rice_bowl_rounded),
-    (name: 'Minuman', icon: Icons.local_cafe_rounded),
-    (name: 'Makanan Instan', icon: Icons.ramen_dining_rounded),
-    (name: 'Perawatan', icon: Icons.clean_hands_rounded),
-    (name: 'Kosmetik', icon: Icons.face_retouching_natural_rounded),
+  static const List<String> _categories = [
+    'Sembako',
+    'Minuman',
+    'Makanan Instan',
+    'Perawatan',
+    'Kosmetik',
   ];
 
   @override
@@ -35,25 +36,35 @@ class CategoryListWidget extends StatelessWidget {
           onAction: onSeeAllTap,
         ),
         const SizedBox(height: AppSpacing.sm),
-        SizedBox(
-          height: 92,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.base),
+        // Grid, bukan rail. Di beranda kategori adalah peta isi toko, dan
+        // yang tersembunyi di luar layar praktis tidak pernah dibuka —
+        // alasan yang sama dengan `.catgrid` di web.
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.base),
+          child: GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+              // Padanan `minmax(96px, 1fr)`: tiga kolom di ponsel, lebih
+              // banyak begitu layarnya melebar, tanpa breakpoint sendiri.
+              maxCrossAxisExtent: 120,
+              mainAxisSpacing: AppSpacing.md,
+              crossAxisSpacing: AppSpacing.md,
+              mainAxisExtent: 106,
+            ),
             itemCount: _categories.length,
-            separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.md),
             itemBuilder: (context, index) {
-              final cat = _categories[index];
-              return AppleMenuTile(
-                // Beranda memakai tile lebih ringkas daripada Marketplace
-                // supaya lebih banyak bagian muat dalam satu viewport.
-                size: 48,
-                icon: cat.icon,
-                label: cat.name,
-                tint: AppleTints.at(index),
-                selected: selectedCategory == cat.name,
-                onTap: () => onCategoryTap(cat.name),
+              final category = _categories[index];
+              return CategoryImageCard(
+                width: double.infinity,
+                height: 106,
+                borderRadius: AppleRadii.tile,
+                labelPadding: const EdgeInsets.all(AppSpacing.sm + 2),
+                fontSize: 11.5,
+                imageAsset: categoryImageAsset(category),
+                label: category,
+                selected: selectedCategory == category,
+                onTap: () => onCategoryTap(category),
               );
             },
           ),

@@ -7,7 +7,9 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/theme/theme.dart';
 import '../../../../shared/widgets/apple_ui.dart';
 import '../../../../shared/widgets/shimmer_loading.dart';
+import '../../../../shared/widgets/apple_feedback.dart';
 import '../../../discovery/presentation/widgets/discovery_sections.dart';
+import '../../../order/presentation/cart_feedback.dart';
 import '../../../order/presentation/providers/cart_provider.dart';
 import '../../domain/marketplace.dart';
 import '../providers/marketplace_provider.dart';
@@ -22,7 +24,21 @@ import '../widgets/marketplace_product_card.dart';
 /// beranda. Tidak ada header profil maupun sapaan di sini: konten dimulai
 /// langsung setelah safe area.
 class MarketplaceScreen extends ConsumerStatefulWidget {
-  const MarketplaceScreen({super.key});
+  /// Membuka layar langsung dengan papan ketik aktif di kolom pencarian.
+  /// Dipakai saat pengguna menekan kolom pencarian di beranda: ia sudah
+  /// berniat mengetik, jadi menyuruhnya menekan sekali lagi di sini hanya
+  /// menambah satu ketukan.
+  final bool autofocusSearch;
+
+  /// Membuka lembar filter begitu layar tampil — padanan tombol Filter di
+  /// beranda, yang dulu hanya berpindah halaman tanpa membuka apa pun.
+  final bool openFilter;
+
+  const MarketplaceScreen({
+    super.key,
+    this.autofocusSearch = false,
+    this.openFilter = false,
+  });
 
   @override
   ConsumerState<MarketplaceScreen> createState() => _MarketplaceScreenState();
@@ -31,7 +47,11 @@ class MarketplaceScreen extends ConsumerStatefulWidget {
 class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
   final _scrollController = ScrollController();
   final _searchController = TextEditingController();
+  final _searchFocus = FocusNode();
   Timer? _debounce;
+
+  /// Benar sejak huruf pertama diketik sampai jeda ketiknya lewat.
+  bool _searchPending = false;
 
   /// Ruang bagi bilah navigasi mengambang agar kartu terakhir tidak tertutup.
   static const double _navBarClearance = 96;
@@ -43,6 +63,16 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
     // Kolom pencarian diisi dari state agar pilihan pengguna bertahan saat
     // kembali dari halaman detail produk.
     _searchController.text = ref.read(marketplaceFilterProvider).search;
+
+    // Setelah frame pertama: sebelum itu belum ada layar yang bisa diberi
+    // fokus, dan lembar filter belum punya `Navigator` untuk ditumpangi.
+    if (widget.autofocusSearch || widget.openFilter) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (widget.autofocusSearch) _searchFocus.requestFocus();
+        if (widget.openFilter) showMarketplaceFilterSheet(context, ref);
+      });
+    }
   }
 
   @override
@@ -50,6 +80,7 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
     _debounce?.cancel();
     _scrollController.dispose();
     _searchController.dispose();
+    _searchFocus.dispose();
     super.dispose();
   }
 
@@ -62,8 +93,14 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
 
   void _onSearchChanged(String value) {
     _debounce?.cancel();
+    // Selama jeda ketik, belum ada permintaan yang berjalan — tetapi bagi yang
+    // mengetik, pencariannya sudah dimulai. Tanpa penanda ini kolomnya diam
+    // 400ms penuh lalu tiba-tiba hasilnya berganti.
+    if (!_searchPending) setState(() => _searchPending = true);
+
     // Tanpa debounce, setiap huruf mengirim satu permintaan.
     _debounce = Timer(const Duration(milliseconds: 400), () {
+      if (mounted) setState(() => _searchPending = false);
       ref
           .read(marketplaceFilterProvider.notifier)
           .update((f) => f.copyWith(search: value));
@@ -93,39 +130,29 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
 
     // Produk mitra memakai umkmProductId; mengirimnya sebagai productId
     // membuat backend mencarinya di tabel Product dan menjawab 404.
-    final success = await ref
-        .read(cartProvider.notifier)
-        .addToCart(
-          productId: product.isUmkm ? null : product.id,
-          umkmProductId: product.isUmkm ? product.id : null,
-          quantity: 1,
-        );
+    await addToCartWithFeedback(
+      context,
+      productName: product.name,
+      add: () => ref
+          .read(cartProvider.notifier)
+          .addToCart(
+            productId: product.isUmkm ? null : product.id,
+            umkmProductId: product.isUmkm ? product.id : null,
+            quantity: 1,
+            productName: product.name,
+          ),
+    );
 
     if (!mounted) return;
     ref.read(addingToCartProvider.notifier).state = {
       ...ref.read(addingToCartProvider),
     }..remove(product.id);
-
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(
-            success
-                ? '${product.name} ditambahkan ke keranjang'
-                : 'Gagal menambahkan ke keranjang',
-          ),
-          backgroundColor: success ? AppColors.success : AppColors.error,
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 2),
-        ),
-      );
   }
 
   void _openProduct(MarketplaceProduct product) {
     context.push(
       product.isUmkm
-          ? '/umkm/products/${product.id}'
+          ? '/mitra/products/${product.id}'
           : '/products/detail/${product.id}',
     );
   }
@@ -173,10 +200,15 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
                       SliverToBoxAdapter(
                         child: _SearchBar(
                           controller: _searchController,
+                          focusNode: _searchFocus,
+                          searching:
+                              _searchPending ||
+                              ref.watch(marketplaceProductsProvider).isLoading,
                           onChanged: _onSearchChanged,
                           onClear: () {
                             _searchController.clear();
                             _debounce?.cancel();
+                            setState(() => _searchPending = false);
                             ref
                                 .read(marketplaceFilterProvider.notifier)
                                 .update((f) => f.copyWith(search: ''));
@@ -184,14 +216,13 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
                         ),
                       ),
                       const SliverToBoxAdapter(
-                        child: SizedBox(height: AppSpacing.lg),
+                        child: SizedBox(height: AppSpacing.md),
                       ),
 
                       // 4. Filter Makanan.
                       SliverToBoxAdapter(
                         child: CategoryFilterRow(
                           title: 'Filter Makanan',
-                          icon: Icons.restaurant_rounded,
                           categories: foodCategories,
                           selectedId: filter.foodCategoryId,
                           onSelected: (id) => ref
@@ -206,14 +237,13 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
                         ),
                       ),
                       const SliverToBoxAdapter(
-                        child: SizedBox(height: AppSpacing.lg),
+                        child: SizedBox(height: AppSpacing.md),
                       ),
 
                       // 5. Filter Barang Ritel.
                       SliverToBoxAdapter(
                         child: CategoryFilterRow(
                           title: 'Filter Barang Ritel',
-                          icon: Icons.shopping_basket_rounded,
                           categories: retailCategories,
                           selectedId: filter.retailCategoryId,
                           onSelected: (id) => ref
@@ -228,7 +258,7 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
                         ),
                       ),
                       const SliverToBoxAdapter(
-                        child: SizedBox(height: AppSpacing.lg),
+                        child: SizedBox(height: AppSpacing.md),
                       ),
 
                       // 6 & 7. Sumber belanja + lokasi pengguna: lokasinya
@@ -283,13 +313,20 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
 
 class _SearchBar extends StatelessWidget {
   final TextEditingController controller;
+  final FocusNode? focusNode;
   final ValueChanged<String> onChanged;
   final VoidCallback onClear;
+
+  /// Ada pencarian yang sedang berjalan — entah masih menunggu jeda ketik atau
+  /// sudah dikirim ke server.
+  final bool searching;
 
   const _SearchBar({
     required this.controller,
     required this.onChanged,
     required this.onClear,
+    this.focusNode,
+    this.searching = false,
   });
 
   @override
@@ -301,22 +338,31 @@ class _SearchBar extends StatelessWidget {
           Expanded(
             child: TextField(
               controller: controller,
+              focusNode: focusNode,
               onChanged: onChanged,
               textInputAction: TextInputAction.search,
               style: AppTypography.bodyMedium.copyWith(fontSize: 14),
               decoration: InputDecoration(
                 hintText: 'Cari produk kebutuhanmu...',
                 prefixIcon: const Icon(Icons.search_rounded, size: 20),
-                // Tombol hapus hanya muncul saat ada teks.
+                // Indikator saat mencari, tombol hapus saat hasilnya sudah
+                // ada, dan kosong saat kolomnya juga kosong.
                 suffixIcon: ValueListenableBuilder<TextEditingValue>(
                   valueListenable: controller,
-                  builder: (context, value, _) => value.text.isEmpty
-                      ? const SizedBox.shrink()
-                      : IconButton(
-                          icon: const Icon(Icons.close_rounded, size: 18),
-                          tooltip: 'Hapus pencarian',
-                          onPressed: onClear,
-                        ),
+                  builder: (context, value, _) {
+                    if (searching) {
+                      return const Padding(
+                        padding: EdgeInsets.all(14),
+                        child: AppleActivityIndicator(size: 16),
+                      );
+                    }
+                    if (value.text.isEmpty) return const SizedBox.shrink();
+                    return IconButton(
+                      icon: const Icon(Icons.close_rounded, size: 18),
+                      tooltip: 'Hapus pencarian',
+                      onPressed: onClear,
+                    );
+                  },
                 ),
                 filled: true,
                 fillColor: AppColors.canvas,

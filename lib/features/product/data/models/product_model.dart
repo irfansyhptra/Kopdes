@@ -34,6 +34,12 @@ class ProductModel extends Product {
     super.isActive = true,
     required super.createdAt,
     required super.updatedAt,
+    super.discountPrice,
+    super.unit,
+    super.soldCount,
+    super.ratingAverage,
+    super.ratingCount,
+    super.store,
   });
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
@@ -41,6 +47,8 @@ class ProductModel extends Product {
     List<ProductImageModel> parsedImages = imageList
         .map((img) => ProductImageModel.fromJson(img as Map<String, dynamic>))
         .toList();
+
+    final rating = json['rating'] as Map<String, dynamic>? ?? const {};
 
     return ProductModel(
       id: json['id'] as String,
@@ -64,6 +72,14 @@ class ProductModel extends Product {
       updatedAt: json['updatedAt'] != null
           ? DateTime.parse(json['updatedAt'] as String)
           : DateTime.now(),
+      discountPrice: json['discountPrice'] is num
+          ? (json['discountPrice'] as num).toDouble()
+          : double.tryParse('${json['discountPrice']}'),
+      unit: json['unit'] as String? ?? 'pcs',
+      soldCount: (json['soldCount'] as num?)?.toInt() ?? 0,
+      ratingAverage: (rating['average'] as num?)?.toDouble(),
+      ratingCount: (rating['count'] as num?)?.toInt() ?? 0,
+      store: ProductStore.fromJson(json['kopdes'] as Map<String, dynamic>?),
     );
   }
 
@@ -94,6 +110,15 @@ class ProductModel extends Product {
       isActive: isActive,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      // Setiap field baru wajib ikut di sini. Jalur pemetaan kedua yang
+      // tertinggal satu field membuat halaman detail kehilangan harga diskon,
+      // rating, atau nama tokonya tanpa satu pun galat.
+      discountPrice: discountPrice,
+      unit: unit,
+      soldCount: soldCount,
+      ratingAverage: ratingAverage,
+      ratingCount: ratingCount,
+      store: store,
     );
   }
 }

@@ -24,6 +24,8 @@ class MarketplaceRemoteDataSource {
         'sellerType': filter.sellerType.wire,
         'sort': filter.sort.wire,
         if (filter.search.isNotEmpty) 'search': filter.search,
+        if (filter.kopdesId != null) 'kopdesId': filter.kopdesId,
+        if (filter.umkmId != null) 'umkmId': filter.umkmId,
         if (filter.categoryId != null) 'categoryId': filter.categoryId,
         if (filter.minPrice != null) 'minPrice': filter.minPrice,
         if (filter.maxPrice != null) 'maxPrice': filter.maxPrice,
@@ -105,6 +107,7 @@ class MarketplaceRepository {
         't${f.sellerType.wire}:o${f.sort.wire}:'
         'min${f.minPrice ?? ''}:max${f.maxPrice ?? ''}:'
         'stock${f.inStockOnly}:disc${f.discountedOnly}:'
-        'rate${f.minRating}:r${f.radiusKm ?? ''}:$geo';
+        'rate${f.minRating}:r${f.radiusKm ?? ''}:'
+        'k${f.kopdesId ?? ''}:u${f.umkmId ?? ''}:$geo';
   }
 }

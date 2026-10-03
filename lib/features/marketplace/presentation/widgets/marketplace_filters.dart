@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/theme.dart';
 import '../../../../shared/widgets/apple_ui.dart';
+import '../../../../shared/widgets/category_image_card.dart';
 import '../../../location/domain/user_location.dart';
 import '../../../location/presentation/providers/location_provider.dart';
 import '../../../koperasi/presentation/providers/koperasi_provider.dart';
@@ -86,64 +87,21 @@ class MarketplaceSectionHeader extends StatelessWidget {
   }
 }
 
-/// Ikon untuk satu kategori.
-///
-/// Dicocokkan dari nama kategori, bukan dari daftar tetap: nama kategori
-/// datang dari backend dan admin bisa menambah yang baru kapan saja. Kategori
-/// yang belum dikenali tetap mendapat ikon netral, bukan kotak kosong.
-IconData categoryIcon(String name) {
-  final n = name.toLowerCase();
-  if (n.contains('siap saji') || n.contains('instan')) {
-    return Icons.ramen_dining_rounded;
-  }
-  if (n.contains('cemilan') || n.contains('ringan') || n.contains('snack')) {
-    return Icons.cookie_rounded;
-  }
-  if (n.contains('minum') || n.contains('kopi')) {
-    return Icons.local_cafe_rounded;
-  }
-  if (n.contains('makan') || n.contains('kuliner')) {
-    return Icons.restaurant_rounded;
-  }
-  if (n.contains('bahan pokok') || n.contains('sembako')) {
-    return Icons.rice_bowl_rounded;
-  }
-  if (n.contains('rumah') || n.contains('peralatan')) {
-    return Icons.home_rounded;
-  }
-  if (n.contains('rawat') || n.contains('kesehatan') || n.contains('cantik')) {
-    return Icons.spa_rounded;
-  }
-  if (n.contains('elektronik')) return Icons.devices_other_rounded;
-  if (n.contains('pakaian') || n.contains('fesyen')) {
-    return Icons.checkroom_rounded;
-  }
-  if (n.contains('kerajinan')) return Icons.handyman_rounded;
-  if (n.contains('tani') || n.contains('sayur')) {
-    return Icons.agriculture_rounded;
-  }
-  if (n.contains('ikan') || n.contains('laut')) return Icons.set_meal_rounded;
-  if (n.contains('lokal')) return Icons.location_on_rounded;
-  return Icons.category_rounded;
-}
-
-/// Kartu satu pilihan filter: ikon berwarna di atas, label di bawah.
+/// Kartu satu pilihan filter berbasis foto dengan label overlay.
 ///
 /// Ukurannya ikut skala teks, bukan angka tetap dari rancangan: pada teks
 /// 2,0x label dua baris tetap muat karena kartunya ikut tumbuh, dan barisnya
 /// menggulir mendatar sehingga tidak ada yang terpotong di layar 320dp.
 class FilterOptionCard extends StatelessWidget {
-  final IconData icon;
+  final String imageAsset;
   final String label;
-  final Color tint;
   final bool selected;
   final VoidCallback onTap;
 
   const FilterOptionCard({
     super.key,
-    required this.icon,
+    required this.imageAsset,
     required this.label,
-    required this.tint,
     required this.selected,
     required this.onTap,
   });
@@ -153,73 +111,34 @@ class FilterOptionCard extends StatelessWidget {
   static double textScale(BuildContext context) =>
       (MediaQuery.textScalerOf(context).scale(12) / 12).clamp(1.0, 1.8);
 
-  static double widthOf(BuildContext context) => 88 * textScale(context);
+  /// 80×88, dari 104×112.
+  ///
+  /// Dua baris filter ini duduk di atas katalog, bukan menjadi isinya —
+  /// kartu sebesar itu memakan hampir sepertiga layar sebelum satu produk
+  /// pun terlihat. Tumbuhnya terhadap skala teks ikut dikecilkan secara
+  /// proporsional supaya perbandingannya tetap sama di skala besar.
+  static double widthOf(BuildContext context) {
+    final scale = textScale(context);
+    return 80 + (14 * (scale - 1));
+  }
 
-  static double heightOf(BuildContext context) => 100 * textScale(context);
+  static double heightOf(BuildContext context) {
+    final scale = textScale(context);
+    return 88 + (30 * (scale - 1));
+  }
 
   @override
   Widget build(BuildContext context) {
     final scale = textScale(context);
-    final iconBox = 42 * scale;
-
-    return ApplePressable(
-      onTap: onTap,
-      pressedScale: 0.96,
-      // Label tidak diulang di sini: teksnya sudah tampil di dalam kartu,
-      // dan menyebutkannya dua kali membuat pembaca layar mengucapkan
-      // "Semua, Semua".
+    return CategoryImageCard(
+      width: widthOf(context),
+      height: heightOf(context),
+      imageAsset: imageAsset,
+      label: label,
       selected: selected,
-      child: Container(
-        width: widthOf(context),
-        padding: EdgeInsets.symmetric(
-          horizontal: AppSpacing.sm,
-          vertical: AppSpacing.md * scale,
-        ),
-        decoration: BoxDecoration(
-          color: selected ? AppColors.primary : AppColors.canvas,
-          borderRadius: BorderRadius.circular(AppleRadii.control),
-          border: Border.all(
-            color: selected ? AppColors.primary : AppColors.hairline,
-          ),
-          boxShadow: selected ? null : AppElevation.hairline,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: iconBox,
-              height: iconBox,
-              decoration: BoxDecoration(
-                color: selected
-                    ? const Color(0x33FFFFFF)
-                    : tint.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(AppleRadii.tile - 4),
-              ),
-              child: Icon(
-                icon,
-                size: 22 * scale,
-                color: selected ? AppColors.onPrimary : tint,
-              ),
-            ),
-            SizedBox(height: AppSpacing.sm * scale),
-            Flexible(
-              child: Text(
-                label,
-                maxLines: 2,
-                textAlign: TextAlign.center,
-                overflow: TextOverflow.ellipsis,
-                style: AppTypography.captionSmall.copyWith(
-                  fontSize: 11.5,
-                  height: 1.2,
-                  fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                  color: selected ? AppColors.onPrimary : AppColors.body,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+      onTap: onTap,
+      labelPadding: EdgeInsets.all(AppSpacing.sm * scale),
+      fontSize: 10.5 * scale,
     );
   }
 }
@@ -233,7 +152,6 @@ class CategoryFilterRow extends ConsumerWidget {
   final List<Category> categories;
   final String? selectedId;
   final ValueChanged<String?> onSelected;
-  final IconData icon;
 
   const CategoryFilterRow({
     super.key,
@@ -241,7 +159,6 @@ class CategoryFilterRow extends ConsumerWidget {
     required this.categories,
     required this.selectedId,
     required this.onSelected,
-    required this.icon,
   });
 
   @override
@@ -252,7 +169,9 @@ class CategoryFilterRow extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         MarketplaceSectionHeader(title: title),
-        const SizedBox(height: AppSpacing.sm),
+        // Jarak ikut mengecil bersama kartunya: celah 12 di atas kartu 88
+        // terbaca jauh lebih longgar daripada celah yang sama di atas 112.
+        const SizedBox(height: AppSpacing.xs),
         SizedBox(
           height: FilterOptionCard.heightOf(context),
           child: ListView.separated(
@@ -260,22 +179,20 @@ class CategoryFilterRow extends ConsumerWidget {
             physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.base),
             itemCount: categories.length + 1,
-            separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.md),
+            separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.sm),
             itemBuilder: (context, index) {
               if (index == 0) {
                 return FilterOptionCard(
-                  icon: Icons.grid_view_rounded,
+                  imageAsset: categoryImageAsset('Semua'),
                   label: 'Semua',
-                  tint: AppColors.primary,
                   selected: selectedId == null,
                   onTap: () => onSelected(null),
                 );
               }
               final category = categories[index - 1];
               return FilterOptionCard(
-                icon: categoryIcon(category.name),
+                imageAsset: categoryImageAsset(category.name),
                 label: category.name,
-                tint: AppleTints.at(index - 1),
                 selected: selectedId == category.id,
                 // Menekan kategori yang sudah aktif melepasnya — cara
                 // menghapus pilihan tanpa tombol tambahan.

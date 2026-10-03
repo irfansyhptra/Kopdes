@@ -34,6 +34,35 @@ class CompactHomeHeader extends StatelessWidget {
     required this.onFilterTap,
   });
 
+  /// Tinggi baris identitas — bagian yang menyusut saat menempel.
+  static double identityHeight(BuildContext context) {
+    final scale = (MediaQuery.textScalerOf(context).scale(12) / 12).clamp(
+      1.0,
+      2.0,
+    );
+    // Diukur, bukan ditebak: 50 pada skala 1,0 dan 99 pada 2,0.
+    //
+    // Angkanya baru bisa dipakai setelah sapaan dibatasi satu baris —
+    // sebelum itu tingginya berubah menurut LEBAR layar (371 pada 320dp,
+    // 231 pada 768dp di skala 2,0), dan tidak ada rumus berbasis skala teks
+    // yang bisa mewakilinya.
+    // +1 sebagai margin pembulatan: pada 1,5x rumus murni memberi 206,5
+    // sedangkan tinggi nyatanya 207.
+    return 51 + 49 * (scale - 1);
+  }
+
+  /// Tinggi penuh, termasuk area aman di atasnya.
+  static double expandedHeight(BuildContext context) =>
+      MediaQuery.paddingOf(context).top +
+      AppSpacing.md +
+      identityHeight(context) +
+      AppSpacing.md +
+      _searchHeight +
+      AppSpacing.base;
+
+  // 48, bukan 44: itu tinggi Container di dalam HomeSearchBar.
+  static const double _searchHeight = 48;
+
   @override
   Widget build(BuildContext context) {
     final topInset = MediaQuery.paddingOf(context).top;
@@ -111,8 +140,14 @@ class _IdentityRow extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
+              // Satu baris, dipotong bila perlu. Tanpa ini sapaannya
+              // membungkus jadi dua-tiga baris pada skala teks besar di
+              // layar sempit, dan tinggi header jadi bergantung pada lebar
+              // layar — mustahil dihitung untuk sliver yang menempel.
               const Text(
                 'Selamat Datang Kembali,',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: Colors.white70,
                   fontSize: 11.5,

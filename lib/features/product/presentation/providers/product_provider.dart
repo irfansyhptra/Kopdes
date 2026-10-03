@@ -1,3 +1,4 @@
+import '../../domain/entities/product_draft.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../../core/network/paginated.dart';
@@ -224,6 +225,7 @@ class AdminProductNotifier extends StateNotifier<AsyncValue<void>> {
     required int stock,
     required String categoryId,
     List<dynamic>? images,
+    ProductDraft? draft,
   }) async {
     state = const AsyncValue.loading();
     try {
@@ -234,6 +236,7 @@ class AdminProductNotifier extends StateNotifier<AsyncValue<void>> {
         stock: stock,
         categoryId: categoryId,
         images: images,
+        draft: draft,
       );
       state = const AsyncValue.data(null);
       _refreshProductProviders();
@@ -253,6 +256,7 @@ class AdminProductNotifier extends StateNotifier<AsyncValue<void>> {
     String? categoryId,
     bool? isActive,
     List<dynamic>? newImages,
+    ProductDraft? draft,
   }) async {
     state = const AsyncValue.loading();
     try {
@@ -265,6 +269,7 @@ class AdminProductNotifier extends StateNotifier<AsyncValue<void>> {
         categoryId: categoryId,
         isActive: isActive,
         newImages: newImages,
+        draft: draft,
       );
       state = const AsyncValue.data(null);
       _refreshProductProviders();

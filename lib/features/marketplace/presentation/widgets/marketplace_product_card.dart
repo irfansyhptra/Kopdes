@@ -17,14 +17,12 @@ import '../providers/marketplace_provider.dart';
 /// yang sama persis. Saat keduanya punya salinan sendiri, angka yang meleset
 /// hanya ketahuan di perangkat sungguhan.
 SliverGridDelegate marketplaceGridDelegate(BuildContext context) {
-  final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
   return SliverGridDelegateWithMaxCrossAxisExtent(
+    // 220 memberi kartu 200–240dp pada tablet, dan dua kolom pada ponsel.
     maxCrossAxisExtent: 220,
     mainAxisSpacing: AppSpacing.md,
     crossAxisSpacing: AppSpacing.md,
-    // 0,62 — bukan 0,66: kartu berdiskon punya satu baris harga tambahan,
-    // dan dengan font sungguhnya 0,66 meluber 0,65px pada lebar 320dp.
-    childAspectRatio: (0.62 / textScale.clamp(1.0, 1.8)).clamp(0.34, 0.62),
+    childAspectRatio: productCardAspectRatio(context),
   );
 }
 
@@ -91,11 +89,12 @@ class MarketplaceProductCard extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           AspectRatio(
-            // Rasio tetap agar tinggi gambar dapat diprediksi di semua lebar
-            // kolom. Sisa tinggi kartu diberikan ke blok teks lewat Expanded
-            // di bawah, sehingga teks memotong dirinya sendiri alih-alih
-            // meluber saat ukuran teks sistem diperbesar.
-            aspectRatio: 1.35,
+            // 1:1 agar foto produk dominan, seperti rancangan. Rasio tetap
+            // membuat tinggi gambar dapat diprediksi di semua lebar kolom;
+            // sisa tinggi kartu diberikan ke blok teks lewat Expanded di
+            // bawah, sehingga teks memotong dirinya sendiri alih-alih meluber
+            // saat ukuran teks sistem diperbesar.
+            aspectRatio: 1,
             child: Stack(
               fit: StackFit.expand,
               children: [
@@ -158,7 +157,11 @@ class MarketplaceProductCard extends ConsumerWidget {
               padding: const EdgeInsets.all(AppSpacing.md),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                // start, bukan spaceBetween: ruang sisa dulu didorong ke
+                // tengah sehingga ada celah menganga antara keterangan dan
+                // harga. Sekarang isinya menumpuk rapat dari atas, dan
+                // kartunya dipendekkan supaya tidak ada sisa sama sekali.
+                mainAxisAlignment: MainAxisAlignment.start,
                 children: [
                   Flexible(
                     child: Column(
@@ -192,7 +195,7 @@ class MarketplaceProductCard extends ConsumerWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(height: AppSpacing.sm),
+                  const SizedBox(height: AppSpacing.xs),
                   Row(
                     children: [
                       Expanded(child: ProductPriceView(product: product)),
@@ -297,6 +300,15 @@ class ProductPriceView extends StatelessWidget {
   }
 }
 
+/// Baris keterangan di bawah nama penjual: stok dan jumlah terjual.
+///
+/// Dulu baris ini berisi rating, jarak, dan — bila keduanya kosong — teks
+/// "Belum ada ulasan". Kalimat itu memakan satu baris penuh untuk mengatakan
+/// bahwa tidak ada yang bisa dikatakan, dan di katalog yang ulasannya memang
+/// masih kosong ia muncul di hampir setiap kartu.
+///
+/// Stok dan jumlah terjual selalu punya isi, dan keduanya yang benar-benar
+/// dipakai pembeli untuk memutuskan.
 class _MetaRow extends StatelessWidget {
   final MarketplaceProduct product;
 
@@ -306,31 +318,38 @@ class _MetaRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final style = AppTypography.captionSmall.copyWith(fontSize: 11);
 
-    if (!product.hasRating && product.distanceLabel == null) {
-      return Text('Belum ada ulasan', style: style);
-    }
+    final parts = <String>[
+      // Stok habis sudah disampaikan lencana di atas gambar; mengulanginya
+      // di sini hanya membuang baris.
+      if (!product.isOutOfStock) 'Stok ${product.stock}',
+      if (product.soldCount > 0) '${product.soldCount} terjual',
+      if (product.distanceLabel != null) product.distanceLabel!,
+    ];
 
     return Row(
       children: [
         if (product.hasRating) ...[
           const Icon(Icons.star_rounded, size: 12, color: Color(0xFFFFB800)),
           const SizedBox(width: 2),
+          Text(
+            product.ratingLabel,
+            style: style.copyWith(color: AppColors.ink),
+          ),
+          if (parts.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Text('·', style: style),
+            ),
+        ],
+        if (parts.isNotEmpty)
           Flexible(
             child: Text(
-              '${product.ratingLabel} (${product.ratingCount})',
+              parts.join(' · '),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: style.copyWith(color: AppColors.ink),
+              style: style,
             ),
           ),
-        ],
-        if (product.hasRating && product.distanceLabel != null)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Text('·', style: style),
-          ),
-        if (product.distanceLabel != null)
-          Flexible(child: Text(product.distanceLabel!, style: style)),
       ],
     );
   }

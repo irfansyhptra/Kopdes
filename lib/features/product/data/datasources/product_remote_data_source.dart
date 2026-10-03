@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../domain/entities/product_draft.dart';
 import '../models/product_model.dart';
 import '../models/category_model.dart';
 
@@ -35,6 +36,7 @@ abstract class ProductRemoteDataSource {
     required int stock,
     required String categoryId,
     List<dynamic>? images,
+    ProductDraft? draft,
   });
 
   Future<ProductModel> updateProduct({
@@ -46,6 +48,7 @@ abstract class ProductRemoteDataSource {
     String? categoryId,
     bool? isActive,
     List<dynamic>? newImages,
+    ProductDraft? draft,
   });
 
   Future<void> deleteProduct(String id);
@@ -146,6 +149,7 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
     required int stock,
     required String categoryId,
     List<dynamic>? images,
+    ProductDraft? draft,
   }) async {
     final formData = FormData();
     formData.fields.addAll([
@@ -154,6 +158,7 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
       MapEntry('price', price.toString()),
       MapEntry('stock', stock.toString()),
       MapEntry('categoryId', categoryId),
+      ...?draft?.toFields().entries.map((e) => MapEntry(e.key, e.value)),
     ]);
 
     if (images != null) {
@@ -186,6 +191,7 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
     String? categoryId,
     bool? isActive,
     List<dynamic>? newImages,
+    ProductDraft? draft,
   }) async {
     final formData = FormData();
     if (name != null) formData.fields.add(MapEntry('name', name));
@@ -200,6 +206,9 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
     if (isActive != null) {
       formData.fields.add(MapEntry('isActive', isActive.toString()));
     }
+    draft?.toFields().forEach((key, value) {
+      formData.fields.add(MapEntry(key, value));
+    });
 
     if (newImages != null) {
       for (var file in newImages) {

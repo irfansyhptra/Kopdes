@@ -4,15 +4,22 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/theme.dart';
 import '../../../../shared/widgets/apple_ui.dart';
+import '../../../onboarding/presentation/providers/permission_provider.dart';
+import '../../../../shared/widgets/shimmer_loading.dart';
 import '../../../../shared/widgets/skeleton_loaders.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../chat/presentation/providers/chat_providers.dart';
+import '../../../location/domain/user_location.dart';
+import '../../../location/presentation/providers/location_provider.dart';
 import '../../../notification/presentation/providers/notification_provider.dart';
 import '../../../order/presentation/providers/cart_provider.dart';
 import '../../../product/domain/entities/category.dart';
 import '../../../product/domain/entities/product.dart';
 import '../../../product/presentation/providers/product_provider.dart';
+import '../../../order/presentation/cart_feedback.dart';
 import '../widgets/category_list_widget.dart';
 import '../widgets/compact_home_header.dart';
+import '../widgets/home_header_delegate.dart';
 import '../widgets/compact_promo_banner.dart';
 import '../widgets/membership_summary_card.dart';
 import '../widgets/promo_product_widget.dart';
@@ -48,6 +55,44 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   String _selectedFilterLabel = 'Semua';
+
+  @override
+  void initState() {
+    super.initState();
+    // Setelah frame pertama: `showDialog`/`context.push` butuh `Navigator`
+    // yang sudah terpasang, dan dialog sistem yang muncul sebelum beranda
+    // tergambar membuat aplikasi seolah membuka layar kosong.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _askPermissions());
+  }
+
+  /// Meminta izin sistem begitu beranda terbuka — tanpa layar penjelasan.
+  ///
+  /// Hanya sekali per pemasangan. Yang mengizinkan semuanya tidak pernah
+  /// melihat satu layar izin pun; layar penjelasan baru didorong bila ada yang
+  /// ditolak, dan di situ barulah alasan tiap izin perlu diterangkan.
+  Future<void> _askPermissions() async {
+    if (!ref.read(permissionsPrimedProvider)) {
+      final denied = await requestStartupPermissions();
+      if (!mounted) return;
+
+      // Ditandai sudah ditanyakan apa pun hasilnya: Android hanya memberi dua
+      // kesempatan bertanya, dan mengulanginya tiap membuka beranda adalah
+      // cara tercepat membuat orang menolak selamanya.
+      await ref.read(permissionsPrimedProvider.notifier).markPrimed();
+      if (!mounted) return;
+
+      if (denied.isNotEmpty) {
+        await context.push('/permissions');
+        if (!mounted) return;
+      }
+    }
+
+    // Izin yang baru diberikan tidak sampai ke LocationNotifier dengan
+    // sendirinya — ia memang tidak pernah meminta izin sendiri. Tanpa baris
+    // ini beranda tetap menawarkan "Aktifkan Lokasi" tepat setelah orangnya
+    // menekan "Izinkan".
+    await ref.read(locationProvider.notifier).refreshIfPermitted();
+  }
 
   /// Produk yang sedang diproses ke keranjang — mencegah ketukan ganda pada
   /// operasi async yang sama.
@@ -152,18 +197,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (_addingToCart.contains(product.id)) return;
     setState(() => _addingToCart.add(product.id));
 
-    final success = await ref
-        .read(cartProvider.notifier)
-        .addToCart(productId: product.id, quantity: 1);
+    await addToCartWithFeedback(
+      context,
+      productName: product.name,
+      add: () => ref
+          .read(cartProvider.notifier)
+          .addToCart(
+            productId: product.id,
+            quantity: 1,
+            productName: product.name,
+          ),
+    );
 
     if (!mounted) return;
     setState(() => _addingToCart.remove(product.id));
-    _showSnackBarMessage(
-      success
-          ? '${product.name} berhasil ditambahkan ke keranjang'
-          : 'Gagal menambahkan produk ke keranjang',
-      isError: !success,
-    );
   }
 
   /// Produk dari section penemuan dipisah dari [_handleAddToCart] karena
@@ -178,22 +225,43 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     setState(() => _addingToCart.add(product.id));
 
     final isUmkm = product.source == ProductSource.umkm;
-    final success = await ref
-        .read(cartProvider.notifier)
-        .addToCart(
-          productId: isUmkm ? null : product.id,
-          umkmProductId: isUmkm ? product.id : null,
-          quantity: 1,
-        );
+    await addToCartWithFeedback(
+      context,
+      productName: product.name,
+      add: () => ref
+          .read(cartProvider.notifier)
+          .addToCart(
+            productId: isUmkm ? null : product.id,
+            umkmProductId: isUmkm ? product.id : null,
+            quantity: 1,
+            productName: product.name,
+          ),
+    );
 
     if (!mounted) return;
     setState(() => _addingToCart.remove(product.id));
-    _showSnackBarMessage(
-      success
-          ? '${product.name} berhasil ditambahkan ke keranjang'
-          : 'Gagal menambahkan produk ke keranjang',
-      isError: !success,
-    );
+  }
+
+  /// Teks lokasi di kepala beranda.
+  ///
+  /// Nama tempat dari geocoder bila sudah ada. Kalau belum, yang ditampilkan
+  /// adalah keadaan sebenarnya — bukan nama desa karangan seperti dulu, yang
+  /// sama untuk setiap orang dan tidak pernah berubah ke mana pun ia pergi.
+  static String _locationLabel(LocationState state) {
+    final label = state.location?.label;
+    if (label != null && label.isNotEmpty) return label;
+
+    return switch (state.status) {
+      LocationStatus.checkingService ||
+      LocationStatus.requestingPermission ||
+      LocationStatus.loadingLocation => 'Mencari lokasi…',
+      LocationStatus.permissionDenied ||
+      LocationStatus.permissionPermanentlyDenied => 'Lokasi belum diizinkan',
+      LocationStatus.serviceDisabled => 'Layanan lokasi mati',
+      // Koordinat sudah ada tetapi namanya belum terbaca — itu wajar di
+      // ponsel tanpa layanan Google Play.
+      _ => state.location != null ? 'Lokasi Anda' : 'Pilih lokasi',
+    };
   }
 
   void _showSnackBarMessage(String msg, {bool isError = false}) {
@@ -218,10 +286,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final userName = authState.user?.name ?? 'Budi Santoso';
     final backendCategories = ref.watch(categoriesProvider).asData?.value ?? [];
     final cartCount = ref.watch(cartProvider).asData?.value.totalItems ?? 0;
-    final unreadCount = ref
-        .watch(notificationsProvider)
-        .where((n) => !n.isRead)
-        .length;
+    final unreadCount = ref.watch(unreadNotificationCountProvider);
+
+    // Lokasi nyata perangkat, bukan "Desa Lamteh, Banda Aceh" yang dulu
+    // dituliskan langsung untuk semua orang. Nama tempatnya menyusul setelah
+    // geocoder menjawab; sampai itu terjadi yang tampil adalah keadaan
+    // sebenarnya — sedang dicari, atau belum diizinkan.
+    final locationLabel = _locationLabel(ref.watch(locationProvider));
+    final chatCount = ref
+        .watch(conversationsProvider)
+        .maybeWhen(
+          data: (items) => items.fold<int>(
+            0,
+            (total, conversation) => total + conversation.unreadCount,
+          ),
+          orElse: () => 0,
+        );
 
     return Scaffold(
       backgroundColor: AppColors.surfaceSoft,
@@ -232,30 +312,39 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         // Physics & indikator overscroll diatur AppScrollBehavior global.
         child: CustomScrollView(
           slivers: [
+            // 1 & 2. Header dipaku utuh: sapaan, nama, lokasi, ketiga kapsul
+            // aksi, dan pencarian tetap pada posisinya sepanjang halaman
+            // digulir — tidak ada yang menyusut.
+            SliverPersistentHeader(
+              pinned: true,
+              delegate: HomeHeaderDelegate(
+                userName: userName,
+                userLocation: locationLabel,
+                notificationCount: unreadCount,
+                cartCount: cartCount,
+                chatCount: chatCount,
+                onNotificationTap: () => context.push('/notifications'),
+                onCartTap: () => context.go('/cart'),
+                onChatTap: () => context.push('/chat'),
+                // Dulu keduanya hanya `go('/products')`: pengguna mendarat di
+                // katalog tanpa papan ketik terbuka dan tanpa lembar filter —
+                // terbaca seolah tombolnya tidak berfungsi.
+                onSearchTap: () => context.go('/products?cari=1'),
+                onFilterTap: () => context.go('/products?filter=1'),
+                height: CompactHomeHeader.expandedHeight(context),
+              ),
+            ),
             SliverToBoxAdapter(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // 1 & 2. Header ringkas + pencarian.
-                  CompactHomeHeader(
-                    userName: userName,
-                    userLocation: 'Desa Lamteh, Banda Aceh',
-                    notificationCount: unreadCount,
-                    cartCount: cartCount,
-                    chatCount: 2,
-                    onNotificationTap: () => context.push('/notifications'),
-                    onCartTap: () => context.go('/cart'),
-                    onChatTap: () => context.go('/ai-assistant'),
-                    onSearchTap: () => context.go('/products'),
-                    onFilterTap: () => context.go('/products'),
-                  ),
                   const SizedBox(height: AppSpacing.md),
 
                   // 3 & 4. Ringkasan keanggotaan + aksi cepat.
+                  // Tanpa argumen angka: nilainya datang dari data nyata
+                  // begitu endpoint dompet & keanggotaan tersambung, dan
+                  // sampai itu terjadi kartunya jujur mengatakan belum ada.
                   MembershipSummaryCard(
-                    balance: formatRupiah(250000),
-                    points: '1.250',
-                    statusLabel: 'VIP',
                     onTopUpTap: () =>
                         _showSnackBarMessage('Fitur Top Up Saldo Anggota'),
                     onHistoryTap: () => context.push('/orders/history'),
@@ -376,7 +465,9 @@ class _RecommendationFilter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 34,
+      // 44, bukan 34: AppleChip kini setinggi area sentuh HIG,
+      // dan wadah 34 justru memotong pil 36-nya sendiri.
+      height: 44,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
@@ -424,45 +515,78 @@ class _RecommendationList extends ConsumerWidget {
         }
 
         final items = list.items.take(8).toList(growable: false);
-        return SliverPadding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.base),
-          sliver: DecoratedSliver(
-            decoration: BoxDecoration(
-              color: AppColors.canvas,
-              borderRadius: BorderRadius.circular(AppleRadii.group),
-              border: Border.all(color: AppColors.hairlineSoft),
-            ),
-            sliver: SliverList.separated(
-              itemCount: items.length,
-              separatorBuilder: (_, __) => const Divider(
-                height: 1,
-                thickness: 1,
-                indent: 84,
-                color: AppColors.hairlineSoft,
-              ),
-              itemBuilder: (context, index) {
-                final product = items[index];
-                return AppleProductRow(
-                  imageUrl: product.primaryImageUrl,
-                  title: product.name,
-                  subtitle: 'KMP Mitra Koperasi',
-                  price: formatRupiah(product.price),
-                  onTap: () => onOpen(product),
-                  // Tombol dimatikan selama request berjalan, bukan sekadar
-                  // diberi warna lain.
-                  onAdd: addingIds.contains(product.id)
-                      ? null
-                      : () => onAdd(product),
-                );
-              },
-            ),
+
+        // Slider kartu, bukan satu blok putih berisi baris memanjang.
+        // Rekomendasi adalah delapan hal yang berdiri sendiri — masing-masing
+        // dengan fotonya — dan daftar baris membuat fotonya menyusut jadi
+        // gambar kecil di tepi kiri.
+        return SliverToBoxAdapter(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              // Lebar dan rasio yang sama dengan kartu di Marketplace, supaya
+              // kartu yang sama tidak punya dua ukuran di dua layar.
+              final width = productCardWidth(constraints.maxWidth);
+              final height = width / compactProductCardAspectRatio(context);
+
+              return SizedBox(
+                height: height,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.base,
+                  ),
+                  itemCount: items.length,
+                  separatorBuilder: (_, __) =>
+                      const SizedBox(width: AppSpacing.md),
+                  itemBuilder: (context, index) {
+                    final product = items[index];
+                    return SizedBox(
+                      width: width,
+                      child: AppleProductTile(
+                        imageUrl: product.primaryImageUrl,
+                        // Foto 1:1, sama dengan kartu Marketplace.
+                        imageHeight: width,
+                        title: product.name,
+                        subtitle: 'KMP Mitra Koperasi',
+                        price: formatRupiah(product.price),
+                        onTap: () => onOpen(product),
+                        // Tombol dimatikan selama request berjalan, bukan
+                        // sekadar diberi warna lain.
+                        onAdd: addingIds.contains(product.id)
+                            ? null
+                            : () => onAdd(product),
+                      ),
+                    );
+                  },
+                ),
+              );
+            },
           ),
         );
       },
-      loading: () => const SliverToBoxAdapter(
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: AppSpacing.base),
-          child: GroupedProductListSkeleton(itemCount: 4),
+      loading: () => SliverToBoxAdapter(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final width = productCardWidth(constraints.maxWidth);
+            return SizedBox(
+              height: width / compactProductCardAspectRatio(context),
+              child: ShimmerGroup(
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  physics: const NeverScrollableScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.base,
+                  ),
+                  itemCount: 3,
+                  separatorBuilder: (_, __) =>
+                      const SizedBox(width: AppSpacing.md),
+                  itemBuilder: (_, __) =>
+                      SizedBox(width: width, child: ProductCardSkeleton.bare()),
+                ),
+              ),
+            );
+          },
         ),
       ),
       error: (_, __) => SliverToBoxAdapter(

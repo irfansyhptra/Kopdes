@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/theme.dart';
 import '../../../../shared/widgets/apple_ui.dart';
+import '../../domain/membership_summary.dart';
 
 /// Ringkasan keanggotaan: saldo, poin, status — lalu empat aksi cepat.
 ///
@@ -9,9 +10,7 @@ import '../../../../shared/widgets/apple_ui.dart';
 /// Kartu ini menggulir bersama halaman, jadi `BackdropFilter` di sini berarti
 /// blur dihitung ulang setiap frame tanpa menyampaikan kedalaman apa pun.
 class MembershipSummaryCard extends StatelessWidget {
-  final String balance;
-  final String points;
-  final String statusLabel;
+  final MembershipSummary summary;
   final VoidCallback onTopUpTap;
   final VoidCallback onHistoryTap;
   final VoidCallback onCouponTap;
@@ -19,14 +18,25 @@ class MembershipSummaryCard extends StatelessWidget {
 
   const MembershipSummaryCard({
     super.key,
-    required this.balance,
-    required this.points,
-    required this.statusLabel,
+    this.summary = MembershipSummary.none,
     required this.onTopUpTap,
     required this.onHistoryTap,
     required this.onCouponTap,
     required this.onDetailTap,
   });
+
+  /// Bukan anggota: saldonya memang tidak ada, bukan nol. "Rp0" terbaca
+  /// seperti dompet kosong yang bisa diisi; "Bukan Anggota" menjelaskan
+  /// kenapa tidak ada apa-apa di sana.
+  String get _balanceLabel => summary.balance == null
+      ? 'Bukan Anggota'
+      : formatRupiah(summary.balance!);
+
+  String get _pointsLabel => formatThousands(summary.points);
+
+  /// Tanda pisah, bukan "Bronze": jenjang terendah pun menyiratkan sudah
+  /// jadi anggota.
+  String get _statusLabel => summary.tier?.label ?? '—';
 
   @override
   Widget build(BuildContext context) {
@@ -53,7 +63,7 @@ class MembershipSummaryCard extends StatelessWidget {
                   icon: Icons.account_balance_wallet_rounded,
                   iconColor: AppColors.primary,
                   label: 'Saldo Anggota',
-                  value: balance,
+                  value: _balanceLabel,
                 ),
               ),
               const _VerticalDivider(),
@@ -62,7 +72,7 @@ class MembershipSummaryCard extends StatelessWidget {
                   icon: Icons.stars_rounded,
                   iconColor: AppColors.warning,
                   label: 'Poin Belanja',
-                  value: points,
+                  value: _pointsLabel,
                 ),
               ),
               const _VerticalDivider(),
@@ -71,7 +81,7 @@ class MembershipSummaryCard extends StatelessWidget {
                   icon: Icons.workspace_premium_rounded,
                   iconColor: AppColors.yellowAccent,
                   label: 'Status',
-                  value: statusLabel,
+                  value: _statusLabel,
                 ),
               ),
             ],

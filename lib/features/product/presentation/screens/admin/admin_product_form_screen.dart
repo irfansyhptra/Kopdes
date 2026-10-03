@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:kopdes/core/theme/theme.dart';
+import 'package:kopdes/features/product/domain/entities/product_draft.dart';
 import 'package:kopdes/features/product/presentation/providers/product_provider.dart';
 
 class AdminProductFormScreen extends ConsumerStatefulWidget {
@@ -22,9 +23,15 @@ class _AdminProductFormScreenState
   final _nameController = TextEditingController();
   final _descController = TextEditingController();
   final _priceController = TextEditingController();
+  final _discountPriceController = TextEditingController();
   final _stockController = TextEditingController();
+  final _minStockController = TextEditingController(text: '5');
+  final _unitController = TextEditingController(text: 'pcs');
+  final _skuController = TextEditingController();
 
   String? _selectedCategoryId;
+  bool _isPreOrderAllowed = false;
+  bool _isActive = true;
   bool _isInitialized = false;
   final List<XFile> _selectedImages = [];
   final _picker = ImagePicker();
@@ -34,7 +41,11 @@ class _AdminProductFormScreenState
     _nameController.dispose();
     _descController.dispose();
     _priceController.dispose();
+    _discountPriceController.dispose();
     _stockController.dispose();
+    _minStockController.dispose();
+    _unitController.dispose();
+    _skuController.dispose();
     super.dispose();
   }
 
@@ -79,6 +90,15 @@ class _AdminProductFormScreenState
     final name = _nameController.text.trim();
     final description = _descController.text.trim();
 
+    final draft = ProductDraft(
+      discountPrice: double.tryParse(_discountPriceController.text.trim()),
+      minStock: int.tryParse(_minStockController.text.trim()),
+      unit: _unitController.text.trim(),
+      sku: _skuController.text.trim(),
+      isPreOrderAllowed: _isPreOrderAllowed,
+      isActive: _isActive,
+    );
+
     bool success = false;
     final isEdit = widget.productId != null;
 
@@ -93,6 +113,7 @@ class _AdminProductFormScreenState
             stock: stock,
             categoryId: _selectedCategoryId,
             newImages: _selectedImages,
+            draft: draft,
           );
     } else {
       success = await ref
@@ -104,6 +125,7 @@ class _AdminProductFormScreenState
             stock: stock,
             categoryId: _selectedCategoryId!,
             images: _selectedImages,
+            draft: draft,
           );
     }
 
@@ -148,6 +170,7 @@ class _AdminProductFormScreenState
           _priceController.text = product.price.toStringAsFixed(0);
           _stockController.text = product.stock.toString();
           _selectedCategoryId = product.categoryId;
+          _isActive = product.isActive;
           _isInitialized = true;
         }
       });
@@ -308,6 +331,124 @@ class _AdminProductFormScreenState
                       ),
                     ),
                   ],
+                ),
+                const SizedBox(height: AppSpacing.base),
+
+                // Harga diskon & satuan
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _discountPriceController,
+                        style: AppTypography.bodyLarge,
+                        decoration: const InputDecoration(
+                          labelText: 'Harga Diskon (opsional)',
+                          prefixIcon: Icon(
+                            Icons.local_offer_outlined,
+                            size: 20,
+                          ),
+                        ),
+                        keyboardType: TextInputType.number,
+                        validator: (value) {
+                          final text = value?.trim() ?? '';
+                          if (text.isEmpty) return null;
+                          final discount = double.tryParse(text);
+                          if (discount == null) return 'Format harga salah';
+                          final price = double.tryParse(_priceController.text);
+                          // Diskon yang lebih besar dari harga normal akan
+                          // ditolak backend juga; dicegat di sini supaya
+                          // pegawai tidak perlu menunggu jaringan untuk tahu.
+                          if (price != null && discount >= price) {
+                            return 'Harus di bawah harga normal';
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.base),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _unitController,
+                        style: AppTypography.bodyLarge,
+                        decoration: const InputDecoration(
+                          labelText: 'Satuan',
+                          hintText: 'kg, pcs, liter',
+                          prefixIcon: Icon(Icons.straighten_outlined, size: 20),
+                        ),
+                        validator: (value) =>
+                            (value == null || value.trim().isEmpty)
+                            ? 'Satuan wajib diisi'
+                            : null,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.base),
+
+                // SKU & batas minimum stok
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _skuController,
+                        style: AppTypography.bodyLarge,
+                        decoration: const InputDecoration(
+                          labelText: 'SKU (opsional)',
+                          prefixIcon: Icon(Icons.qr_code_2_outlined, size: 20),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.base),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _minStockController,
+                        style: AppTypography.bodyLarge,
+                        decoration: const InputDecoration(
+                          labelText: 'Batas Min. Stok',
+                          prefixIcon: Icon(
+                            Icons.notifications_active_outlined,
+                            size: 20,
+                          ),
+                        ),
+                        keyboardType: TextInputType.number,
+                        validator: (value) {
+                          final text = value?.trim() ?? '';
+                          if (text.isEmpty) return null;
+                          final n = int.tryParse(text);
+                          if (n == null || n < 0) return 'Tidak boleh negatif';
+                          return null;
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.sm),
+
+                SwitchListTile.adaptive(
+                  contentPadding: EdgeInsets.zero,
+                  value: _isPreOrderAllowed,
+                  onChanged: (v) => setState(() => _isPreOrderAllowed = v),
+                  title: Text(
+                    'Izinkan Pre-Order',
+                    style: AppTypography.bodyLarge,
+                  ),
+                  subtitle: Text(
+                    'Pembeli bisa memesan meski stok kosong',
+                    style: AppTypography.captionSmall,
+                  ),
+                ),
+                SwitchListTile.adaptive(
+                  contentPadding: EdgeInsets.zero,
+                  value: _isActive,
+                  onChanged: (v) => setState(() => _isActive = v),
+                  title: Text(
+                    'Tampilkan di Etalase',
+                    style: AppTypography.bodyLarge,
+                  ),
+                  subtitle: Text(
+                    'Nonaktif berarti barang tersimpan tapi tidak dijual',
+                    style: AppTypography.captionSmall,
+                  ),
                 ),
                 const SizedBox(height: AppSpacing.lg),
 

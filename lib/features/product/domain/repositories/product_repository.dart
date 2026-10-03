@@ -1,3 +1,4 @@
+import '../entities/product_draft.dart';
 import '../../../../core/network/paginated.dart';
 import '../entities/product.dart';
 import '../entities/category.dart';
@@ -31,6 +32,7 @@ abstract class ProductRepository {
     required int stock,
     required String categoryId,
     List<dynamic>? images,
+    ProductDraft? draft,
   });
 
   Future<Product> updateProduct({
@@ -42,6 +44,7 @@ abstract class ProductRepository {
     String? categoryId,
     bool? isActive,
     List<dynamic>? newImages,
+    ProductDraft? draft,
   });
 
   Future<void> deleteProduct(String id);

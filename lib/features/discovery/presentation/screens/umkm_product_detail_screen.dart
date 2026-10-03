@@ -5,9 +5,12 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/theme/theme.dart';
 import '../../../../shared/widgets/apple_ui.dart';
 import '../../../../shared/widgets/product_image_loader.dart';
+import '../../../order/presentation/cart_feedback.dart';
 import '../../../order/presentation/providers/cart_provider.dart';
 import '../../domain/discovery.dart';
 import '../providers/discovery_provider.dart';
+import '../../../chat/data/chat_models.dart';
+import '../../../chat/presentation/providers/chat_providers.dart';
 
 /// Detail produk Mitra UMKM untuk pelanggan.
 ///
@@ -28,6 +31,39 @@ class UmkmProductDetailScreen extends ConsumerStatefulWidget {
 class _UmkmProductDetailScreenState
     extends ConsumerState<UmkmProductDetailScreen> {
   bool _adding = false;
+  bool _openingChat = false;
+
+  Future<void> _openSellerChat(UmkmProductDetail product) async {
+    if (_openingChat) return;
+    setState(() => _openingChat = true);
+    try {
+      final conversation = await ref
+          .read(chatServiceProvider)
+          .startUmkmProductSellerConversation(product.id);
+      ref.invalidate(conversationsProvider);
+      ref.invalidate(channelConversationsProvider);
+      if (!mounted) return;
+      context.push(
+        ChatChannel.marketplace.detailPath(conversation.id),
+        extra: ChatDetailArguments(
+          title: product.sellerName,
+          channel: ChatChannel.marketplace,
+        ),
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Penjual belum dapat dihubungi.'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _openingChat = false);
+    }
+  }
 
   Future<void> _addToCart(UmkmProductDetail product) async {
     if (_adding) return;
@@ -35,25 +71,20 @@ class _UmkmProductDetailScreenState
 
     // Produk mitra dikirim sebagai umkmProductId; mengirimkannya sebagai
     // productId membuat backend mencarinya di tabel Product dan menjawab 404.
-    final success = await ref
-        .read(cartProvider.notifier)
-        .addToCart(umkmProductId: product.id, quantity: 1);
+    await addToCartWithFeedback(
+      context,
+      productName: product.name,
+      add: () => ref
+          .read(cartProvider.notifier)
+          .addToCart(
+            umkmProductId: product.id,
+            quantity: 1,
+            productName: product.name,
+          ),
+    );
 
     if (!mounted) return;
     setState(() => _adding = false);
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(
-            success
-                ? '${product.name} ditambahkan ke keranjang'
-                : 'Gagal menambahkan ke keranjang',
-          ),
-          backgroundColor: success ? AppColors.success : AppColors.error,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
   }
 
   @override
@@ -153,7 +184,7 @@ class _UmkmProductDetailScreenState
                     AppleCard(
                       onTap: product.umkmId.isEmpty
                           ? null
-                          : () => context.push('/umkm/${product.umkmId}'),
+                          : () => context.push('/mitra/${product.umkmId}'),
                       padding: const EdgeInsets.all(AppSpacing.md),
                       clip: false,
                       child: Row(
@@ -206,22 +237,51 @@ class _UmkmProductDetailScreenState
       bottomNavigationBar: async.maybeWhen(
         data: (product) => SafeArea(
           minimum: const EdgeInsets.all(AppSpacing.base),
-          child: SizedBox(
-            height: 48,
-            child: ElevatedButton.icon(
-              // Stok habis mematikan tombol, bukan sekadar mengubah warnanya.
-              onPressed: product.isOutOfStock || _adding
-                  ? null
-                  : () => _addToCart(product),
-              icon: const Icon(Icons.add_shopping_cart_rounded, size: 18),
-              label: Text(
-                product.isOutOfStock
-                    ? 'Stok Habis'
-                    : _adding
-                    ? 'Menambahkan...'
-                    : 'Tambah ke Keranjang',
+          child: Row(
+            children: [
+              SizedBox(
+                width: 48,
+                height: 48,
+                child: OutlinedButton(
+                  onPressed: _openingChat
+                      ? null
+                      : () => _openSellerChat(product),
+                  style: OutlinedButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.button),
+                    ),
+                  ),
+                  child: _openingChat
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.chat_bubble_outline_rounded, size: 19),
+                ),
               ),
-            ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: SizedBox(
+                  height: 48,
+                  child: ElevatedButton.icon(
+                    // Stok habis mematikan tombol, bukan sekadar mengubah warnanya.
+                    onPressed: product.isOutOfStock || _adding
+                        ? null
+                        : () => _addToCart(product),
+                    icon: const Icon(Icons.add_shopping_cart_rounded, size: 18),
+                    label: Text(
+                      product.isOutOfStock
+                          ? 'Stok Habis'
+                          : _adding
+                          ? 'Menambahkan...'
+                          : 'Tambah ke Keranjang',
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
         orElse: () => const SizedBox.shrink(),

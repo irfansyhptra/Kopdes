@@ -67,6 +67,10 @@ class MarketplaceProduct {
   final double? ratingAverage;
   final int ratingCount;
 
+  /// Banyaknya yang sudah terjual — hanya dari pesanan yang benar-benar
+  /// sampai, bukan yang masih menunggu bayar.
+  final int soldCount;
+
   const MarketplaceProduct({
     required this.id,
     required this.name,
@@ -83,6 +87,7 @@ class MarketplaceProduct {
     this.distanceLabel,
     this.ratingAverage,
     this.ratingCount = 0,
+    this.soldCount = 0,
   });
 
   bool get isOutOfStock => stock <= 0;
@@ -124,6 +129,7 @@ class MarketplaceProduct {
       distanceLabel: json['distanceLabel'] as String?,
       ratingAverage: (rating['average'] as num?)?.toDouble(),
       ratingCount: (rating['count'] as num?)?.toInt() ?? 0,
+      soldCount: (json['soldCount'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -145,6 +151,7 @@ class MarketplaceProduct {
     'distanceMeters': distanceMeters,
     'distanceLabel': distanceLabel,
     'rating': {'average': ratingAverage, 'count': ratingCount},
+    'soldCount': soldCount,
   };
 }
 
@@ -176,6 +183,18 @@ class MarketplaceFilter {
 
   final MarketplaceSort sort;
 
+  /// Mengunci daftar pada satu Kopdes — dipakai halaman etalase toko.
+  ///
+  /// Bukan filter yang dipilih pengguna: ia ditetapkan sekali oleh halamannya
+  /// dan tidak pernah muncul di lembar filter, jadi ia juga tidak dihitung
+  /// dalam [hasActiveFilter] — "Atur Ulang Filter" di etalase tidak boleh
+  /// membuat produk seluruh desa ikut tampil.
+  final String? kopdesId;
+
+  /// Mengunci daftar pada satu Mitra UMKM — padanan [kopdesId] untuk etalase
+  /// mitra. Tidak pernah dipakai bersamaan dengan [kopdesId].
+  final String? umkmId;
+
   /// Radius pencarian dalam kilometer. Hanya berlaku pada pengurutan jarak:
   /// tanpa koordinat, server tidak punya titik acuan untuk menyaringnya.
   /// `null` berarti memakai bawaan server (25 km).
@@ -193,6 +212,8 @@ class MarketplaceFilter {
     this.minRating = 0,
     this.sort = MarketplaceSort.newest,
     this.radiusKm,
+    this.kopdesId,
+    this.umkmId,
   });
 
   /// Backend hanya menerima satu `categoryId`. Pilihan yang terakhir
@@ -228,6 +249,8 @@ class MarketplaceFilter {
     double? minRating,
     MarketplaceSort? sort,
     double? radiusKm,
+    String? kopdesId,
+    String? umkmId,
     bool clearFood = false,
     bool clearRetail = false,
     bool clearPrice = false,
@@ -246,5 +269,7 @@ class MarketplaceFilter {
     minRating: minRating ?? this.minRating,
     sort: sort ?? this.sort,
     radiusKm: clearRadius ? null : (radiusKm ?? this.radiusKm),
+    kopdesId: kopdesId ?? this.kopdesId,
+    umkmId: umkmId ?? this.umkmId,
   );
 }

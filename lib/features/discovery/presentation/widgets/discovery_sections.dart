@@ -132,7 +132,7 @@ class FeaturedUmkmSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return _ProductSection(
       title: 'Produk UMKM Pilihan',
-      onSeeAll: () => context.push('/umkm'),
+      onSeeAll: () => context.push('/mitra'),
       async: ref.watch(featuredUmkmProductsProvider),
       emptyMessage: 'Belum ada produk UMKM pilihan.',
       onRetry: () => ref.invalidate(featuredUmkmProductsProvider),

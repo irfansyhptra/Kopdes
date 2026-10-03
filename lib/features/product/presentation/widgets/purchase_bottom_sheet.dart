@@ -4,10 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/theme.dart';
 import '../../domain/entities/product.dart';
+import '../../../order/presentation/cart_feedback.dart';
 import '../../../order/presentation/providers/cart_provider.dart';
 import '../../../order/presentation/providers/order_provider.dart';
 import '../../../../shared/widgets/product_image_loader.dart';
-import '../../../../shared/widgets/success_action_dialog.dart';
 
 class PurchaseBottomSheet extends ConsumerStatefulWidget {
   final Product product;
@@ -811,41 +811,21 @@ class _PurchaseBottomSheetState extends ConsumerState<PurchaseBottomSheet> {
       return;
     }
 
-    // 2. Call CartProvider
-    final success = await ref
-        .read(cartProvider.notifier)
-        .addToCart(productId: widget.product.id, quantity: _quantity);
+    // 2. Lembar ini ditutup lebih dulu supaya modal tunggu berdiri di atas
+    // halaman produk, bukan di atas lembar yang sebentar lagi hilang.
+    Navigator.pop(context);
 
-    if (success) {
-      if (mounted) {
-        Navigator.pop(context); // Close bottom sheet
-        showSuccessActionDialog(
-          context,
-          title: 'Berhasil Ditambahkan',
-          description:
-              '${widget.product.name} telah masuk ke keranjang belanja Anda.',
-          primaryButtonLabel: 'Lihat Keranjang',
-          onPrimaryPressed: () {
-            Navigator.pop(context); // Close success dialog
-            context.go('/cart'); // Route to cart screen
-          },
-          secondaryButtonLabel: 'Lanjut Belanja',
-          onSecondaryPressed: () {
-            Navigator.pop(context); // Close success dialog
-          },
-        );
-      }
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Gagal menambahkan ke keranjang. Silakan coba lagi.'),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
+    await addToCartWithFeedback(
+      context,
+      productName: widget.product.name,
+      add: () => ref
+          .read(cartProvider.notifier)
+          .addToCart(
+            productId: widget.product.id,
+            quantity: _quantity,
+            productName: widget.product.name,
           ),
-        );
-      }
-    }
+    );
   }
 
   void _onBuyNowClicked() {
