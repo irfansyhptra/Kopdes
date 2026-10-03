@@ -9,6 +9,7 @@ import '../config/api_config.dart';
 import '../config/env_config.dart';
 import '../constants/app_constants.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
+import 'token_refresher.dart';
 import '../../features/debug/presentation/providers/debug_logger_provider.dart';
 
 final secureStorageProvider = Provider((ref) => const FlutterSecureStorage());
@@ -89,7 +90,21 @@ final dioProvider = Provider<Dio>((ref) {
     );
   }
 
-  // 2. Auth Interceptor for adding JWT Token & Handling 401 Refresh Token
+  // 2. Menyisipkan JWT, dan menyegarkannya saat kedaluwarsa.
+  //
+  // Penyegaran dipusatkan di [TokenRefresher] supaya belasan permintaan yang
+  // sama-sama dijawab 401 saat aplikasi dibuka hanya memicu SATU panggilan
+  // `/auth/refresh`. Backend merotasi refresh token, jadi penyegaran paralel
+  // berarti yang pertama menghapus token dan sisanya ditolak — itulah
+  // penyebab "Sesi Anda Telah Berakhir" setiap kali aplikasi dibuka setelah
+  // beberapa jam.
+  final refresher = TokenRefresher(
+    storage: storage,
+    // Dio terpisah: kalau memakai instance utama, 401 dari `/auth/refresh`
+    // akan memicu interceptor ini lagi dan berputar tanpa henti.
+    client: Dio(BaseOptions(baseUrl: ApiConfig.baseUrl)),
+  );
+
   dio.interceptors.add(
     InterceptorsWrapper(
       onRequest: (options, handler) async {
@@ -100,64 +115,36 @@ final dioProvider = Provider<Dio>((ref) {
         return handler.next(options);
       },
       onError: (DioException error, handler) async {
-        // If 401 Unauthorized, attempt token refresh
-        if (error.response?.statusCode == 401) {
-          final refreshToken = await storage.read(
-            key: AppConstants.refreshTokenKey,
-          );
-          if (refreshToken != null) {
-            try {
-              logger.d('Access token expired. Attempting token refresh...');
-              // Use a separate Dio instance to avoid recursive 401 loops
-              final refreshDio = Dio(BaseOptions(baseUrl: ApiConfig.baseUrl));
-              final response = await refreshDio.post(
-                '/auth/refresh',
-                data: {'refreshToken': refreshToken},
-              );
-
-              if (response.statusCode == 200 || response.statusCode == 201) {
-                final responseMap = response.data as Map<String, dynamic>;
-                final dataMap =
-                    responseMap['data'] as Map<String, dynamic>? ?? responseMap;
-
-                final newAccessToken = dataMap['accessToken'] as String?;
-                final newRefreshToken = dataMap['refreshToken'] as String?;
-
-                if (newAccessToken != null && newRefreshToken != null) {
-                  await storage.write(
-                    key: AppConstants.tokenKey,
-                    value: newAccessToken,
-                  );
-                  await storage.write(
-                    key: AppConstants.refreshTokenKey,
-                    value: newRefreshToken,
-                  );
-
-                  logger.i(
-                    'Token refresh successful. Retrying original request.',
-                  );
-                  // Retry original request
-                  final requestOptions = error.requestOptions;
-                  requestOptions.headers['Authorization'] =
-                      'Bearer $newAccessToken';
-
-                  final clonedResponse = await dio.fetch(requestOptions);
-                  return handler.resolve(clonedResponse);
-                }
-              }
-            } catch (refreshError) {
-              logger.e(
-                'Refresh token failed, forcing session logout...',
-                error: refreshError,
-              );
-              ref.read(authProvider.notifier).forceSessionExpired();
-            }
-          } else {
-            // No refresh token available, force session expired
-            ref.read(authProvider.notifier).forceSessionExpired();
-          }
+        if (error.response?.statusCode != 401 ||
+            isCredentialAttempt(error.requestOptions.path)) {
+          return handler.next(error);
         }
-        return handler.next(error);
+
+        try {
+          final token = await refresher.refresh();
+
+          if (token == null) {
+            // Ditolak tegas oleh server: sesinya memang sudah berakhir.
+            logger.i('Refresh token ditolak, sesi diakhiri.');
+            ref.read(authProvider.notifier).forceSessionExpired();
+            return handler.next(error);
+          }
+
+          final retry = error.requestOptions;
+          retry.headers['Authorization'] = 'Bearer $token';
+          return handler.resolve(await dio.fetch(retry));
+        } on RefreshUnavailable catch (e) {
+          // Server tidak terjangkau. Sesi DIPERTAHANKAN — kehilangan sinyal
+          // bukan alasan mengeluarkan orang dari akunnya. Permintaan aslinya
+          // tetap gagal, dan layar menanganinya seperti kegagalan jaringan
+          // biasa.
+          logger.w('Penyegaran token tertunda: $e');
+          return handler.next(error);
+        } catch (e) {
+          // Percobaan ulang yang ikut gagal tidak boleh mengakhiri sesi.
+          logger.w('Percobaan ulang setelah penyegaran gagal: $e');
+          return handler.next(error);
+        }
       },
     ),
   );
@@ -170,6 +157,21 @@ final dioProvider = Provider<Dio>((ref) {
 
   return dio;
 });
+
+/// Apakah permintaan ini percobaan kredensial, bukan permintaan ber-sesi.
+///
+/// 401 dari `/auth/login` berarti kata sandinya salah; 401 dari endpoint lain
+/// berarti sesinya kedaluwarsa. Dulu keduanya diperlakukan sama, sehingga
+/// salah mengetik kata sandi memanggil `forceSessionExpired()`: sesi yang sah
+/// terhapus, router memindahkan halaman, dan dialog "Gagal masuk" ikut
+/// tertutup sebelum sempat terbaca.
+///
+/// `/auth/refresh` ikut di sini karena menyegarkan token dengan token yang
+/// sudah ditolak hanya mengulang kegagalan yang sama.
+bool isCredentialAttempt(String path) =>
+    path.endsWith('/auth/login') ||
+    path.endsWith('/auth/register') ||
+    path.endsWith('/auth/refresh');
 
 const String _startTimeKey = 'start_time';
 

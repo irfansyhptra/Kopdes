@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/error/failures.dart';
 import '../../../../core/theme/theme.dart';
 import '../../../../localization/app_localizations.dart';
 import '../providers/auth_provider.dart';
+import '../../../../shared/widgets/apple_feedback.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -20,7 +22,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
-  String _selectedRole = 'CUSTOMER';
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _agreeToTerms = false;
@@ -33,44 +34,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
-  }
-
-  void _showLoadingDialog(BuildContext context, String message) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        content: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
-          child: Row(
-            children: [
-              const SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                  strokeWidth: 3,
-                  color: AppColors.primary,
-                ),
-              ),
-              const SizedBox(width: 20),
-              Expanded(
-                child: Text(
-                  message,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.ink,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 
   void _submit() async {
@@ -90,36 +53,35 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       return;
     }
 
-    if (_formKey.currentState!.validate()) {
-      _showLoadingDialog(context, 'Sedang mendaftarkan akun Anda...');
+    if (!_formKey.currentState!.validate()) return;
 
-      await ref
-          .read(authProvider.notifier)
-          .register(
-            name: _nameController.text.trim(),
-            email: _emailController.text.trim(),
-            phone: _phoneController.text.trim(),
-            password: _passwordController.text,
-            role: _selectedRole,
-          );
+    // Router memindahkan halaman begitu sesi terbentuk. Overlay tinggal di
+    // navigator akar, jadi kabar berhasilnya tetap terbaca di atas halaman
+    // baru alih-alih ikut hilang bersama layar daftar.
+    await runWithFeedback(
+      context,
+      waiting: 'Sedang mendaftarkan akunmu…',
+      action: () async {
+        await ref
+            .read(authProvider.notifier)
+            .register(
+              name: _nameController.text.trim(),
+              email: _emailController.text.trim(),
+              phone: _phoneController.text.trim(),
+              password: _passwordController.text,
+            );
 
-      if (!mounted) return;
-      Navigator.of(context, rootNavigator: true).pop(); // Dismiss loading popup
-
-      final state = ref.read(authProvider);
-      if (state.errorMessage != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Registrasi gagal: ${state.errorMessage}'),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        );
-      }
-    }
+        // Dilempar, bukan dikembalikan false: pesannya baru ada SETELAH
+        // aksinya berjalan.
+        final error = ref.read(authProvider).errorMessage;
+        if (error != null) throw AuthFailure(error);
+        return true;
+      },
+      successTitle: 'Pendaftaran berhasil',
+      successMessage:
+          'Selamat datang di KMP Mitra, ${_nameController.text.trim()}.',
+      failureTitle: 'Pendaftaran gagal',
+    );
   }
 
   void _showComingSoon(String method) {
@@ -359,42 +321,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       },
                     ),
                     const SizedBox(height: AppSpacing.base),
-
-                    // Role selection field (required for backend integration)
-                    DropdownButtonFormField<String>(
-                      value: _selectedRole,
-                      style: const TextStyle(
-                        color: AppColors.ink,
-                        fontSize: 15,
-                      ),
-                      dropdownColor: Colors.white,
-                      decoration: _buildInputDecoration(
-                        label: 'Daftar Sebagai',
-                        icon: Icons.badge_outlined,
-                      ),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'CUSTOMER',
-                          child: Text('Anggota Biasa (Customer)'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'UMKM',
-                          child: Text('Pelaku Usaha (Mitra UMKM)'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'COURIER',
-                          child: Text('Kurir Pengantar (Courier)'),
-                        ),
-                      ],
-                      onChanged: (val) {
-                        if (val != null) {
-                          setState(() {
-                            _selectedRole = val;
-                          });
-                        }
-                      },
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
 
                     // Terms and Conditions checkbox
                     Row(

@@ -41,7 +41,6 @@ class AuthRepositoryImpl implements AuthRepository {
     required String email,
     required String phone,
     required String password,
-    required String role,
   }) async {
     final response = await remoteDataSource.register(
       RegisterRequest(
@@ -49,7 +48,6 @@ class AuthRepositoryImpl implements AuthRepository {
         email: email,
         phone: phone,
         password: password,
-        role: role,
       ),
     );
 

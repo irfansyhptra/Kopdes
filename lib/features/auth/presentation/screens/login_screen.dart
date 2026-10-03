@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/error/failures.dart';
 import '../../../../core/theme/theme.dart';
 import '../../../../core/network/health_provider.dart';
 import '../../../../localization/app_localizations.dart';
 import '../providers/auth_provider.dart';
+import '../../../../shared/widgets/apple_feedback.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -34,69 +36,30 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
-  void _showLoadingDialog(BuildContext context, String message) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        content: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
-          child: Row(
-            children: [
-              const SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                  strokeWidth: 3,
-                  color: AppColors.primary,
-                ),
-              ),
-              const SizedBox(width: 20),
-              Expanded(
-                child: Text(
-                  message,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.ink,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   void _submit() async {
-    if (_formKey.currentState!.validate()) {
-      _showLoadingDialog(context, 'Sedang masuk ke akun Anda...');
+    if (!_formKey.currentState!.validate()) return;
 
-      await ref
-          .read(authProvider.notifier)
-          .login(_emailController.text.trim(), _passwordController.text);
+    // Overlay duduk di navigator akar, jadi ia tetap terlihat saat router
+    // memindahkan halaman ke beranda — itulah yang mengisi jeda perpindahan.
+    await runWithFeedback(
+      context,
+      waiting: 'Sedang masuk ke akunmu…',
+      action: () async {
+        await ref
+            .read(authProvider.notifier)
+            .login(_emailController.text.trim(), _passwordController.text);
 
-      if (!mounted) return;
-      Navigator.of(context, rootNavigator: true).pop(); // Dismiss loading popup
-
-      final state = ref.read(authProvider);
-      if (state.errorMessage != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(state.errorMessage!),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        );
-      }
-    }
+        // Dilempar, bukan dikembalikan false: pesannya baru ada SETELAH
+        // aksinya berjalan, sedangkan argumen `failureMessage` dievaluasi
+        // sebelum itu dan akan selalu membawa error percobaan sebelumnya.
+        final error = ref.read(authProvider).errorMessage;
+        if (error != null) throw AuthFailure(error);
+        return true;
+      },
+      successTitle: 'Berhasil masuk',
+      successMessage: 'Sebentar, menyiapkan berandamu.',
+      failureTitle: 'Gagal masuk',
+    );
   }
 
   void _showComingSoon(String method) {
@@ -116,6 +79,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
     final healthState = ref.watch(healthProvider);
+    // Probe kesehatan memberi KABAR, bukan mengunci layar.
+    //
+    // Dulu nilai ini mematikan kolom isi, tombol Masuk, dan kedua tautannya.
+    // Akibatnya satu probe yang gagal — server dingin, Wi-Fi sekejap putus,
+    // atau host yang belum sempat hidup — membuat seluruh layar masuk jadi
+    // benda mati: menekan tombolnya tidak memanggil apa pun, jadi tidak ada
+    // modal memuat dan tidak ada modal gagal. Yang benar-benar menguji server
+    // adalah permintaan masuknya sendiri, dan kegagalannya sekarang muncul
+    // sebagai modal yang menjelaskan sebabnya.
     final isServerDown = healthState == HealthState.unhealthy;
 
     return Scaffold(
@@ -213,7 +185,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             const SizedBox(width: AppSpacing.sm),
                             Expanded(
                               child: Text(
-                                'Server tidak dapat dihubungi. Silakan coba lagi nanti.',
+                                'Server belum menjawab saat dicek. Anda tetap '
+                                'bisa mencoba masuk.',
                                 style: AppTypography.bodyMedium.copyWith(
                                   color: AppColors.errorText,
                                 ),
@@ -322,7 +295,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     // Credentials fields
                     TextFormField(
                       controller: _emailController,
-                      enabled: !isServerDown,
                       keyboardType: TextInputType.emailAddress,
                       style: const TextStyle(
                         color: AppColors.ink,
@@ -346,7 +318,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                     TextFormField(
                       controller: _passwordController,
-                      enabled: !isServerDown,
                       obscureText: _obscurePassword,
                       style: const TextStyle(
                         color: AppColors.ink,
@@ -387,15 +358,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
-                        onPressed: isServerDown
-                            ? null
-                            : () => context.go('/forgot-password'),
+                        onPressed: () => context.go('/forgot-password'),
                         child: Text(
                           'Lupa Kata Sandi?',
                           style: AppTypography.buttonSm.copyWith(
-                            color: isServerDown
-                                ? AppColors.mutedSoft
-                                : AppColors.muted,
+                            color: AppColors.muted,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -416,9 +383,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ],
                       ),
                       child: ElevatedButton(
-                        onPressed:
-                            (authState.status == AuthStatus.loading ||
-                                isServerDown)
+                        onPressed: authState.status == AuthStatus.loading
                             ? null
                             : _submit,
                         style: ElevatedButton.styleFrom(
@@ -462,15 +427,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                         ),
                         GestureDetector(
-                          onTap: isServerDown
-                              ? null
-                              : () => context.go('/register'),
+                          onTap: () => context.go('/register'),
                           child: Text(
                             'Daftar',
                             style: AppTypography.buttonSm.copyWith(
-                              color: isServerDown
-                                  ? AppColors.mutedSoft
-                                  : AppColors.primary,
+                              color: AppColors.primary,
                               fontWeight: FontWeight.w700,
                             ),
                           ),

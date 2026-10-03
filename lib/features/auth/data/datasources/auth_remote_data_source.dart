@@ -1,4 +1,6 @@
 import 'package:dio/dio.dart';
+
+import '../../../../core/error/failures.dart';
 import '../models/login_request.dart';
 import '../models/register_request.dart';
 import '../models/login_response.dart';
@@ -29,7 +31,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     if (dataMap['accessToken'] == null ||
         dataMap['refreshToken'] == null ||
         dataMap['user'] == null) {
-      throw Exception('Respons login tidak lengkap dari server');
+      throw const ServerFailure('Respons login tidak lengkap dari server.');
     }
 
     return LoginResponse.fromJson(dataMap);
@@ -44,7 +46,9 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     if (dataMap['accessToken'] == null ||
         dataMap['refreshToken'] == null ||
         dataMap['user'] == null) {
-      throw Exception('Respons registrasi tidak lengkap dari server');
+      throw const ServerFailure(
+        'Respons registrasi tidak lengkap dari server.',
+      );
     }
 
     return LoginResponse.fromJson(dataMap);

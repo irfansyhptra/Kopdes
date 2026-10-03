@@ -7,6 +7,7 @@ import '../../domain/usecases/logout_usecase.dart';
 import '../../domain/usecases/get_current_user_usecase.dart';
 import '../../domain/usecases/check_auth_status_usecase.dart';
 import '../../domain/usecases/update_profile_usecase.dart';
+import '../../../../core/network/error_message.dart';
 import '../../data/datasources/auth_local_data_source.dart';
 import '../../data/datasources/auth_remote_data_source.dart';
 import '../../data/repositories/auth_repository_impl.dart';
@@ -131,7 +132,7 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
     } catch (e) {
       state = AuthState(
         status: AuthStatus.unauthenticated,
-        errorMessage: e.toString(),
+        errorMessage: networkErrorMessage(e),
       );
     }
   }
@@ -144,7 +145,7 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
     } catch (e) {
       state = AuthState(
         status: AuthStatus.unauthenticated,
-        errorMessage: e.toString(),
+        errorMessage: networkErrorMessage(e),
       );
     }
   }
@@ -154,7 +155,6 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
     required String email,
     required String phone,
     required String password,
-    required String role,
   }) async {
     state = state.copyWith(status: AuthStatus.loading);
     try {
@@ -163,13 +163,12 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
         email: email,
         phone: phone,
         password: password,
-        role: role,
       );
       state = AuthState(status: AuthStatus.authenticated, user: session.user);
     } catch (e) {
       state = AuthState(
         status: AuthStatus.unauthenticated,
-        errorMessage: e.toString(),
+        errorMessage: networkErrorMessage(e),
       );
     }
   }
@@ -182,7 +181,7 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
     } catch (e) {
       state = AuthState(
         status: AuthStatus.unauthenticated,
-        errorMessage: e.toString(),
+        errorMessage: networkErrorMessage(e),
       );
     }
   }
@@ -199,7 +198,7 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
     } catch (e) {
       state = state.copyWith(
         status: AuthStatus.authenticated, // keep authenticated
-        errorMessage: e.toString(),
+        errorMessage: networkErrorMessage(e),
       );
     }
   }

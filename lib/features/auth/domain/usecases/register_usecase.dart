@@ -11,14 +11,12 @@ class RegisterUseCase {
     required String email,
     required String phone,
     required String password,
-    required String role,
   }) {
     return repository.register(
       name: name,
       email: email,
       phone: phone,
       password: password,
-      role: role,
     );
   }
 }
