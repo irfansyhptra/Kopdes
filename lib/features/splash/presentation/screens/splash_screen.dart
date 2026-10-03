@@ -1,21 +1,20 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lottie/lottie.dart';
 
-import 'splash_animation_controller.dart';
 import 'splash_loading_state.dart';
 import 'splash_sequence_manager.dart';
-import '../widgets/animated_logo_text.dart';
-import '../widgets/house_path_painter.dart';
 
 import '../../../../core/network/health_provider.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../product/presentation/providers/product_provider.dart';
 
 const _kBackground = Color(0xFFFFFFFF);
-const _kPrimaryRed = Color(0xFFFF385C);
-const _kTextDark = Color(0xFF111111);
+const _kPrimaryRed = Color(0xFFE31B23);
 const _kNeutralGrey = Color(0xFF9AA0A6);
+const _kFlashRevealAsset = 'assets/lottie/KOMIT_logo_flash_reveal.json';
 
 final splashFinishedProvider = StateProvider<bool>((ref) => false);
 
@@ -28,18 +27,38 @@ class SplashScreen extends ConsumerStatefulWidget {
 
 class _SplashScreenState extends ConsumerState<SplashScreen>
     with TickerProviderStateMixin {
-  late final SplashAnimationController _anim;
   late final SplashSequenceManager _sequence;
   late final AnimationController _lottieController;
+  late final AnimationController _entranceController;
+  late final Animation<double> _entranceOpacity;
+  late final Animation<double> _entranceScale;
+  late final Animation<Offset> _entranceOffset;
+  final Completer<void> _logoAnimationDone = Completer<void>();
 
-  bool _flagTriggered = false;
   bool _navigated = false;
+  bool _entranceStarted = false;
 
   @override
   void initState() {
     super.initState();
-    _anim = SplashAnimationController(vsync: this);
     _lottieController = AnimationController(vsync: this);
+    _entranceController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
+    final entranceCurve = CurvedAnimation(
+      parent: _entranceController,
+      curve: Curves.easeOutCubic,
+    );
+    _entranceOpacity = CurvedAnimation(
+      parent: _entranceController,
+      curve: const Interval(0, 0.68, curve: Curves.easeOut),
+    );
+    _entranceScale = Tween<double>(begin: 0.96, end: 1).animate(entranceCurve);
+    _entranceOffset = Tween<Offset>(
+      begin: const Offset(0, 0.025),
+      end: Offset.zero,
+    ).animate(entranceCurve);
 
     _sequence = SplashSequenceManager(
       checkHealth: () => ref.read(healthProvider.notifier).checkServerHealth(),
@@ -49,25 +68,52 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       prepareServices: () => Future.delayed(const Duration(milliseconds: 400)),
     )..start();
 
-    _anim.timeline.addListener(_onTimelineTick);
-    _anim.playEntrance();
     _sequence.done.then((_) => _maybeNavigate());
   }
 
-  void _onTimelineTick() {
-    if (!_flagTriggered && _anim.timeline.value >= _anim.flagRevealThreshold) {
-      _flagTriggered = true;
-      _lottieController.repeat(); // gentle continuous wave
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_entranceStarted) return;
+    _entranceStarted = true;
+
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _entranceController.value = 1;
+    } else {
+      _entranceController.forward();
+    }
+  }
+
+  void _playLogoAnimation(LottieComposition composition) {
+    _lottieController.duration = composition.duration;
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _lottieController.value = 1;
+      _completeLogoAnimationAfterError();
+      return;
+    }
+    _lottieController.forward(from: 0).whenComplete(() {
+      if (!_logoAnimationDone.isCompleted) {
+        _logoAnimationDone.complete();
+      }
+    });
+  }
+
+  void _completeLogoAnimationAfterError() {
+    if (!_logoAnimationDone.isCompleted) {
+      _logoAnimationDone.complete();
     }
   }
 
   Future<void> _maybeNavigate() async {
     if (_navigated || !mounted) return;
-    // Wait for the entrance choreography to finish so we never cut
-    // the animation short even if init resolved very quickly.
-    if (_anim.timeline.status != AnimationStatus.completed) {
-      await _anim.timeline.forward().orCancel.catchError((_) {});
-    }
+    // Durasi bootstrap minimum 3,4 detik sedikit lebih panjang daripada
+    // animasi 3,2 detik. Future ini tetap menjadi pagar tambahan singkat bila
+    // decode asset terlambat, tanpa membuat aplikasi tertahan saat decoder
+    // tidak mengirim callback (misalnya pada test binding).
+    await _logoAnimationDone.future.timeout(
+      const Duration(milliseconds: 800),
+      onTimeout: () {},
+    );
     if (!mounted || _navigated) return;
 
     if (_sequence.state == SplashLoadingState.unreachable) {
@@ -81,8 +127,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
   @override
   void dispose() {
-    _anim.timeline.removeListener(_onTimelineTick);
-    _anim.dispose();
+    _entranceController.dispose();
     _lottieController.dispose();
     _sequence.dispose();
     super.dispose();
@@ -92,21 +137,44 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _kBackground,
-      body: AnimatedBuilder(
-        animation: Listenable.merge([_anim.timeline, _anim.breathing]),
-        builder: (context, _) {
-          return Opacity(
-            opacity: _anim.backgroundFade.value,
-            child: Center(
-              child: Transform.scale(
-                scale: _anim.breathing.isAnimating
-                    ? _anim.breathingScale.value
-                    : 1.0,
-                child: _buildLogoCluster(),
+      body: Center(
+        child: FadeTransition(
+          key: const ValueKey('kmp-splash-entrance'),
+          opacity: _entranceOpacity,
+          child: SlideTransition(
+            position: _entranceOffset,
+            child: ScaleTransition(
+              scale: _entranceScale,
+              child: Semantics(
+                label: 'Logo KMP Mitra',
+                image: true,
+                child: ExcludeSemantics(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 440),
+                      child: AspectRatio(
+                        aspectRatio: 3 / 2,
+                        child: Lottie.asset(
+                          _kFlashRevealAsset,
+                          key: const ValueKey('kmp-flash-reveal'),
+                          controller: _lottieController,
+                          fit: BoxFit.contain,
+                          repeat: false,
+                          onLoaded: _playLogoAnimation,
+                          errorBuilder: (context, error, stackTrace) {
+                            _completeLogoAnimationAfterError();
+                            return const SizedBox.shrink();
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               ),
             ),
-          );
-        },
+          ),
+        ),
       ),
       bottomNavigationBar: SafeArea(
         child: Padding(
@@ -152,101 +220,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
             },
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildLogoCluster() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        // Very soft neumorphism-style lift, kept subtle on purpose.
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.06 * _anim.shadowReveal.value),
-            blurRadius: 24,
-            spreadRadius: 2,
-            offset: const Offset(0, 14),
-          ),
-          BoxShadow(
-            color: Colors.white.withOpacity(0.9 * _anim.shadowReveal.value),
-            blurRadius: 16,
-            offset: const Offset(0, -6),
-          ),
-        ],
-        borderRadius: BorderRadius.circular(28),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
-            width: 160,
-            height: 176,
-            child: Stack(
-              alignment: Alignment.topCenter,
-              clipBehavior: Clip.none,
-              children: [
-                // House outline, progressively drawn.
-                CustomPaint(
-                  size: const Size(160, 176),
-                  painter: HousePathPainter(
-                    roofProgress: _anim.roofDraw.value,
-                    wallsProgress: _anim.wallsDraw.value,
-                    poleProgress: _anim.poleGrow.value,
-                  ),
-                ),
-                // Flag, positioned at the top of the pole. Lottie
-                // handles only the cloth-wave motion; entrance
-                // opacity is still driven by our own timeline so it
-                // blends in instead of popping.
-                Positioned(
-                  top: -28,
-                  child: AnimatedOpacity(
-                    opacity: _flagTriggered ? 1.0 : 0.0,
-                    duration: const Duration(milliseconds: 280),
-                    child: SizedBox(
-                      width: 60,
-                      height: 40,
-                      child: Lottie.asset(
-                        'assets/lottie/flag_wave.json',
-                        controller: _lottieController,
-                        fit: BoxFit.contain,
-                        onLoaded: (composition) {
-                          _lottieController.duration = composition.duration;
-                          if (_flagTriggered) {
-                            _lottieController.repeat();
-                          }
-                        },
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          AnimatedLogoText(
-            text: 'KOPDES',
-            progress: _anim.kopdesTextReveal.value,
-            style: const TextStyle(
-              fontSize: 30,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 1.0,
-              color: _kPrimaryRed,
-            ),
-          ),
-          const SizedBox(height: 2),
-          AnimatedLogoText(
-            text: 'MERAH PUTIH',
-            progress: _anim.merahPutihTextReveal.value,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 2.4,
-              color: _kTextDark,
-            ),
-          ),
-        ],
       ),
     );
   }

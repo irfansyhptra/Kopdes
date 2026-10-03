@@ -1,5 +1,33 @@
 // Model chat ringan (tanpa Freezed).
 
+enum ChatChannel {
+  marketplace('MARKETPLACE', 'seller'),
+  delivery('DELIVERY', 'courier'),
+  general('GENERAL', 'detail');
+
+  final String apiValue;
+  final String pathSegment;
+
+  const ChatChannel(this.apiValue, this.pathSegment);
+
+  factory ChatChannel.fromApi(Object? value) {
+    return ChatChannel.values.firstWhere(
+      (channel) => channel.apiValue == value,
+      orElse: () => ChatChannel.general,
+    );
+  }
+
+  String detailPath(String conversationId) =>
+      '/chat/$pathSegment/$conversationId';
+}
+
+class ChatDetailArguments {
+  final String title;
+  final ChatChannel channel;
+
+  const ChatDetailArguments({required this.title, required this.channel});
+}
+
 class ChatUser {
   final String id;
   final String name;
@@ -43,6 +71,7 @@ class Conversation {
   final String? lastMessage;
   final DateTime lastMessageAt;
   final int unreadCount;
+  final ChatChannel channel;
 
   Conversation({
     required this.id,
@@ -50,6 +79,7 @@ class Conversation {
     required this.lastMessage,
     required this.lastMessageAt,
     required this.unreadCount,
+    this.channel = ChatChannel.general,
   });
 
   factory Conversation.fromJson(Map<String, dynamic> j) {
@@ -63,6 +93,7 @@ class Conversation {
       lastMessageAt:
           DateTime.tryParse('${j['lastMessageAt']}') ?? DateTime.now(),
       unreadCount: (j['unreadCount'] as num?)?.toInt() ?? 0,
+      channel: ChatChannel.fromApi(j['channel']),
     );
   }
 }

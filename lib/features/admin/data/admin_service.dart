@@ -54,12 +54,29 @@ class AdminService {
   }
 
   // ── Pesanan ──
-  Future<List<AdminOrder>> getOrders({String? status}) async {
+  /// Satu halaman pesanan Kopdes.
+  ///
+  /// Backend menyaringnya ke Kopdes penugasan pemanggil dan membatasi jumlah
+  /// baris per halaman; mengambil semuanya sekaligus hanya berjalan selama
+  /// koperasi masih baru.
+  Future<({List<AdminOrder> items, int page, int totalPages, int total})>
+  getOrders({String? status, int page = 1, int limit = 20}) async {
     final res = await dio.get(
       '/admin/orders',
-      queryParameters: {if (status != null) 'status': status},
+      queryParameters: {
+        if (status != null) 'status': status,
+        'page': page,
+        'limit': limit,
+      },
     );
-    return _list(res).map(AdminOrder.fromJson).toList();
+    final map = res.data as Map<String, dynamic>;
+    final meta = map['meta'] as Map<String, dynamic>? ?? const {};
+    return (
+      items: _list(res).map(AdminOrder.fromJson).toList(),
+      page: meta['page'] as int? ?? page,
+      totalPages: meta['totalPages'] as int? ?? 1,
+      total: meta['total'] as int? ?? 0,
+    );
   }
 
   Future<void> updateOrderStatus(String id, String status) async {

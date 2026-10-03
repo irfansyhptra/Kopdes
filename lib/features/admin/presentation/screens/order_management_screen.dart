@@ -8,9 +8,15 @@ import '../widgets/admin_ui.dart';
 import '../../../chat/presentation/chat_launcher.dart';
 
 // Pengelolaan pesanan koperasi oleh Admin Kopdes.
-class OrderManagementScreen extends ConsumerWidget {
-  const OrderManagementScreen({super.key});
+class OrderManagementScreen extends ConsumerStatefulWidget {
+  const OrderManagementScreen({super.key, this.initialStatus});
 
+  /// Status awal saat layar dibuka dari KPI dashboard ("Pesanan Baru" dsb).
+  final String? initialStatus;
+
+  /// Status yang boleh dipilih manual. Urutannya mengikuti alur kerja, dan
+  /// backend tetap menolak lompatan yang tidak sah lewat
+  /// `ALLOWED_ORDER_TRANSITIONS`.
   static const _orderStatuses = <String>[
     'PENDING',
     'PAID',
@@ -24,16 +30,38 @@ class OrderManagementScreen extends ConsumerWidget {
 
   static const _filters = <String, String?>{
     'Semua': null,
-    'Baru': 'PENDING',
-    'Dibayar': 'PAID',
+    'Baru': 'PAID',
+    'Belum Bayar': 'PENDING',
     'Diproses': 'PROCESSING',
-    'Dikirim': 'OUT_FOR_DELIVERY',
+    'Siap Dikirim': 'READY_FOR_DELIVERY',
+    'Dalam Pengiriman': 'OUT_FOR_DELIVERY',
     'Selesai': 'COMPLETED',
+    'Dibatalkan': 'CANCELLED',
   };
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<OrderManagementScreen> createState() =>
+      _OrderManagementScreenState();
+}
+
+class _OrderManagementScreenState extends ConsumerState<OrderManagementScreen> {
+  @override
+  void initState() {
+    super.initState();
+    final status = widget.initialStatus;
+    if (status == null) return;
+    // Disetel setelah frame pertama: mengubah provider selama build
+    // berlangsung akan dilempar Riverpod.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.read(orderStatusFilterProvider.notifier).state = status;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final orders = ref.watch(adminOrdersProvider);
+    final page = ref.watch(adminOrderPageProvider).valueOrNull;
     final action = ref.watch(adminActionProvider);
     final activeFilter = ref.watch(orderStatusFilterProvider);
 
@@ -48,7 +76,7 @@ class OrderManagementScreen extends ConsumerWidget {
               Expanded(
                 child: AdminAsyncList<AdminOrder>(
                   value: orders,
-                  onRefresh: () => ref.invalidate(adminOrdersProvider),
+                  onRefresh: () => ref.invalidate(adminOrderPageProvider),
                   emptyTitle: 'Belum ada pesanan pada kategori ini.',
                   emptyIcon: Icons.receipt_long_outlined,
                   itemBuilder: (o) => _OrderCard(
@@ -63,6 +91,8 @@ class OrderManagementScreen extends ConsumerWidget {
                   ),
                 ),
               ),
+              if (page != null && page.totalPages > 1)
+                _OrderPager(page: page, ref: ref),
             ],
           ),
         ),
@@ -92,7 +122,7 @@ class OrderManagementScreen extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: AppSpacing.sm),
-            ..._orderStatuses.map((s) {
+            ...OrderManagementScreen._orderStatuses.map((s) {
               final meta = orderStatusMeta(s);
               final selected = s == order.status;
               return ListTile(
@@ -394,6 +424,58 @@ class _OrderCard extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Pager halaman pesanan.
+///
+/// Nomor halaman, bukan infinite scroll: daftar pesanan dipakai untuk mencari
+/// satu pesanan tertentu, dan pegawai yang sedang melayani antrean perlu bisa
+/// kembali ke tempat yang sama, bukan menggulir ulang dari awal.
+class _OrderPager extends StatelessWidget {
+  const _OrderPager({required this.page, required this.ref});
+
+  final AdminOrderPage page;
+  final WidgetRef ref;
+
+  @override
+  Widget build(BuildContext context) {
+    void go(int target) => ref.read(orderPageProvider.notifier).state = target;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.base,
+        vertical: AppSpacing.sm,
+      ),
+      decoration: const BoxDecoration(
+        color: AppColors.canvas,
+        border: Border(top: BorderSide(color: AppColors.hairlineSoft)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            TextButton.icon(
+              onPressed: page.page > 1 ? () => go(page.page - 1) : null,
+              icon: const Icon(Icons.chevron_left_rounded, size: 18),
+              label: const Text('Sebelumnya'),
+            ),
+            Text(
+              'Hal. ${page.page}/${page.totalPages} • ${page.total} pesanan',
+              style: AppTypography.captionSmall,
+            ),
+            TextButton.icon(
+              onPressed: page.page < page.totalPages
+                  ? () => go(page.page + 1)
+                  : null,
+              icon: const Icon(Icons.chevron_right_rounded, size: 18),
+              label: const Text('Berikutnya'),
+            ),
+          ],
+        ),
       ),
     );
   }

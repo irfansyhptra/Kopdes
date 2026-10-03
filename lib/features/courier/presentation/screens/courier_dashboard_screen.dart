@@ -34,6 +34,11 @@ class _CourierDashboardScreenState extends State<CourierDashboardScreen> {
           },
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.chat_bubble_outline_rounded),
+            tooltip: 'Chat Penjual',
+            onPressed: () => context.push('/chat/courier'),
+          ),
           Padding(
             padding: const EdgeInsets.only(right: AppSpacing.sm),
             child: Row(
@@ -48,7 +53,7 @@ class _CourierDashboardScreenState extends State<CourierDashboardScreen> {
                 Switch.adaptive(
                   value: _isOnline,
                   onChanged: (val) => setState(() => _isOnline = val),
-                  activeColor: AppColors.success,
+                  activeThumbColor: AppColors.success,
                 ),
               ],
             ),
@@ -197,7 +202,7 @@ class _DeliveryCard extends StatelessWidget {
                   vertical: AppSpacing.xs,
                 ),
                 decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.1),
+                  color: statusColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(AppRadius.pill),
                 ),
                 child: Text(

@@ -14,9 +14,11 @@ class KopdesApp extends ConsumerWidget {
 
     return MaterialApp.router(
       title: 'KOPDES Smart Cooperative',
+      // Hanya satu tema. Mode gelap dihapus dari sistem atas keputusan
+      // pemilik produk — aplikasi ini tidak akan pernah memakainya, jadi
+      // tidak ada `darkTheme` maupun `themeMode` untuk dijaga tetap sinkron.
       theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.lightTheme,
-      themeMode: ThemeMode.light,
+
       routerConfig: router,
       scrollBehavior: const AppScrollBehavior(),
       debugShowCheckedModeBanner: false,

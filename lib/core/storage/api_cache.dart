@@ -16,6 +16,7 @@ class CacheKeys {
 
   static const String koperasiNearbyPrefix = 'koperasi:nearby:';
   static const String koperasiListPrefix = 'koperasi:list:';
+  static const String mitraListPrefix = 'mitra:list:';
   static const String koperasiDetailPrefix = 'koperasi:';
   static const String mitraNearbyPrefix = 'mitra:nearby:';
   static const String mitraDetailPrefix = 'mitra:';
@@ -32,6 +33,27 @@ class CacheKeys {
   /// menghapusnya.
   static const String favorites = 'favorites';
 
+  // ── Dashboard Pegawai Kopdes ──
+  // Semuanya di bawah satu prefix supaya keluar dari akun staf bisa
+  // membersihkan seluruh data operasional dengan satu panggilan.
+  static const String employeePrefix = 'employee:';
+  static const String employeeSummary = '${employeePrefix}summary';
+  static const String employeeStockSummary = '${employeePrefix}stock-summary';
+  static const String employeeStoreStatus = '${employeePrefix}store-status';
+  static const String employeeTodayOrdersPrefix =
+      '${employeePrefix}today-orders:';
+  static const String employeeFinancePrefix = '${employeePrefix}finance:';
+  static const String employeeStockListPrefix = '${employeePrefix}stock-list:';
+  static const String employeeStockHistoryPrefix =
+      '${employeePrefix}stock-history:';
+
+  /// Notifikasi pengguna, tersimpan di perangkatnya sendiri.
+  ///
+  /// Dikunci per pemilik: tanpa itu, notifikasi orang sebelumnya masih
+  /// terbaca oleh siapa pun yang masuk berikutnya di ponsel yang sama —
+  /// keluar dari akun hanya menghapus token, bukan cache.
+  static String notifications(String ownerId) => 'notifications:$ownerId';
+
   static String productList(String querySignature) =>
       '$productListPrefix$querySignature';
 
@@ -45,6 +67,11 @@ class CacheTtl {
 
   /// Daftar produk: harga & stok bergerak, tapi tidak per detik.
   static const Duration short = Duration(minutes: 5);
+
+  /// Angka operasional dashboard: pesanan masuk dan stok berubah semenit
+  /// sekali saat toko ramai, jadi lima menit sudah terlalu lama untuk
+  /// dipercaya oleh pegawai yang sedang melayani antrean.
+  static const Duration veryShort = Duration(seconds: 45);
 
   /// Batas data basi masih boleh ditampilkan saat jaringan mati.
   static const Duration offlineGrace = Duration(days: 7);

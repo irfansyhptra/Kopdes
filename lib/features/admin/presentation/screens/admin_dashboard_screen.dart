@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/theme.dart';
+import '../../../../shared/widgets/app_glass_chrome.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../product/presentation/providers/product_provider.dart';
 import '../../../product/presentation/screens/admin/admin_product_list_screen.dart';
@@ -51,61 +52,38 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
           const AdminProfileScreen(),
         ],
       ),
-      bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          color: AppColors.canvas,
-          border: Border(top: BorderSide(color: AppColors.hairlineSoft)),
-          boxShadow: AppElevation.soft,
-        ),
-        child: NavigationBar(
-          selectedIndex: _currentIndex,
-          onDestinationSelected: _onTabSelected,
-          elevation: 0,
-          backgroundColor: AppColors.canvas,
-          indicatorColor: AppColors.primarySoft.withOpacity(0.5),
-          destinations: const [
-            NavigationDestination(
-              icon: Icon(Icons.dashboard_outlined),
-              selectedIcon: Icon(
-                Icons.dashboard_rounded,
-                color: AppColors.primary,
-              ),
-              label: 'Ringkasan',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.inventory_2_outlined),
-              selectedIcon: Icon(
-                Icons.inventory_2_rounded,
-                color: AppColors.primary,
-              ),
-              label: 'Barang',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.storefront_outlined),
-              selectedIcon: Icon(
-                Icons.storefront_rounded,
-                color: AppColors.primary,
-              ),
-              label: 'Mitra & UMKM',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.receipt_long_outlined),
-              selectedIcon: Icon(
-                Icons.receipt_long_rounded,
-                color: AppColors.primary,
-              ),
-              label: 'Pesanan & Kurir',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.person_outline_rounded),
-              selectedIcon: Icon(
-                Icons.person_rounded,
-                color: AppColors.primary,
-              ),
-              label: 'Profil Admin',
-            ),
-          ],
-        ),
+      // Bilahnya mengambang, jadi isi boleh lewat di belakangnya.
+      extendBody: true,
+      bottomNavigationBar: AppGlassNavBar(
+        items: const [
+          GlassNavItem(
+            label: 'Ringkasan',
+            icon: Icons.dashboard_outlined,
+            activeIcon: Icons.dashboard_rounded,
+          ),
+          GlassNavItem(
+            label: 'Barang',
+            icon: Icons.inventory_2_outlined,
+            activeIcon: Icons.inventory_2_rounded,
+          ),
+          GlassNavItem(
+            label: 'Mitra',
+            icon: Icons.storefront_outlined,
+            activeIcon: Icons.storefront_rounded,
+          ),
+          GlassNavItem(
+            label: 'Pesanan',
+            icon: Icons.receipt_long_outlined,
+            activeIcon: Icons.receipt_long_rounded,
+          ),
+          GlassNavItem(
+            label: 'Profil',
+            icon: Icons.person_outline_rounded,
+            activeIcon: Icons.person_rounded,
+          ),
+        ],
+        activeIndex: _currentIndex,
+        onSelect: _onTabSelected,
       ),
     );
   }

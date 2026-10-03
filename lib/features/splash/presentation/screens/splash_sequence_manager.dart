@@ -4,8 +4,8 @@ import 'splash_loading_state.dart';
 
 /// Drives the *content* side of the splash screen: which loading
 /// message is shown and when initialization has actually finished.
-/// This is intentionally separate from [SplashAnimationController],
-/// which only drives the *visual* timeline. Keeping them independent
+/// This is intentionally separate from the Lottie controller in the splash
+/// screen, which only drives the *visual* timeline. Keeping them independent
 /// means a slow backend never forces the logo animation to stall or
 /// skip frames, and a fast backend never feels rushed -- the splash
 /// always plays its minimum cinematic duration.

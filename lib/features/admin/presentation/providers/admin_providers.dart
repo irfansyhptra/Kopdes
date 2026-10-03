@@ -26,9 +26,31 @@ final umkmProductsProvider = FutureProvider<List<UmkmProductAdmin>>((
 // ── Pesanan ──
 final orderStatusFilterProvider = StateProvider<String?>((ref) => null);
 
-final adminOrdersProvider = FutureProvider<List<AdminOrder>>((ref) async {
+/// Halaman daftar pesanan yang sedang dibuka. Kembali ke 1 setiap filter
+/// berganti — halaman 4 dari filter lama tidak berarti apa-apa untuk filter
+/// baru, dan sering kosong.
+final orderPageProvider = StateProvider<int>((ref) {
+  ref.watch(orderStatusFilterProvider);
+  return 1;
+});
+
+typedef AdminOrderPage = ({
+  List<AdminOrder> items,
+  int page,
+  int totalPages,
+  int total,
+});
+
+final adminOrderPageProvider = FutureProvider<AdminOrderPage>((ref) async {
   final status = ref.watch(orderStatusFilterProvider);
-  return ref.watch(adminServiceProvider).getOrders(status: status);
+  final page = ref.watch(orderPageProvider);
+  return ref.watch(adminServiceProvider).getOrders(status: status, page: page);
+});
+
+/// Daftar pesanan halaman berjalan. Dipertahankan agar layar yang hanya butuh
+/// barisnya tidak perlu ikut mengurus metadata paginasi.
+final adminOrdersProvider = Provider<AsyncValue<List<AdminOrder>>>((ref) {
+  return ref.watch(adminOrderPageProvider).whenData((p) => p.items);
 });
 
 // ── Kurir ──
@@ -76,7 +98,7 @@ class AdminActionNotifier extends StateNotifier<AsyncValue<void>> {
 
   Future<bool> updateOrderStatus(String id, String status) => _run(
     (s) => s.updateOrderStatus(id, status),
-    invalidate: [adminOrdersProvider],
+    invalidate: [adminOrderPageProvider],
   );
 
   Future<bool> updateUmkmLocation(

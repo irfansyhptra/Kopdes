@@ -26,7 +26,7 @@ extension SplashLoadingStateMessage on SplashLoadingState {
       case SplashLoadingState.preparingServices:
         return 'Menyiapkan Layanan...';
       case SplashLoadingState.ready:
-        return 'Selamat Datang di KOPDES';
+        return 'Selamat Datang di KMP Mitra';
       case SplashLoadingState.unreachable:
         return 'Mencoba menghubungkan kembali...';
     }

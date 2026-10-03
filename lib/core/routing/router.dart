@@ -18,12 +18,16 @@ import '../../features/koperasi/presentation/screens/mitra_list_screen.dart';
 import '../../features/admin/presentation/screens/umkm_location_screen.dart';
 import '../../features/onboarding/presentation/screens/onboarding_screen.dart';
 import '../../features/onboarding/presentation/providers/onboarding_provider.dart';
+import '../../features/onboarding/presentation/screens/permission_screen.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/register_screen.dart';
 import '../../features/auth/presentation/screens/forgot_password_screen.dart';
 import '../../features/auth/presentation/screens/session_expired_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
 import '../../features/marketplace/presentation/screens/marketplace_screen.dart';
+import '../../features/employee/presentation/screens/employee_dashboard_page.dart';
+import '../../features/employee/presentation/screens/finance_report_screen.dart';
+import '../../features/employee/presentation/screens/stock_management_screen.dart';
 import '../../features/product/presentation/screens/product_detail_screen.dart';
 import '../../features/order/presentation/screens/orders_page.dart';
 import '../../features/order/presentation/screens/checkout_screen.dart';
@@ -37,7 +41,6 @@ import '../../features/umkm/presentation/screens/product_detail_screen.dart'
     as seller_view;
 import '../../features/umkm/presentation/screens/product_form_screen.dart';
 import '../../features/umkm/presentation/screens/order_screen.dart';
-import '../../features/umkm/presentation/screens/inventory_screen.dart';
 import '../../features/umkm/presentation/screens/store_profile_screen.dart';
 import '../../features/ai_assistant/presentation/screens/ai_assistant_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
@@ -53,6 +56,8 @@ import '../../features/admin/presentation/screens/courier_management_screen.dart
 import '../../features/admin/presentation/screens/admin_profile_screen.dart';
 import '../../features/chat/presentation/screens/conversation_list_screen.dart';
 import '../../features/chat/presentation/screens/chat_detail_screen.dart';
+import '../../features/chat/presentation/screens/chat_hub_screen.dart';
+import '../../features/chat/data/chat_models.dart';
 import '../../features/superadmin/presentation/screens/super_admin_dashboard_screen.dart';
 import '../../features/superadmin/presentation/screens/account_management_screen.dart';
 import '../../features/superadmin/presentation/screens/user_directory_screen.dart';
@@ -68,6 +73,17 @@ final productsNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'products');
 final cartNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'cart');
 final aiNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'ai');
 final profileNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'profile');
+
+Widget _chatDetail(GoRouterState state, ChatChannel fallbackChannel) {
+  final extra = state.extra;
+  final arguments = extra is ChatDetailArguments ? extra : null;
+  final legacyTitle = extra is String ? extra : null;
+  return ChatDetailScreen(
+    conversationId: state.pathParameters['id'] ?? '',
+    title: arguments?.title ?? legacyTitle ?? 'Percakapan',
+    channel: arguments?.channel ?? fallbackChannel,
+  );
+}
 
 // Class to adapt Stream to Listenable for GoRouter refreshListenable
 class GoRouterRefreshStream extends ChangeNotifier {
@@ -118,6 +134,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         return null;
       }
 
+      // Izin sistem TIDAK punya gerbang di sini. Dialog sistemnya diminta
+      // langsung saat beranda terbuka (`HomeScreen`), dan layar
+      // `/permissions` hanya didorong bila ada yang ditolak — jadi yang
+      // mengizinkan semuanya tidak pernah melihat satu layar pun.
+
       // Unauthenticated routes
       final isAuthRoute =
           currentLoc == '/login' ||
@@ -155,8 +176,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             case 'SUPER_ADMIN':
               return '/super-admin';
             case 'ADMIN_KOPDES':
-            case 'PEGAWAI_KOPDES':
               return '/admin';
+            // Pegawai punya beranda sendiri: dashboard admin memuat menu
+            // keputusan koperasi yang memang tidak boleh ia jalankan.
+            case 'PEGAWAI_KOPDES':
+              return '/pegawai';
             case 'COURIER':
               return '/courier';
             case 'UMKM':
@@ -173,8 +197,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             case 'SUPER_ADMIN':
               return '/super-admin';
             case 'ADMIN_KOPDES':
-            case 'PEGAWAI_KOPDES':
               return '/admin';
+            // Pegawai punya beranda sendiri: dashboard admin memuat menu
+            // keputusan koperasi yang memang tidak boleh ia jalankan.
+            case 'PEGAWAI_KOPDES':
+              return '/pegawai';
             case 'COURIER':
               return '/courier';
             case 'UMKM':
@@ -191,9 +218,18 @@ final routerProvider = Provider<GoRouter>((ref) {
             return '/home';
           }
         } else if (currentLoc.startsWith('/admin')) {
-          if (user.role != 'ADMIN_KOPDES' &&
-              user.role != 'SUPER_ADMIN' &&
-              user.role != 'PEGAWAI_KOPDES') {
+          // Dashboard admin bukan untuk pegawai — ia diarahkan ke berandanya
+          // sendiri, bukan dibuang ke etalase pelanggan.
+          if (user.role == 'PEGAWAI_KOPDES') {
+            return '/pegawai';
+          }
+          if (user.role != 'ADMIN_KOPDES' && user.role != 'SUPER_ADMIN') {
+            return '/home';
+          }
+        } else if (currentLoc.startsWith('/pegawai')) {
+          if (user.role != 'PEGAWAI_KOPDES' &&
+              user.role != 'ADMIN_KOPDES' &&
+              user.role != 'SUPER_ADMIN') {
             return '/home';
           }
         }
@@ -221,6 +257,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const SplashScreen(),
       ),
       GoRoute(
+        path: '/permissions',
+        builder: (context, state) => const PermissionScreen(),
+      ),
+      GoRoute(
         path: '/onboarding',
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const OnboardingScreen(),
@@ -237,8 +277,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
         ],
       ),
+      // Etalase Mitra UMKM untuk pembeli — `/mitra`, BUKAN `/umkm`.
+      //
+      // `/umkm` adalah portal penjual, dan penjaga peran di atas memulangkan
+      // siapa pun yang bukan UMKM dari seluruh awalan itu. Selama halaman
+      // publik ini tinggal di `/umkm/:id`, pembeli yang menekan "Kunjungi"
+      // selalu terlempar balik ke beranda — tokonya seolah tidak pernah ada.
       GoRoute(
-        path: '/umkm',
+        path: '/mitra',
         builder: (context, state) => const MitraListScreen(),
         routes: [
           // Didaftarkan sebelum ':id' agar 'products' tidak tertangkap
@@ -313,6 +359,78 @@ final routerProvider = Provider<GoRouter>((ref) {
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const AdminDashboardScreen(),
       ),
+
+      // ── Pegawai Kopdes ──
+      // Rute datar dengan navigasi bawahnya sendiri, terpisah dari shell
+      // pelanggan: pegawai tidak boleh punya tab Marketplace atau Keranjang
+      // di sela pekerjaannya.
+      GoRoute(
+        path: '/pegawai',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const KopdesEmployeeDashboardPage(),
+      ),
+      GoRoute(
+        path: '/pegawai/pesanan',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => OrderManagementScreen(
+          initialStatus: state.uri.queryParameters['status'],
+        ),
+      ),
+      GoRoute(
+        path: '/pegawai/pengiriman',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const CourierManagementScreen(),
+      ),
+      GoRoute(
+        path: '/pegawai/kurir',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const CourierManagementScreen(),
+      ),
+      GoRoute(
+        path: '/pegawai/lacak',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) {
+          // Tanpa deliveryId, layar pelacakan tidak punya yang bisa dilacak;
+          // pegawai dikirim ke daftar pengantaran untuk memilih dulu.
+          final id = state.uri.queryParameters['deliveryId'];
+          return id == null || id.isEmpty
+              ? const CourierManagementScreen()
+              : TrackingScreen(deliveryId: id);
+        },
+      ),
+      GoRoute(
+        path: '/pegawai/stok',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => StockManagementScreen(
+          initialFilter: state.uri.queryParameters['filter'] ?? 'all',
+        ),
+      ),
+      GoRoute(
+        path: '/pegawai/keuangan',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const FinanceReportScreen(),
+      ),
+      GoRoute(
+        path: '/pegawai/ai',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const AIAssistantScreen(),
+      ),
+      GoRoute(
+        path: '/pegawai/profil',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const AdminProfileScreen(),
+      ),
+      GoRoute(
+        path: '/pegawai/barang/baru',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const AdminProductFormScreen(),
+      ),
+      GoRoute(
+        path: '/pegawai/barang/:id',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) =>
+            AdminProductFormScreen(productId: state.pathParameters['id']),
+      ),
       GoRoute(
         path: '/admin/products',
         parentNavigatorKey: rootNavigatorKey,
@@ -359,7 +477,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/admin/chat',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const ConversationListScreen(),
+        builder: (context, state) =>
+            const ConversationListScreen(channel: ChatChannel.general),
       ),
       GoRoute(
         path: '/admin/profile',
@@ -367,13 +486,40 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const AdminProfileScreen(),
       ),
       GoRoute(
-        path: '/chat/:id',
+        path: '/chat',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) {
-          final id = state.pathParameters['id'] ?? '';
-          final title = state.extra as String? ?? 'Percakapan';
-          return ChatDetailScreen(conversationId: id, title: title);
-        },
+        builder: (context, state) => const ChatHubScreen(),
+        routes: [
+          GoRoute(
+            path: 'seller',
+            builder: (context, state) =>
+                const ConversationListScreen(channel: ChatChannel.marketplace),
+            routes: [
+              GoRoute(
+                path: ':id',
+                builder: (context, state) =>
+                    _chatDetail(state, ChatChannel.marketplace),
+              ),
+            ],
+          ),
+          GoRoute(
+            path: 'courier',
+            builder: (context, state) =>
+                const ConversationListScreen(channel: ChatChannel.delivery),
+            routes: [
+              GoRoute(
+                path: ':id',
+                builder: (context, state) =>
+                    _chatDetail(state, ChatChannel.delivery),
+              ),
+            ],
+          ),
+          GoRoute(
+            path: 'detail/:id',
+            builder: (context, state) =>
+                _chatDetail(state, ChatChannel.general),
+          ),
+        ],
       ),
       GoRoute(
         path: '/super-admin',
@@ -426,10 +572,9 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: 'orders',
             builder: (context, state) => const OrderScreen(),
           ),
-          GoRoute(
-            path: 'inventory',
-            builder: (context, state) => const InventoryScreen(),
-          ),
+          // Rute 'inventory' dihapus: kendali stok melebur ke halaman produk,
+          // jadi tidak ada lagi halaman tersendiri untuk ditunjuk.
+          GoRoute(path: 'inventory', redirect: (_, __) => '/umkm/products'),
           GoRoute(
             path: 'profile',
             builder: (context, state) => const StoreProfileScreen(),
@@ -488,7 +633,16 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/products',
-                builder: (context, state) => const MarketplaceScreen(),
+                builder: (context, state) {
+                  // Beranda mengirim niatnya lewat query: menekan kolom
+                  // pencarian di sana berarti langsung mengetik di sini, dan
+                  // menekan Filter berarti lembar filternya terbuka.
+                  final q = state.uri.queryParameters;
+                  return MarketplaceScreen(
+                    autofocusSearch: q['cari'] == '1',
+                    openFilter: q['filter'] == '1',
+                  );
+                },
                 routes: [
                   GoRoute(
                     path: 'detail/:id',

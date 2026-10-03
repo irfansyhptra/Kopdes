@@ -17,9 +17,19 @@ final conversationsProvider = FutureProvider<List<Conversation>>((ref) async {
   return ref.watch(chatServiceProvider).getConversations();
 });
 
+final channelConversationsProvider = FutureProvider.autoDispose
+    .family<List<Conversation>, ChatChannel>((ref, channel) async {
+      return ref.watch(chatServiceProvider).getConversations(channel: channel);
+    });
+
 final messagesProvider = FutureProvider.family<List<ChatMessage>, String>((
   ref,
   conversationId,
 ) async {
   return ref.watch(chatServiceProvider).getMessages(conversationId);
 });
+
+void invalidateChatLists(Ref ref) {
+  ref.invalidate(conversationsProvider);
+  ref.invalidate(channelConversationsProvider);
+}
