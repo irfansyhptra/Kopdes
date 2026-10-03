@@ -14,9 +14,11 @@ import '../../../koperasi/presentation/providers/koperasi_store_provider.dart';
 import '../../../location/presentation/providers/location_provider.dart';
 import '../../domain/entities/product.dart';
 import '../providers/product_provider.dart';
-import '../widgets/compact_product_carousel.dart';
 import '../widgets/product_action_bar.dart';
 import '../../../order/data/review_repository.dart';
+import '../../../marketplace/presentation/widgets/product_carousel.dart';
+import '../../../order/presentation/cart_feedback.dart';
+import '../../../order/presentation/providers/cart_provider.dart';
 import '../widgets/product_detail_sections.dart';
 import '../widgets/purchase_bottom_sheet.dart';
 
@@ -490,7 +492,29 @@ class _StoreCarousel extends ConsumerWidget {
               children: [
                 AppleSectionHeader(title: title),
                 const SizedBox(height: AppSpacing.sm),
-                CompactProductCarousel(products: items),
+                // Kartu dan ukuran yang sama dengan etalase Marketplace —
+                // satu produk tidak boleh terlihat berbeda hanya karena
+                // halaman yang menggambarnya berbeda.
+                ProductCarousel(
+                  products: items,
+                  onTap: (p) => context.push(
+                    p.isUmkm
+                        ? '/mitra/products/${p.id}'
+                        : '/products/detail/${p.id}',
+                  ),
+                  onAddToCart: (p) => addToCartWithFeedback(
+                    context,
+                    productName: p.name,
+                    add: () => ref
+                        .read(cartProvider.notifier)
+                        .addToCart(
+                          productId: p.isUmkm ? null : p.id,
+                          umkmProductId: p.isUmkm ? p.id : null,
+                          quantity: 1,
+                          productName: p.name,
+                        ),
+                  ),
+                ),
               ],
             ),
           ),

@@ -12,7 +12,7 @@ import '../../domain/discovery.dart';
 import '../../../koperasi/presentation/providers/koperasi_store_provider.dart';
 import '../../../order/data/review_repository.dart';
 import '../../../product/presentation/widgets/product_detail_sections.dart';
-import '../../../marketplace/presentation/widgets/marketplace_product_card.dart';
+import '../../../marketplace/presentation/widgets/product_carousel.dart';
 import '../providers/discovery_provider.dart';
 import '../../../chat/data/chat_models.dart';
 import '../../../chat/presentation/providers/chat_providers.dart';
@@ -380,29 +380,21 @@ class _StoreProducts extends ConsumerWidget {
               );
             }
 
-            return LayoutBuilder(
-              builder: (context, constraints) {
-                final width = compactCarouselCardWidth(constraints.maxWidth);
-                return SizedBox(
-                  height: width / compactProductCardAspectRatio(context),
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    physics: const BouncingScrollPhysics(),
-                    itemCount: others.length,
-                    separatorBuilder: (_, __) =>
-                        const SizedBox(width: AppSpacing.sm),
-                    itemBuilder: (context, i) => SizedBox(
-                      width: width,
-                      child: MarketplaceProductCard(
-                        product: others[i],
-                        onTap: () =>
-                            context.push('/mitra/products/${others[i].id}'),
-                        onAddToCart: () {},
-                      ),
+            // Kartu dan ukuran yang sama dengan etalase Marketplace.
+            return ProductCarousel(
+              products: others,
+              onTap: (p) => context.push('/mitra/products/${p.id}'),
+              onAddToCart: (p) => addToCartWithFeedback(
+                context,
+                productName: p.name,
+                add: () => ref
+                    .read(cartProvider.notifier)
+                    .addToCart(
+                      umkmProductId: p.id,
+                      quantity: 1,
+                      productName: p.name,
                     ),
-                  ),
-                );
-              },
+              ),
             );
           },
         ),

@@ -619,17 +619,6 @@ double productCardWidth(double availableWidth) {
   return (usable / 1.75).clamp(172.0, 200.0);
 }
 
-/// Lebar kartu untuk carousel rapat — tiga kartu muat dalam satu layar.
-///
-/// Dipakai di halaman detail produk, tempat carousel produk lain hanyalah
-/// pelengkap: kartu selebar etalase akan menyaingi barang yang sedang dilihat.
-/// Tanpa jepitan bawah, pada 320dp kartunya menyempit sampai namanya tinggal
-/// satu kata per baris.
-double compactCarouselCardWidth(double availableWidth) {
-  final usable = availableWidth - AppSpacing.base * 2 - AppSpacing.sm * 2;
-  return (usable / 3).clamp(96.0, 132.0);
-}
-
 class AppleProductTile extends StatelessWidget {
   final String imageUrl;
   final String title;

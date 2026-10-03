@@ -8,9 +8,9 @@ import 'marketplace_product_card.dart';
 /// Carousel produk mendatar.
 ///
 /// Memakai [MarketplaceProductCard] yang sama dengan grid — bukan salinan
-/// kedua. Yang berbeda hanya cara menempatkannya: lebar tiap kartu datang dari
-/// [productCardWidth], tingginya dari [productCardAspectRatio], jadi kartu
-/// yang sama tidak punya dua ukuran tergantung siapa yang menggambarnya.
+/// kedua. Lebarnya dari [marketplaceCardWidth] dan tingginya dari
+/// [productCardAspectRatio], keduanya aturan yang sama dengan grid, jadi
+/// kartu yang sama tidak punya dua ukuran tergantung siapa menggambarnya.
 ///
 /// `ListView.builder` tanpa `shrinkWrap`: daftarnya bisa panjang, dan
 /// shrink-wrap memaksa seluruh isinya dibangun sekaligus.
@@ -35,7 +35,9 @@ class ProductCarousel extends StatelessWidget {
     // panel sempit pada tablet ikut menyesuaikan.
     return LayoutBuilder(
       builder: (context, constraints) {
-        final width = productCardWidth(constraints.maxWidth);
+        // Lebar yang sama dengan grid Marketplace, bukan rumus carousel
+        // tersendiri: kartu yang sama tidak boleh punya dua ukuran.
+        final width = marketplaceCardWidth(constraints.maxWidth);
         // Tinggi dihitung dari lebar dan rasio yang sama dengan grid, bukan
         // angka tetap: daftar mendatar butuh tinggi terbatas, dan menebaknya
         // membuat teks terpotong begitu skala teks sistem dinaikkan.

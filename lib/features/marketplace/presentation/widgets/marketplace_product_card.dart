@@ -18,12 +18,32 @@ import '../providers/marketplace_provider.dart';
 /// hanya ketahuan di perangkat sungguhan.
 SliverGridDelegate marketplaceGridDelegate(BuildContext context) {
   return SliverGridDelegateWithMaxCrossAxisExtent(
-    // 220 memberi kartu 200–240dp pada tablet, dan dua kolom pada ponsel.
-    maxCrossAxisExtent: 220,
+    maxCrossAxisExtent: _maxCardExtent,
     mainAxisSpacing: AppSpacing.md,
     crossAxisSpacing: AppSpacing.md,
     childAspectRatio: productCardAspectRatio(context),
   );
+}
+
+/// 220 memberi kartu 200–240dp pada tablet, dan dua kolom pada ponsel.
+const double _maxCardExtent = 220;
+
+/// Lebar satu kartu persis seperti yang digambar grid Marketplace.
+///
+/// Dipakai carousel di halaman detail supaya satu produk tidak punya dua
+/// ukuran tergantung halaman yang menggambarnya. Aturannya disalin dari
+/// `SliverGridDelegateWithMaxCrossAxisExtent` — jumlah kolom dari lebar yang
+/// tersedia, lalu sisanya dibagi rata setelah dikurangi jarak antar kolom.
+///
+/// [availableWidth] adalah lebar yang benar-benar diberikan kepada daftarnya,
+/// SEBELUM padding tepi dikurangi.
+double marketplaceCardWidth(double availableWidth) {
+  final usable = availableWidth - AppSpacing.base * 2;
+  final columns = (usable / (_maxCardExtent + AppSpacing.md)).ceil().clamp(
+    1,
+    99,
+  );
+  return (usable - AppSpacing.md * (columns - 1)) / columns;
 }
 
 /// Lencana tipe penjual.

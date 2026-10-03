@@ -195,4 +195,22 @@ void main() {
     expect(find.byType(MarketplaceProductCard), findsNothing);
     expect(tester.takeException(), isNull);
   });
+
+  group('ukuran kartu carousel sama dengan grid Marketplace', () {
+    // Satu produk tidak boleh terlihat berbeda hanya karena halaman yang
+    // menggambarnya berbeda.
+    for (final width in const [320.0, 360.0, 390.0, 430.0, 768.0]) {
+      test('lebar layar ${width.toInt()}dp', () {
+        final usable = width - 32; // padding tepi 16 kiri-kanan
+        final columns = (usable / 232).ceil(); // 220 + jarak 12
+        final expected = (usable - 12 * (columns - 1)) / columns;
+
+        expect(marketplaceCardWidth(width), closeTo(expected, 0.01));
+      });
+    }
+
+    test('layar sangat sempit tetap satu kolom, bukan nol', () {
+      expect(marketplaceCardWidth(200), greaterThan(0));
+    });
+  });
 }
