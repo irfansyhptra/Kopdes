@@ -21,14 +21,18 @@ class SellerRepositoryImpl implements SellerRepository {
 
   @override
   Future<StoreModel> updateStoreProfile({
-    required String businessName,
-    required String description,
-    required String address,
-    required String phone,
+    String? businessName,
+    String? description,
+    String? address,
+    String? phone,
+    String? category,
+    Map<String, DayHours?>? operatingHours,
   }) => storeService.updateStoreProfile(
     businessName: businessName,
     description: description,
     address: address,
     phone: phone,
+    category: category,
+    operatingHours: operatingHours,
   );
 }

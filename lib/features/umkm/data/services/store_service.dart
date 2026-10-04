@@ -12,16 +12,23 @@ class StoreService {
   }
 
   Future<StoreModel> updateStoreProfile({
-    required String businessName,
-    required String description,
-    required String address,
-    required String phone,
+    String? businessName,
+    String? description,
+    String? address,
+    String? phone,
+    String? category,
+    Map<String, DayHours?>? operatingHours,
   }) async {
     final body = {
-      'businessName': businessName,
-      'description': description,
-      'address': address,
-      'phone': phone,
+      'businessName': ?businessName,
+      'description': ?description,
+      'address': ?address,
+      'phone': ?phone,
+      'category': ?category,
+      if (operatingHours != null)
+        'operatingHours': {
+          for (final e in operatingHours.entries) e.key: e.value?.toJson(),
+        },
     };
     final response = await dio.put('/seller/profile', data: body);
     final responseMap = response.data as Map<String, dynamic>;

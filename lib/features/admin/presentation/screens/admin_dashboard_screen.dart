@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'payout_queue_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/theme.dart';
@@ -433,7 +434,7 @@ class _MitraAndUmkmTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Scaffold(
         backgroundColor: AppColors.canvas,
         appBar: AppBar(
@@ -452,9 +453,12 @@ class _MitraAndUmkmTab extends StatelessWidget {
             labelStyle: AppTypography.buttonSm.copyWith(
               fontWeight: FontWeight.w700,
             ),
+            isScrollable: true,
+            tabAlignment: TabAlignment.start,
             tabs: const [
               Tab(text: 'Verifikasi Mitra'),
               Tab(text: 'Moderasi Produk'),
+              Tab(text: 'Pencairan'),
             ],
           ),
         ),
@@ -462,6 +466,7 @@ class _MitraAndUmkmTab extends StatelessWidget {
           children: [
             MitraManagementScreenContent(),
             UmkmProductTakedownScreenContent(),
+            PayoutQueueScreen(),
           ],
         ),
       ),

@@ -1,584 +1,857 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../core/theme/theme.dart';
-import '../../../../shared/components/loading_widget.dart';
-import '../../../../shared/components/error_state_widget.dart';
-import '../../../../shared/widgets/app_glass_chrome.dart';
-import '../../../../shared/widgets/apple_feedback.dart';
-import '../../../../shared/widgets/apple_ui.dart';
-import '../../../auth/presentation/providers/auth_provider.dart';
-import '../../../wallet/data/wallet_repository.dart';
-import '../controllers/store_controller.dart';
-import '../../data/models/store_model.dart';
-import '../widgets/seller_page_ui.dart';
+import 'package:go_router/go_router.dart';
 
-class StoreProfileScreen extends ConsumerStatefulWidget {
+import '../../../../core/network/error_message.dart';
+import '../../../../core/theme/theme.dart';
+import '../../../../shared/widgets/app_glass_chrome.dart';
+import '../../../../shared/widgets/apple_ui.dart';
+import '../../data/models/store_model.dart';
+import '../../data/payout_repository.dart';
+import '../controllers/store_controller.dart';
+import '../widgets/seller_page_ui.dart';
+import '../widgets/store_page_ui.dart';
+import '../widgets/withdraw_sheet.dart';
+
+/// Rute halaman turunan Toko.
+abstract final class StoreRoutes {
+  static const edit = '/umkm/store/edit';
+  static const settings = '/umkm/store/settings';
+  static const bankAccount = '/umkm/store/bank-account';
+  static const payouts = '/umkm/store/payouts';
+  static const security = '/umkm/store/security';
+  static const help = '/info/bantuan-penjual';
+  static String publicStore(String id) => '/mitra/$id';
+}
+
+/// Tab "Toko": ringkasan identitas, saldo, profil usaha, dan menu kelola.
+///
+/// Halaman ini hanya meringkas. Isian ada di halaman turunannya, supaya
+/// tidak ada kolom kosong yang tampak bisa diketik di sini.
+class StoreProfileScreen extends ConsumerWidget {
   const StoreProfileScreen({super.key});
 
   @override
-  ConsumerState<StoreProfileScreen> createState() => _StoreProfileScreenState();
-}
-
-class _StoreProfileScreenState extends ConsumerState<StoreProfileScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _descController = TextEditingController();
-  final _addressController = TextEditingController();
-  final _phoneController = TextEditingController();
-
-  bool _isEditing = false;
-  bool _isSaving = false;
-  bool _isInit = false;
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _descController.dispose();
-    _addressController.dispose();
-    _phoneController.dispose();
-    super.dispose();
-  }
-
-  void _populateForm(StoreModel store) {
-    if (_isInit) return;
-    _nameController.text = store.businessName;
-    _descController.text = store.description;
-    _addressController.text = store.address;
-    _phoneController.text = store.phone;
-    _isInit = true;
-  }
-
-  Future<void> _saveProfile() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() {
-      _isSaving = true;
-    });
-
-    final success = await ref
-        .read(storeControllerProvider.notifier)
-        .updateStoreProfile(
-          businessName: _nameController.text.trim(),
-          description: _descController.text.trim(),
-          address: _addressController.text.trim(),
-          phone: _phoneController.text.trim(),
-        );
-
-    if (mounted) {
-      setState(() {
-        _isSaving = false;
-      });
-
-      if (success) {
-        setState(() {
-          _isEditing = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Profil toko berhasil diperbarui'),
-            backgroundColor: AppColors.success,
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Scaffold(
+      backgroundColor: AppColors.surfaceSoft,
+      body: SellerPageChrome(
+        title: 'Toko Anda',
+        subtitle: 'Profil, pencairan, dan pengaturan usaha',
+        actions: [
+          GlassIconButton(
+            icon: Icons.edit_outlined,
+            label: 'Edit profil toko',
+            onDark: true,
+            onTap: () => context.push(StoreRoutes.edit),
           ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Gagal memperbarui profil toko'),
-            backgroundColor: AppColors.error,
+        ],
+        body: RefreshIndicator(
+          color: AppColors.primary,
+          onRefresh: () async {
+            ref.invalidate(storeProfileProvider);
+            ref.invalidate(payoutSummaryProvider);
+            // Galat ditampilkan section-nya sendiri; di sini cukup menunggu.
+            try {
+              await ref.read(storeProfileProvider.future);
+            } catch (_) {}
+          },
+          child: LayoutBuilder(
+            builder: (context, c) {
+              final side = math.max(0.0, (c.maxWidth - storePageMaxWidth) / 2);
+              return ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: EdgeInsets.fromLTRB(
+                  AppSpacing.base + side,
+                  AppSpacing.base,
+                  AppSpacing.base + side,
+                  // Bilah bawah mengambang di atas isi.
+                  math.max(112.0, MediaQuery.paddingOf(context).bottom + 24),
+                ),
+                children: const [
+                  _IdentitySection(),
+                  SizedBox(height: AppSpacing.md),
+                  _BalanceSection(),
+                  SizedBox(height: AppSpacing.xl),
+                  _ProfileSection(),
+                  SizedBox(height: AppSpacing.xl),
+                  _ManageSection(),
+                ],
+              );
+            },
           ),
-        );
-      }
-    }
-  }
-
-  /// Penarikan saldo belum punya endpoint di backend.
-  ///
-  /// Versi sebelumnya menyebut nominal tetap "Rp 3.840.000", lalu menjawab
-  /// "Permintaan penarikan berhasil dikirim" tanpa mengirim apa pun. Orang
-  /// yang mempercayainya akan menunggu uang yang tidak pernah diminta.
-  Future<void> _withdrawBalance(double balance) {
-    return showAppleActionDialog<void>(
-      context,
-      title: 'Penarikan Saldo Belum Tersedia',
-      success: false,
-      message:
-          'Saldo Anda saat ini ${formatRupiah(balance)}. Penarikan ke '
-          'rekening bank masih disiapkan — untuk sementara hubungi pengurus '
-          'Kopdes desa Anda.',
-      primaryLabel: 'Mengerti',
-      onPrimary: () => Navigator.of(context).pop(),
+        ),
+      ),
     );
   }
+}
+
+// ─────────────────────────────────────────────────────────────
+// 1. Identitas
+// ─────────────────────────────────────────────────────────────
+
+class _IdentitySection extends ConsumerWidget {
+  const _IdentitySection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return ref
+        .watch(storeProfileProvider)
+        .when(
+          skipLoadingOnRefresh: true,
+          loading: () => const SectionSkeleton(height: 132),
+          error: (e, _) => SectionError(
+            message: 'Profil toko belum termuat. ${networkErrorMessage(e)}',
+            onRetry: () => ref.invalidate(storeProfileProvider),
+          ),
+          data: (store) => _IdentityCard(store: store),
+        );
+  }
+}
+
+class _IdentityCard extends StatelessWidget {
+  final StoreModel store;
+  const _IdentityCard({required this.store});
 
   @override
   Widget build(BuildContext context) {
-    final profileState = ref.watch(storeProfileProvider);
+    final verification = verificationPill(store.status);
+    final operational = switch (store.isOpen) {
+      true => const StatusPill(
+        icon: Icons.circle,
+        label: 'Buka sekarang',
+        tint: AppColors.success,
+        text: AppColors.successText,
+      ),
+      false => const StatusPill(
+        icon: Icons.nightlight_outlined,
+        label: 'Sedang tutup',
+        tint: AppColors.muted,
+        text: AppColors.body,
+      ),
+      null => const StatusPill(
+        icon: Icons.schedule_rounded,
+        label: 'Jam buka belum diisi',
+        tint: AppColors.muted,
+        text: AppColors.body,
+      ),
+    };
 
-    return Stack(
-      children: [
-        Scaffold(
-          backgroundColor: AppColors.surfaceSoft,
-          body: SellerPageChrome(
-            title: 'Toko Anda',
-            subtitle: _isEditing
-                ? 'Perbarui informasi yang dilihat pembeli'
-                : 'Profil, pencairan, dan pengaturan usaha',
-            actions: [
-              if (!_isEditing)
-                GlassIconButton(
-                  icon: Icons.edit_outlined,
-                  label: 'Edit profil toko',
-                  onDark: true,
-                  onTap: () {
-                    setState(() {
-                      _isEditing = true;
-                    });
-                  },
-                )
-              else
-                GlassIconButton(
-                  icon: Icons.close_rounded,
-                  label: 'Batalkan perubahan',
-                  onDark: true,
-                  onTap: () {
-                    setState(() {
-                      _isEditing = false;
-                      _isInit = false; // Trigger reload of original values
-                    });
-                  },
-                ),
-            ],
-            body: profileState.when(
-              loading: () =>
-                  const Center(child: AppleActivityIndicator(size: 28)),
-              error: (error, stack) => ErrorStateWidget(
-                errorMessage: error.toString(),
-                onRetry: () => ref.invalidate(storeProfileProvider),
-              ),
-              data: (store) {
-                _populateForm(store);
-                final bool isVerified = store.status == 'ACTIVE';
-
-                return Form(
-                  key: _formKey,
-                  child: SellerContentBoundary(
-                    child: ListView(
-                      physics: const BouncingScrollPhysics(),
-                      padding: const EdgeInsets.fromLTRB(
-                        0,
-                        AppSpacing.base,
-                        0,
-                        112,
+    return StoreSurface(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _StoreLogo(photoUrl: store.photoUrl),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      store.businessName,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.titleMedium.copyWith(
+                        fontSize: 19,
+                        height: 1.2,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.ink,
                       ),
-                      children: [
-                        SellerSectionCard(
-                          child: Row(
-                            children: [
-                              Stack(
-                                alignment: Alignment.bottomRight,
-                                children: [
-                                  Container(
-                                    width: 72,
-                                    height: 72,
-                                    decoration: BoxDecoration(
-                                      color: AppColors.primaryTint,
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: AppColors.primarySoft,
-                                        width: 1.5,
-                                      ),
-                                    ),
-                                    child: const Icon(
-                                      Icons.storefront_rounded,
-                                      color: AppColors.primary,
-                                      size: 34,
-                                    ),
-                                  ),
-                                  if (_isEditing)
-                                    Container(
-                                      width: 28,
-                                      height: 28,
-                                      decoration: const BoxDecoration(
-                                        color: AppColors.primary,
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: const Icon(
-                                        Icons.camera_alt_outlined,
-                                        color: AppColors.onPrimary,
-                                        size: 14,
-                                      ),
-                                    ),
-                                ],
-                              ),
-                              const SizedBox(width: AppSpacing.base),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      store.businessName,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: AppTypography.titleMedium.copyWith(
-                                        fontWeight: FontWeight.w700,
-                                        letterSpacing: -0.3,
-                                      ),
-                                    ),
-                                    const SizedBox(height: AppSpacing.sm),
-                                    SellerStatusBadge(
-                                      label: isVerified
-                                          ? 'Toko terverifikasi'
-                                          : 'Menunggu verifikasi',
-                                      color: isVerified
-                                          ? AppColors.success
-                                          : AppColors.warning,
-                                      icon: isVerified
-                                          ? Icons.verified_rounded
-                                          : Icons.schedule_rounded,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
+                    ),
+                    if (store.kopdesName != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        'Mitra ${store.kopdesName}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.captionSmall.copyWith(
+                          fontSize: 12.5,
+                          color: AppColors.muted,
                         ),
-                        const SizedBox(height: AppSpacing.lg),
-
-                        // Dompet Toko Card
-                        SellerSectionCard(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Saldo Dompet Toko',
-                                        style: AppTypography.captionSmall
-                                            .copyWith(
-                                              color: AppColors.muted,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                      ),
-                                      const SizedBox(height: AppSpacing.xs),
-                                      Consumer(
-                                        builder: (context, ref, _) {
-                                          return ref
-                                              .watch(walletBalanceProvider)
-                                              .when(
-                                                loading: () => const SizedBox(
-                                                  height: 28,
-                                                  child: Align(
-                                                    alignment:
-                                                        Alignment.centerLeft,
-                                                    child:
-                                                        AppleActivityIndicator(
-                                                          size: 18,
-                                                          color:
-                                                              AppColors.primary,
-                                                        ),
-                                                  ),
-                                                ),
-                                                // Gagal berarti TIDAK TAHU,
-                                                // bukan nol: "Rp0" di kartu
-                                                // dompet terbaca seperti uangnya
-                                                // habis.
-                                                error: (_, __) => Text(
-                                                  'Gagal dimuat',
-                                                  style: AppTypography
-                                                      .titleLarge
-                                                      .copyWith(
-                                                        color: AppColors.muted
-                                                            .withValues(
-                                                              alpha: 0.7,
-                                                            ),
-                                                        fontWeight:
-                                                            FontWeight.w700,
-                                                        fontSize: 18,
-                                                      ),
-                                                ),
-                                                data: (wallet) => Text(
-                                                  formatRupiah(wallet.balance),
-                                                  style: AppTypography
-                                                      .titleLarge
-                                                      .copyWith(
-                                                        color: AppColors.ink,
-                                                        fontWeight:
-                                                            FontWeight.w800,
-                                                        fontSize: 22,
-                                                      ),
-                                                ),
-                                              );
-                                        },
-                                      ),
-                                    ],
-                                  ),
-                                  Consumer(
-                                    builder: (context, ref, _) {
-                                      final balance = ref
-                                          .watch(walletBalanceProvider)
-                                          .valueOrNull
-                                          ?.balance;
-                                      return ElevatedButton(
-                                        onPressed: balance == null
-                                            ? null
-                                            : () => _withdrawBalance(balance),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: AppColors.primary,
-                                          foregroundColor: AppColors.onPrimary,
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 14,
-                                            vertical: 10,
-                                          ),
-                                          minimumSize: const Size(44, 44),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              AppRadius.button,
-                                            ),
-                                          ),
-                                        ),
-                                        child: Text(
-                                          'Tarik Saldo',
-                                          style: AppTypography.buttonSm
-                                              .copyWith(
-                                                color: AppColors.onPrimary,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.lg),
-
-                        SellerSectionCard(
-                          title: 'Informasi toko',
-                          subtitle: _isEditing
-                              ? 'Perubahan akan tampil pada etalase pembeli.'
-                              : 'Tekan Edit untuk memperbarui data usaha.',
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Nama Usaha / Toko',
-                                style: AppTypography.caption.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.ink,
-                                ),
-                              ),
-                              const SizedBox(height: AppSpacing.sm),
-                              TextFormField(
-                                controller: _nameController,
-                                enabled: _isEditing,
-                                decoration: const InputDecoration(
-                                  hintText: 'Nama Usaha',
-                                ),
-                                validator: (val) =>
-                                    val == null || val.trim().isEmpty
-                                    ? 'Nama usaha wajib diisi'
-                                    : null,
-                              ),
-                              const SizedBox(height: AppSpacing.md),
-
-                              Text(
-                                'Deskripsi Usaha',
-                                style: AppTypography.caption.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.ink,
-                                ),
-                              ),
-                              const SizedBox(height: AppSpacing.sm),
-                              TextFormField(
-                                controller: _descController,
-                                enabled: _isEditing,
-                                maxLines: 3,
-                                decoration: const InputDecoration(
-                                  hintText: 'Deskripsi singkat usaha Anda...',
-                                ),
-                              ),
-                              const SizedBox(height: AppSpacing.md),
-
-                              Text(
-                                'Alamat Toko',
-                                style: AppTypography.caption.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.ink,
-                                ),
-                              ),
-                              const SizedBox(height: AppSpacing.sm),
-                              TextFormField(
-                                controller: _addressController,
-                                enabled: _isEditing,
-                                maxLines: 2,
-                                decoration: const InputDecoration(
-                                  hintText: 'Alamat lengkap lokasi usaha',
-                                ),
-                              ),
-                              const SizedBox(height: AppSpacing.md),
-
-                              Text(
-                                'Nomor Telepon Toko',
-                                style: AppTypography.caption.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.ink,
-                                ),
-                              ),
-                              const SizedBox(height: AppSpacing.sm),
-                              TextFormField(
-                                controller: _phoneController,
-                                enabled: _isEditing,
-                                keyboardType: TextInputType.phone,
-                                decoration: const InputDecoration(
-                                  hintText: 'Nomor HP/WA Toko',
-                                ),
-                                validator: (val) =>
-                                    val == null || val.trim().isEmpty
-                                    ? 'Nomor telepon wajib diisi'
-                                    : null,
-                              ),
-
-                              if (_isEditing) ...[
-                                const SizedBox(height: AppSpacing.lg),
-                                ElevatedButton(
-                                  onPressed: _saveProfile,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppColors.primary,
-                                    foregroundColor: AppColors.onPrimary,
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 14,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(
-                                        AppRadius.button,
-                                      ),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    'Simpan Perubahan Profil',
-                                    style: AppTypography.buttonMd.copyWith(
-                                      color: AppColors.onPrimary,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-
-                        const SizedBox(height: AppSpacing.lg),
-                        Text(
-                          'Pengaturan',
-                          style: AppTypography.titleMedium.copyWith(
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: -0.3,
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.md),
-                        _buildSettingsTile(
-                          icon: Icons.local_shipping_outlined,
-                          title: 'Metode Pengiriman & Kurir',
-                          subtitle: 'Atur kurir lokal KOPDES atau mandiri',
-                          onTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Fitur Pengiriman dikelola oleh KOPDES Admin & Kurir secara otomatis.',
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                        const SizedBox(height: AppSpacing.xs),
-                        _buildSettingsTile(
-                          icon: Icons.help_outline_rounded,
-                          title: 'Pusat Bantuan KOPDES',
-                          subtitle: 'Hubungi administrator koperasi',
-                          onTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Silakan hubungi admin di support@kopdes.co',
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                        const SizedBox(height: AppSpacing.xs),
-                        _buildSettingsTile(
-                          icon: Icons.logout_rounded,
-                          title: 'Keluar Dari Akun',
-                          titleColor: AppColors.errorText,
-                          subtitle: 'Logout dari aplikasi KOPDES',
-                          onTap: () {
-                            ref.read(authProvider.notifier).logout();
-                          },
-                        ),
-                        const SizedBox(height: AppSpacing.section),
-                      ],
+                      ),
+                    ],
+                    const SizedBox(height: AppSpacing.sm),
+                    Wrap(
+                      spacing: AppSpacing.sm,
+                      runSpacing: AppSpacing.xs,
+                      children: [verification, operational],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (store.status == 'REJECTED' &&
+              (store.rejectionReason?.isNotEmpty ?? false)) ...[
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              'Alasan: ${store.rejectionReason}',
+              style: AppTypography.bodyMedium.copyWith(
+                fontSize: 13,
+                color: AppColors.errorText,
+              ),
+            ),
+          ],
+          const SizedBox(height: AppSpacing.sm),
+          Align(
+            alignment: Alignment.centerRight,
+            child: store.isVerified
+                ? TextButton.icon(
+                    onPressed: () =>
+                        context.push(StoreRoutes.publicStore(store.id)),
+                    iconAlignment: IconAlignment.end,
+                    icon: const Icon(Icons.chevron_right_rounded),
+                    style: TextButton.styleFrom(
+                      minimumSize: const Size(44, 44),
+                      foregroundColor: AppColors.body,
+                    ),
+                    label: const Text('Lihat toko'),
+                  )
+                // Toko yang belum terverifikasi tidak tampil untuk pembeli:
+                // tombolnya akan membuka halaman "tidak ditemukan".
+                : Text(
+                    'Toko tampil untuk pembeli setelah diverifikasi.',
+                    textAlign: TextAlign.right,
+                    style: AppTypography.captionSmall.copyWith(
+                      fontSize: 12.5,
+                      color: AppColors.muted,
                     ),
                   ),
-                );
-              },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Badge verifikasi dari `UMKMStatus` — "terverifikasi" hanya untuk ACTIVE.
+StatusPill verificationPill(String status) => switch (status) {
+  'ACTIVE' => const StatusPill(
+    icon: Icons.verified_rounded,
+    label: 'Toko terverifikasi',
+    tint: AppColors.success,
+    text: AppColors.successText,
+  ),
+  'REJECTED' => const StatusPill(
+    icon: Icons.cancel_outlined,
+    label: 'Verifikasi ditolak',
+    tint: AppColors.error,
+    text: AppColors.errorText,
+  ),
+  'SUSPENDED' => const StatusPill(
+    icon: Icons.block_rounded,
+    label: 'Toko ditangguhkan',
+    tint: AppColors.error,
+    text: AppColors.errorText,
+  ),
+  _ => const StatusPill(
+    icon: Icons.hourglass_top_rounded,
+    label: 'Menunggu verifikasi',
+    tint: AppColors.warning,
+    text: AppColors.warningText,
+  ),
+};
+
+class _StoreLogo extends StatelessWidget {
+  final String? photoUrl;
+  const _StoreLogo({required this.photoUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    const size = 64.0;
+    final placeholder = Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: AppColors.primaryTint,
+        shape: BoxShape.circle,
+        border: Border.all(color: AppColors.primarySoft),
+      ),
+      child: const Icon(
+        Icons.storefront_rounded,
+        color: AppColors.primary,
+        size: 30,
+      ),
+    );
+    if (photoUrl == null || photoUrl!.isEmpty) {
+      return ExcludeSemantics(child: placeholder);
+    }
+    return ClipOval(
+      child: Image.network(
+        photoUrl!,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        cacheWidth: (size * MediaQuery.devicePixelRatioOf(context)).round(),
+        semanticLabel: 'Logo toko',
+        errorBuilder: (_, __, ___) => placeholder,
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// 2. Saldo
+// ─────────────────────────────────────────────────────────────
+
+class _BalanceSection extends ConsumerWidget {
+  const _BalanceSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return ref
+        .watch(payoutSummaryProvider)
+        .when(
+          skipLoadingOnRefresh: true,
+          loading: () => const SectionSkeleton(height: 168),
+          // Gagal berarti TIDAK TAHU, bukan nol: "Rp0" terbaca seperti
+          // uangnya habis.
+          error: (e, _) => SectionError(
+            message: 'Saldo belum termuat. ${networkErrorMessage(e)}',
+            onRetry: () => ref.invalidate(payoutSummaryProvider),
+          ),
+          data: (s) => BalanceCard(
+            summary: s,
+            onHistory: () => context.push(StoreRoutes.payouts),
+            onWithdraw: () => showWithdrawSheet(context, summary: s),
+            onAddBankAccount: () => context.push(StoreRoutes.bankAccount),
+          ),
+        );
+  }
+}
+
+class BalanceCard extends StatelessWidget {
+  final PayoutSummary summary;
+  final VoidCallback onHistory;
+  final VoidCallback onWithdraw;
+  final VoidCallback onAddBankAccount;
+
+  const BalanceCard({
+    super.key,
+    required this.summary,
+    required this.onHistory,
+    required this.onWithdraw,
+    required this.onAddBankAccount,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final s = summary;
+    // Alasan pertama yang paling bisa ditindaklanjuti ditampilkan sebagai
+    // teks — tombol yang mati tanpa penjelasan membuat orang menekannya
+    // berulang-ulang.
+    final reason = s.canWithdraw ? null : s.blockers.firstOrNull;
+
+    final withdraw = FilledButton(
+      onPressed: s.canWithdraw ? onWithdraw : null,
+      style: FilledButton.styleFrom(
+        minimumSize: const Size(44, 46),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+        backgroundColor: AppColors.primary,
+        disabledBackgroundColor: AppColors.primarySoft,
+        disabledForegroundColor: AppColors.onPrimary,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.pill),
+        ),
+      ),
+      child: const Text('Tarik saldo'),
+    );
+
+    final history = TextButton.icon(
+      onPressed: onHistory,
+      iconAlignment: IconAlignment.end,
+      icon: const Icon(Icons.chevron_right_rounded, size: 20),
+      style: TextButton.styleFrom(
+        minimumSize: const Size(44, 44),
+        foregroundColor: AppColors.primaryText,
+      ),
+      label: const Text('Riwayat'),
+    );
+
+    return StoreSurface(
+      child: LayoutBuilder(
+        builder: (context, c) {
+          // "Riwayat" di samping nominal selama muat; di layar sempit atau
+          // teks besar ia turun ke bawah nominal, bukan menghimpitnya.
+          final wide =
+              c.maxWidth >= 340 * MediaQuery.textScalerOf(context).scale(1);
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const IconTile(
+                    Icons.account_balance_wallet_rounded,
+                    tint: AppColors.primary,
+                    size: 48,
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Semantics(
+                      label: 'Saldo tersedia ${formatRupiah(s.available)}',
+                      excludeSemantics: true,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Saldo tersedia',
+                            style: AppTypography.bodyMedium.copyWith(
+                              fontSize: 14,
+                              color: AppColors.muted,
+                            ),
+                          ),
+                          Text(
+                            formatRupiah(s.available),
+                            style: AppTypography.titleLarge.copyWith(
+                              fontSize: 26,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.ink,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (wide) history,
+                ],
+              ),
+              if (!wide) Align(alignment: Alignment.centerLeft, child: history),
+              const SizedBox(height: AppSpacing.md),
+              _Breakdown(summary: s),
+              const SizedBox(height: AppSpacing.md),
+              Builder(
+                builder: (context) {
+                  final note = reason == null
+                      ? Text(
+                          'Minimal ${formatRupiah(s.minWithdrawal)} per penarikan.',
+                          style: AppTypography.captionSmall.copyWith(
+                            fontSize: 12.5,
+                            color: AppColors.muted,
+                          ),
+                        )
+                      : _BlockerNote(
+                          blocker: reason,
+                          available: s.available,
+                          onAddBankAccount: onAddBankAccount,
+                        );
+                  return wide
+                      ? Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Expanded(child: note),
+                            const SizedBox(width: AppSpacing.md),
+                            withdraw,
+                          ],
+                        )
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [note, const SizedBox(height: 8), withdraw],
+                        );
+                },
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// Tertahan & pesanan berjalan — terpisah dari saldo yang bisa ditarik.
+class _Breakdown extends StatelessWidget {
+  final PayoutSummary summary;
+  const _Breakdown({required this.summary});
+
+  @override
+  Widget build(BuildContext context) {
+    final s = summary;
+    final items = <(String, String, String)>[
+      (
+        'Tertahan',
+        formatRupiah(s.held),
+        'Sudah dibayar, menunggu pesanan selesai',
+      ),
+      (
+        'Pesanan berjalan',
+        '${s.openOrderCount} pesanan',
+        s.openOrderCount == 0
+            ? 'Tidak ada pesanan yang belum selesai'
+            : 'Senilai ${formatRupiah(s.openOrderAmount)} setelah fee',
+      ),
+      if (s.pendingPayout > 0)
+        (
+          'Sedang dicairkan',
+          formatRupiah(s.pendingPayout),
+          'Menunggu transfer pengurus Kopdes',
+        ),
+    ];
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceSoft,
+        borderRadius: BorderRadius.circular(AppleRadii.control),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var i = 0; i < items.length; i++) ...[
+            if (i > 0) const SizedBox(height: AppSpacing.sm),
+            Semantics(
+              label: '${items[i].$1} ${items[i].$2}. ${items[i].$3}',
+              excludeSemantics: true,
+              child: Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                spacing: AppSpacing.sm,
+                children: [
+                  Text(
+                    items[i].$1,
+                    style: AppTypography.bodyMedium.copyWith(
+                      fontSize: 13.5,
+                      color: AppColors.body,
+                    ),
+                  ),
+                  Text(
+                    items[i].$2,
+                    style: AppTypography.bodyMedium.copyWith(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.ink,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Text(
+              items[i].$3,
+              style: AppTypography.captionSmall.copyWith(
+                fontSize: 12,
+                color: AppColors.muted,
+              ),
+            ),
+          ],
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            'Saldo tersedia dihitung dari pesanan selesai setelah fee Kopdes '
+            '${s.feePercent.toStringAsFixed(0)}%.',
+            style: AppTypography.captionSmall.copyWith(
+              fontSize: 12,
+              color: AppColors.muted,
             ),
           ),
-        ),
-        if (_isSaving)
-          const SellerLoadingScrim(
-            child: LoadingWidget(message: 'Menyimpan profil toko...'),
+        ],
+      ),
+    );
+  }
+}
+
+class _BlockerNote extends StatelessWidget {
+  final PayoutBlocker blocker;
+  final double available;
+  final VoidCallback onAddBankAccount;
+
+  const _BlockerNote({
+    required this.blocker,
+    required this.available,
+    required this.onAddBankAccount,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final style = AppTypography.captionSmall.copyWith(
+      fontSize: 12.5,
+      color: AppColors.body,
+    );
+    final text = blocker.code == 'BELOW_MINIMUM' && available == 0
+        ? 'Belum ada saldo yang bisa ditarik. ${blocker.message}'
+        : blocker.message;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.only(top: 1),
+          child: Icon(
+            Icons.info_outline_rounded,
+            size: 16,
+            color: AppColors.muted,
           ),
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: blocker.code == 'NO_BANK_ACCOUNT'
+              ? Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text(text, style: style),
+                    TextButton(
+                      onPressed: onAddBankAccount,
+                      style: TextButton.styleFrom(
+                        minimumSize: const Size(44, 44),
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                      ),
+                      child: const Text('Isi rekening'),
+                    ),
+                  ],
+                )
+              : Text(text, style: style),
+        ),
       ],
     );
   }
+}
 
-  Widget _buildSettingsTile({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-    Color? titleColor,
-  }) {
+// ─────────────────────────────────────────────────────────────
+// 3. Profil usaha
+// ─────────────────────────────────────────────────────────────
+
+class _ProfileSection extends ConsumerWidget {
+  const _ProfileSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final header = StoreSectionHeader(
+      'Profil usaha',
+      subtitle: 'Informasi yang dilihat pembeli.',
+      action: TextButton.icon(
+        onPressed: () => context.push(StoreRoutes.edit),
+        icon: const Icon(Icons.edit_outlined, size: 18),
+        style: TextButton.styleFrom(
+          minimumSize: const Size(44, 44),
+          foregroundColor: AppColors.primaryText,
+          backgroundColor: AppColors.primaryTint,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.pill),
+          ),
+        ),
+        label: const Text('Edit'),
+      ),
+    );
+
+    final body = ref
+        .watch(storeProfileProvider)
+        .when(
+          skipLoadingOnRefresh: true,
+          loading: () => const SectionSkeleton(height: 220),
+          error: (e, _) => SectionError(
+            message: 'Profil usaha belum termuat.',
+            onRetry: () => ref.invalidate(storeProfileProvider),
+          ),
+          data: (store) {
+            const empty = 'Lengkapi informasi';
+            final contact = contactSummary(store);
+            return StoreRowGroup(
+              rows: [
+                StoreRow(
+                  icon: Icons.description_outlined,
+                  title: 'Tentang toko',
+                  value: store.description.trim().isEmpty
+                      ? empty
+                      : store.description.trim(),
+                  placeholder: store.description.trim().isEmpty,
+                  onTap: () => context.push(StoreRoutes.edit),
+                ),
+                StoreRow(
+                  icon: Icons.location_on_outlined,
+                  title: 'Alamat toko',
+                  value: store.address.trim().isEmpty
+                      ? empty
+                      : store.address.trim(),
+                  placeholder: store.address.trim().isEmpty,
+                  onTap: () => context.push(StoreRoutes.edit),
+                ),
+                StoreRow(
+                  icon: Icons.phone_outlined,
+                  title: 'Kontak & jam buka',
+                  value: contact ?? empty,
+                  placeholder: contact == null,
+                  onTap: () => context.push(StoreRoutes.settings),
+                ),
+              ],
+            );
+          },
+        );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [header, body],
+    );
+  }
+}
+
+/// "0813… · Buka 07.00–21.00 hari ini" — null bila keduanya kosong.
+String? contactSummary(StoreModel store, {DateTime? now}) {
+  final parts = <String>[];
+  if (store.phone.trim().isNotEmpty) parts.add(store.phone.trim());
+  final hours = store.operatingHours;
+  if (hours != null) {
+    final today = weekDays[((now ?? DateTime.now()).weekday - 1) % 7];
+    final h = hours[today];
+    parts.add(
+      h == null
+          ? 'Tutup hari ini'
+          : 'Buka ${hhmm(h.open)}–${hhmm(h.close)} hari ini',
+    );
+  }
+  return parts.isEmpty ? null : parts.join(' · ');
+}
+
+/// "07:00" → "07.00", penulisan jam baku bahasa Indonesia.
+String hhmm(String v) => v.replaceAll(':', '.');
+
+// ─────────────────────────────────────────────────────────────
+// 4. Kelola toko
+// ─────────────────────────────────────────────────────────────
+
+class _ManageSection extends ConsumerWidget {
+  const _ManageSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final bank = ref.watch(payoutSummaryProvider).valueOrNull?.bankAccount;
+    final tiles = [
+      _ManageTile(
+        icon: Icons.account_balance_outlined,
+        tint: AppColors.primary,
+        title: 'Rekening pencairan',
+        subtitle: bank == null
+            ? 'Atur rekening untuk pencairan'
+            : '${bank.bankName} ${bank.accountNumber}',
+        onTap: () => context.push(StoreRoutes.bankAccount),
+      ),
+      _ManageTile(
+        icon: Icons.settings_outlined,
+        tint: const Color(0xFF2F6FDB),
+        title: 'Pengaturan toko',
+        subtitle: 'Kontak dan jam buka',
+        onTap: () => context.push(StoreRoutes.settings),
+      ),
+      _ManageTile(
+        icon: Icons.help_outline_rounded,
+        tint: AppColors.warning,
+        title: 'Pusat bantuan',
+        subtitle: 'Panduan saldo, produk, dan stok',
+        onTap: () => context.push(StoreRoutes.help),
+      ),
+      _ManageTile(
+        icon: Icons.shield_outlined,
+        tint: AppColors.success,
+        title: 'Keamanan akun',
+        subtitle: 'Kata sandi dan keluar',
+        onTap: () => context.push(StoreRoutes.security),
+      ),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const StoreSectionHeader(
+          'Kelola toko',
+          subtitle: 'Atur dan kelola toko Anda.',
+        ),
+        LayoutBuilder(
+          builder: (context, c) {
+            // Dua kolom selama satu kolom masih selebar ±170dp pada skala
+            // teks saat ini; selebihnya satu kolom, bukan teks yang mengecil.
+            final scale = MediaQuery.textScalerOf(context).scale(1);
+            final twoColumns = (c.maxWidth - AppSpacing.md) / 2 >= 170 * scale;
+            if (!twoColumns) {
+              return Column(
+                children: [
+                  for (var i = 0; i < tiles.length; i++) ...[
+                    if (i > 0) const SizedBox(height: AppSpacing.sm),
+                    tiles[i],
+                  ],
+                ],
+              );
+            }
+            return Column(
+              children: [
+                for (var i = 0; i < tiles.length; i += 2) ...[
+                  if (i > 0) const SizedBox(height: AppSpacing.md),
+                  IntrinsicHeight(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(child: tiles[i]),
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(child: tiles[i + 1]),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _ManageTile extends StatelessWidget {
+  final IconData icon;
+  final Color tint;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const _ManageTile({
+    required this.icon,
+    required this.tint,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return ApplePressable(
       onTap: onTap,
-      semanticLabel: title,
-      child: Container(
-        constraints: const BoxConstraints(minHeight: 68),
-        decoration: BoxDecoration(
-          color: AppColors.canvas,
-          borderRadius: BorderRadius.circular(AppleRadii.tile),
-          border: Border.all(color: AppColors.hairlineSoft),
-          boxShadow: AppElevation.subtle,
-        ),
-        child: ListTile(
-          leading: Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: (titleColor ?? AppColors.primary).withValues(alpha: 0.09),
-              borderRadius: BorderRadius.circular(AppRadius.sm),
+      pressedScale: 0.98,
+      semanticLabel: '$title. $subtitle',
+      child: StoreSurface(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Row(
+          children: [
+            IconTile(icon, tint: tint, size: 44),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.bodyMedium.copyWith(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.ink,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.captionSmall.copyWith(
+                      fontSize: 12.5,
+                      color: AppColors.muted,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            child: Icon(icon, color: titleColor ?? AppColors.primary, size: 20),
-          ),
-          title: Text(
-            title,
-            style: AppTypography.bodyMedium.copyWith(
-              fontWeight: FontWeight.w600,
-              color: titleColor ?? AppColors.ink,
-            ),
-          ),
-          subtitle: Text(subtitle, style: AppTypography.captionSmall),
-          trailing: const Icon(
-            Icons.chevron_right_rounded,
-            color: AppColors.muted,
-          ),
+            const Icon(Icons.chevron_right_rounded, color: AppColors.muted),
+          ],
         ),
       ),
     );

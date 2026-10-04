@@ -42,6 +42,11 @@ import '../../features/umkm/presentation/screens/product_detail_screen.dart'
 import '../../features/umkm/presentation/screens/product_form_screen.dart';
 import '../../features/umkm/presentation/screens/order_screen.dart';
 import '../../features/umkm/presentation/screens/store_profile_screen.dart';
+import '../../features/umkm/presentation/screens/store_edit_screen.dart';
+import '../../features/umkm/presentation/screens/store_settings_screen.dart';
+import '../../features/umkm/presentation/screens/bank_account_screen.dart';
+import '../../features/umkm/presentation/screens/payout_history_screen.dart';
+import '../../features/umkm/presentation/screens/account_security_screen.dart';
 import '../../features/ai_assistant/presentation/screens/ai_assistant_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
 import '../../features/admin/presentation/screens/admin_dashboard_screen.dart';
@@ -575,6 +580,27 @@ final routerProvider = Provider<GoRouter>((ref) {
           // Rute 'inventory' dihapus: kendali stok melebur ke halaman produk,
           // jadi tidak ada lagi halaman tersendiri untuk ditunjuk.
           GoRoute(path: 'inventory', redirect: (_, __) => '/umkm/products'),
+          // Halaman turunan tab Toko.
+          GoRoute(
+            path: 'store/edit',
+            builder: (context, state) => const StoreEditScreen(),
+          ),
+          GoRoute(
+            path: 'store/settings',
+            builder: (context, state) => const StoreSettingsScreen(),
+          ),
+          GoRoute(
+            path: 'store/bank-account',
+            builder: (context, state) => const BankAccountScreen(),
+          ),
+          GoRoute(
+            path: 'store/payouts',
+            builder: (context, state) => const PayoutHistoryScreen(),
+          ),
+          GoRoute(
+            path: 'store/security',
+            builder: (context, state) => const AccountSecurityScreen(),
+          ),
           GoRoute(
             path: 'profile',
             builder: (context, state) => const StoreProfileScreen(),

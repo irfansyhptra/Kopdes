@@ -1140,6 +1140,35 @@ final RegExp _thousands = RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))');
 
 String formatRupiah(num value) => 'Rp${formatThousands(value)}';
 
+/// Nama bulan ditulis sendiri, bukan lewat `DateFormat(..., 'id_ID')`.
+///
+/// Locale itu menuntut `initializeDateFormatting()` dipanggil saat aplikasi
+/// mulai, dan aplikasi ini tidak memanggilnya — memakainya membuat baris
+/// tanggal melempar `LocaleDataException` alih-alih menampilkan tanggal.
+const _monthsId = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'Mei',
+  'Jun',
+  'Jul',
+  'Agu',
+  'Sep',
+  'Okt',
+  'Nov',
+  'Des',
+];
+
+/// "4 Okt 2026".
+String shortDateId(DateTime d) =>
+    '${d.day} ${_monthsId[d.month - 1]} ${d.year}';
+
+/// "4 Okt 2026, 16.20".
+String dateTimeId(DateTime d) =>
+    '${shortDateId(d)}, ${d.hour.toString().padLeft(2, '0')}.'
+    '${d.minute.toString().padLeft(2, '0')}';
+
 /// Angka dengan pemisah ribuan, tanpa "Rp" — untuk poin, jumlah, dan sejenisnya.
 String formatThousands(num value) =>
     value.toStringAsFixed(0).replaceAllMapped(_thousands, (m) => '${m[1]}.');

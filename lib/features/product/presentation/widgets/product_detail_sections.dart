@@ -568,29 +568,6 @@ class _NoReviews extends StatelessWidget {
   }
 }
 
-/// Nama bulan ditulis sendiri, bukan lewat `DateFormat(..., 'id_ID')`.
-///
-/// Locale itu menuntut `initializeDateFormatting()` dipanggil saat aplikasi
-/// mulai, dan aplikasi ini tidak memanggilnya — memakainya membuat baris
-/// tanggal melempar `LocaleDataException` alih-alih menampilkan tanggal.
-const _months = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'Mei',
-  'Jun',
-  'Jul',
-  'Agu',
-  'Sep',
-  'Okt',
-  'Nov',
-  'Des',
-];
-
-String _shortDate(DateTime date) =>
-    '${date.day} ${_months[date.month - 1]} ${date.year}';
-
 class _ReviewRow extends StatelessWidget {
   final ProductReview review;
 
@@ -631,7 +608,7 @@ class _ReviewRow extends StatelessWidget {
                 ),
               ),
               Text(
-                _shortDate(review.createdAt),
+                shortDateId(review.createdAt),
                 style: AppTypography.captionSmall.copyWith(fontSize: 11),
               ),
             ],

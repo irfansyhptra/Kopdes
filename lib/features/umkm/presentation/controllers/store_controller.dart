@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/store_model.dart';
-import '../../domain/repositories/seller_repository.dart';
 import 'providers.dart';
 import 'seller_dashboard_controller.dart';
 
@@ -8,44 +7,27 @@ final storeProfileProvider = FutureProvider<StoreModel>((ref) async {
   return ref.watch(sellerRepositoryProvider).getStoreProfile();
 });
 
-class StoreController extends StateNotifier<AsyncValue<void>> {
-  final SellerRepository _repository;
-  final Ref _ref;
-
-  StoreController({required SellerRepository repository, required Ref ref})
-    : _repository = repository,
-      _ref = ref,
-      super(const AsyncValue.data(null));
-
-  Future<bool> updateStoreProfile({
-    required String businessName,
-    required String description,
-    required String address,
-    required String phone,
-  }) async {
-    state = const AsyncValue.loading();
-    try {
-      await _repository.updateStoreProfile(
+/// Menyimpan profil toko. Melempar bila gagal — pemanggil (lewat
+/// `runWithFeedback`) menampilkan alasannya.
+Future<void> saveStoreProfile(
+  WidgetRef ref, {
+  String? businessName,
+  String? description,
+  String? address,
+  String? phone,
+  String? category,
+  Map<String, DayHours?>? operatingHours,
+}) async {
+  await ref
+      .read(sellerRepositoryProvider)
+      .updateStoreProfile(
         businessName: businessName,
         description: description,
         address: address,
         phone: phone,
+        category: category,
+        operatingHours: operatingHours,
       );
-      state = const AsyncValue.data(null);
-      _ref.invalidate(storeProfileProvider);
-      _ref.read(sellerDashboardControllerProvider.notifier).refresh();
-      return true;
-    } catch (e, st) {
-      state = AsyncValue.error(e, st);
-      return false;
-    }
-  }
+  ref.invalidate(storeProfileProvider);
+  ref.read(sellerDashboardControllerProvider.notifier).refresh();
 }
-
-final storeControllerProvider =
-    StateNotifierProvider<StoreController, AsyncValue<void>>((ref) {
-      return StoreController(
-        repository: ref.watch(sellerRepositoryProvider),
-        ref: ref,
-      );
-    });
