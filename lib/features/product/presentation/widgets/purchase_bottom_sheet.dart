@@ -28,7 +28,7 @@ class _PurchaseBottomSheetState extends ConsumerState<PurchaseBottomSheet> {
   int _quantity = 1;
   late String _selectedVariant;
   String _selectedDelivery = 'Diantar Kurir';
-  String _selectedPayment = 'QRIS';
+  String _selectedPayment = 'Bayar Online';
 
   double _oldPrice = 0.0;
   double _newPrice = 0.0;
@@ -49,25 +49,17 @@ class _PurchaseBottomSheetState extends ConsumerState<PurchaseBottomSheet> {
     _oldPrice = _newPrice;
   }
 
+  /// Total yang benar-benar ditagihkan: harga × jumlah.
+  ///
+  /// Backend belum membebankan ongkir maupun biaya layanan (lihat
+  /// `resolveShippingFee` di `order-money.ts`). Lembar ini dulu menambahkan
+  /// Rp8.000–12.000 ongkir dan Rp1.000 biaya layanan sendiri, sehingga total
+  /// yang dilihat pembeli tidak sama dengan tagihannya.
   void _calculatePrices() {
-    final double itemPrice = widget.product.price;
-    final double shippingFee = _getShippingFee();
-    const double serviceFee = 1000.0;
-    _newPrice = (itemPrice * _quantity) + shippingFee + serviceFee;
+    _newPrice = widget.product.price * _quantity;
   }
 
-  double _getShippingFee() {
-    switch (_selectedDelivery) {
-      case 'Ambil di Koperasi':
-        return 0.0;
-      case 'Diantar Kurir':
-        return 8000.0;
-      case 'Driver Kopdes':
-        return 12000.0;
-      default:
-        return 0.0;
-    }
-  }
+  double _getShippingFee() => 0;
 
   void _updateQuantity(int change) {
     final int newQty = _quantity + change;
@@ -429,18 +421,13 @@ class _PurchaseBottomSheetState extends ConsumerState<PurchaseBottomSheet> {
     final List<Map<String, dynamic>> deliveryOptions = [
       {
         'method': 'Ambil di Koperasi',
-        'desc': 'Gratis Ongkir',
+        'desc': 'Ambil sendiri tanpa antre',
         'icon': Icons.store_mall_directory_outlined,
       },
       {
         'method': 'Diantar Kurir',
-        'desc': 'Rp 8.000 (1-2 hari)',
+        'desc': 'Diantar kurir Kopdes',
         'icon': Icons.local_shipping_outlined,
-      },
-      {
-        'method': 'Driver Kopdes',
-        'desc': 'Rp 12.000 (Sama hari)',
-        'icon': Icons.moped_outlined,
       },
     ];
 
@@ -540,10 +527,12 @@ class _PurchaseBottomSheetState extends ConsumerState<PurchaseBottomSheet> {
 
   Widget _buildPaymentSection() {
     final List<Map<String, dynamic>> paymentOptions = [
-      {'name': 'QRIS', 'icon': Icons.qr_code_scanner_rounded},
-      {'name': 'Transfer Bank', 'icon': Icons.account_balance_rounded},
-      {'name': 'E-Wallet', 'icon': Icons.account_balance_wallet_rounded},
-      {'name': 'Kas Koperasi', 'icon': Icons.monetization_on_rounded},
+      // Nama di sini dipetakan checkout ke metode backend (QRIS / WALLET /
+      // COD). "Transfer Bank" dan "E-Wallet" dulu diteruskan mentah dan
+      // ditolak server; keduanya kini ada di dalam "Bayar Online".
+      {'name': 'Bayar Online', 'icon': Icons.qr_code_scanner_rounded},
+      {'name': 'Saldo KOMIT', 'icon': Icons.account_balance_wallet_rounded},
+      {'name': 'COD', 'icon': Icons.payments_outlined},
     ];
 
     return Column(
@@ -639,9 +628,8 @@ class _PurchaseBottomSheetState extends ConsumerState<PurchaseBottomSheet> {
         const SizedBox(height: 8),
         _buildSummaryRow('Diskon Promosi', -discount, isDiscount: true),
         const SizedBox(height: 8),
-        _buildSummaryRow('Estimasi Ongkir', _getShippingFee()),
+        _buildSummaryRow('Ongkir', _getShippingFee()),
         const SizedBox(height: 8),
-        _buildSummaryRow('Biaya Layanan', 1000.0),
       ],
     );
   }

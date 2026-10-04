@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../payment/presentation/payment_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -312,8 +313,17 @@ class _Actions extends ConsumerWidget {
           _OrderButton(
             label: 'Bayar Sekarang',
             primary: true,
-            onTap: () => context.push('/orders/${order.id}'),
+            onTap: () => context.push(
+              PayRoutes.order(order.id, method: order.paymentMethod),
+            ),
           ),
+        );
+      }
+      // Pembeli boleh membatalkan pesanannya selama belum dibayar dan
+      // belum diproses (aturan `updateStatus` di backend).
+      if (order.status == 'PENDING' && order.paymentStatus != 'PAID') {
+        buttons.add(
+          _OrderButton(label: 'Batalkan', onTap: () => _cancel(context, ref)),
         );
       }
       if (order.canConfirmReceipt) {
@@ -337,10 +347,52 @@ class _Actions extends ConsumerWidget {
     );
   }
 
+  Future<void> _cancel(BuildContext context, WidgetRef ref) async {
+    final yes = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Batalkan pesanan?'),
+        content: const Text(
+          'Pesanan dibatalkan dan stok dikembalikan ke penjual. Tindakan ini '
+          'tidak bisa diurungkan.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Tidak'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.errorText),
+            child: const Text('Batalkan Pesanan'),
+          ),
+        ],
+      ),
+    );
+    if (yes != true) return;
+    final ok = await ref
+        .read(orderActionProvider.notifier)
+        .updateStatus(order.id, 'CANCELLED');
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            ok
+                ? 'Pesanan dibatalkan'
+                : 'Pesanan belum bisa dibatalkan. Bila sudah dibayar atau '
+                      'diproses, hubungi pengurus Kopdes.',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+  }
+
   Future<void> _confirmReceipt(BuildContext context, WidgetRef ref) async {
     final ok = await ref
         .read(orderActionProvider.notifier)
-        .updateStatus(order.id, 'COMPLETED');
+        .confirmReceipt(order.id);
 
     if (!context.mounted) return;
     ScaffoldMessenger.of(context)

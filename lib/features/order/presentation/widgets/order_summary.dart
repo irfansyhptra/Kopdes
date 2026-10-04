@@ -47,8 +47,11 @@ class OrderSummary extends StatelessWidget {
         const SizedBox(height: AppSpacing.sm),
         const Divider(),
         const SizedBox(height: AppSpacing.sm),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        // Wrap, bukan Row: pada layar sempit atau teks besar nominal turun
+        // ke baris berikutnya alih-alih meluber.
+        Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          spacing: AppSpacing.sm,
           children: [
             Text(
               'Total Pembayaran',

@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kopdes/core/theme/theme.dart';
+import '../../../../core/network/error_message.dart';
+import '../../../address/data/address_repository.dart';
+import '../../../address/presentation/address_screens.dart';
+import '../../../payment/presentation/payment_screen.dart';
+import '../../../wallet/data/wallet_repository.dart';
 import '../../domain/order_totals.dart';
 import '../providers/cart_provider.dart';
 import '../providers/order_provider.dart';
@@ -17,7 +22,107 @@ class CheckoutScreen extends ConsumerStatefulWidget {
 
 class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   String _paymentMethod = 'QRIS';
-  final String _deliveryAddressId = 'default-mock-address-id';
+
+  /// DELIVERY atau PICKUP (`FulfillmentMethod`).
+  String _fulfillment = 'DELIVERY';
+
+  /// Alamat yang dipilih; null = alamat utama (atau yang pertama).
+  String? _addressId;
+
+  bool get _isPickup => _fulfillment == 'PICKUP';
+
+  bool _compactSegments(BuildContext context) =>
+      MediaQuery.textScalerOf(context).scale(1) > 1.3 ||
+      MediaQuery.sizeOf(context).width < 340;
+
+  /// QRIS → langsung ke tagihan; COD & saldo sudah selesai di server.
+  String _afterCheckout(String orderId) => _paymentMethod == 'QRIS'
+      ? PayRoutes.order(orderId)
+      : '/order-success/$orderId';
+
+  Address? _selectedAddress(List<Address> list) {
+    if (list.isEmpty) return null;
+    return list.where((a) => a.id == _addressId).firstOrNull ??
+        list.where((a) => a.isDefault).firstOrNull ??
+        list.first;
+  }
+
+  /// Alamat yang akan dikirim, atau null bila belum ada — sekaligus
+  /// mengarahkan pemesan menambahkannya. Ambil sendiri pun memerlukannya:
+  /// pesanan selalu mencatat kontak pemesan.
+  Future<String?> _resolveAddressId() async {
+    final list = await ref
+        .read(addressesProvider.future)
+        .catchError((_) => const <Address>[]);
+    final a = _selectedAddress(list);
+    if (a != null) return a.id;
+    if (!mounted) return null;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Tambahkan alamat lebih dulu untuk melanjutkan pesanan.'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+    await _addAddress();
+    return null;
+  }
+
+  Future<void> _addAddress() async {
+    final created = await context.push<Address>(AddressRoutes.create);
+    if (created != null && mounted) setState(() => _addressId = created.id);
+  }
+
+  Future<void> _pickAddress(List<Address> list) async {
+    final picked = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: AppColors.surfaceSoft,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheet) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.6,
+        maxChildSize: 0.92,
+        builder: (_, controller) => ListView(
+          controller: controller,
+          padding: const EdgeInsets.all(AppSpacing.base),
+          children: [
+            Text(
+              'Pilih Alamat',
+              style: AppTypography.titleMedium.copyWith(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: AppColors.ink,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            for (final a in list) ...[
+              AddressCard(
+                address: a,
+                selected: a.id == _selectedAddress(list)?.id,
+                onSelect: () => Navigator.pop(sheet, a.id),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+            ],
+            TextButton.icon(
+              onPressed: () => Navigator.pop(sheet, '__new__'),
+              icon: const Icon(Icons.add_rounded),
+              style: TextButton.styleFrom(minimumSize: const Size(44, 48)),
+              label: const Text('Tambah alamat baru'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (!mounted || picked == null) return;
+    if (picked == '__new__') {
+      await _addAddress();
+    } else {
+      setState(() => _addressId = picked);
+    }
+  }
 
   @override
   void initState() {
@@ -26,15 +131,23 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       final directData = ref.read(directCheckoutProvider);
       if (directData != null) {
         setState(() {
-          _paymentMethod = (directData.paymentMethod == 'Kas Koperasi')
-              ? 'COD'
-              : directData.paymentMethod;
+          _fulfillment = directData.deliveryMethod == 'Ambil di Koperasi'
+              ? 'PICKUP'
+              : 'DELIVERY';
+          _paymentMethod = switch (directData.paymentMethod) {
+            'Saldo KOMIT' => 'WALLET',
+            // COD hanya untuk pesanan yang diantar.
+            'COD' when !_isPickup => 'COD',
+            _ => 'QRIS',
+          };
         });
       }
     });
   }
 
   Future<void> _submitCheckout() async {
+    final addressId = await _resolveAddressId();
+    if (addressId == null || !mounted) return;
     final directData = ref.read(directCheckoutProvider);
     if (directData != null) {
       final backendPaymentMethod = _paymentMethod;
@@ -47,14 +160,15 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                 'quantity': directData.quantity,
               },
             ],
-            deliveryAddressId: _deliveryAddressId,
+            deliveryAddressId: addressId,
             paymentMethod: backendPaymentMethod,
+            fulfillment: _fulfillment,
           );
 
       if (order != null && mounted) {
         ref.read(directCheckoutProvider.notifier).state =
             null; // Clear direct state
-        context.go('/order-success/${order.id}');
+        context.go(_afterCheckout(order.id));
       } else if (mounted) {
         final state = ref.read(orderActionProvider);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -87,13 +201,14 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     final order = await ref
         .read(orderActionProvider.notifier)
         .checkout(
-          deliveryAddressId: _deliveryAddressId,
+          deliveryAddressId: addressId,
           paymentMethod: _paymentMethod,
+          fulfillment: _fulfillment,
           cartItemIds: ref.read(selectedCartItemsProvider).toList(),
         );
 
     if (order != null && mounted) {
-      context.go('/order-success/${order.id}');
+      context.go(_afterCheckout(order.id));
     } else if (mounted) {
       final state = ref.read(orderActionProvider);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -234,7 +349,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                                       const SizedBox(height: AppSpacing.md),
 
                                       // 3. Payment Method Selection
-                                      _buildPaymentMethodSection(),
+                                      _buildPaymentMethodSection(
+                                        _totalsFor(cart.subtotal).total,
+                                      ),
                                       const SizedBox(height: AppSpacing.md),
 
                                       // 4. Financial Summary
@@ -303,6 +420,94 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   }
 
   Widget _buildAddressCard() {
+    final async = ref.watch(addressesProvider);
+    final caption = AppTypography.captionSmall.copyWith(
+      fontSize: 12.5,
+      color: AppColors.muted,
+    );
+
+    Widget addressBody;
+    if (async.isLoading && !async.hasValue) {
+      addressBody = const Padding(
+        padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
+        child: LinearProgressIndicator(minHeight: 2),
+      );
+    } else if (async.hasError && !async.hasValue) {
+      addressBody = Row(
+        children: [
+          Expanded(
+            child: Text(
+              'Alamat belum termuat. ${networkErrorMessage(async.error!)}',
+              style: caption.copyWith(color: AppColors.errorText),
+            ),
+          ),
+          TextButton(
+            onPressed: () => ref.invalidate(addressesProvider),
+            style: TextButton.styleFrom(minimumSize: const Size(44, 44)),
+            child: const Text('Coba Lagi'),
+          ),
+        ],
+      );
+    } else {
+      final list = async.value ?? const <Address>[];
+      final a = _selectedAddress(list);
+      addressBody = a == null
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Belum ada alamat tersimpan. Tambahkan alamat untuk '
+                  'melanjutkan pesanan.',
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: AppColors.body,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                OutlinedButton.icon(
+                  onPressed: _addAddress,
+                  icon: const Icon(Icons.add_location_alt_outlined),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(46),
+                  ),
+                  label: const Text('Tambah Alamat'),
+                ),
+              ],
+            )
+          : Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${a.recipientName}${a.isDefault ? ' (Utama)' : ''}',
+                        style: AppTypography.bodyMedium.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.ink,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(a.phone, style: caption),
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        a.oneLine,
+                        style: AppTypography.bodyMedium.copyWith(
+                          color: AppColors.body,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => _pickAddress(list),
+                  style: TextButton.styleFrom(minimumSize: const Size(44, 44)),
+                  child: const Text('Ganti'),
+                ),
+              ],
+            );
+    }
+
     return Container(
       decoration: BoxDecoration(
         color: AppColors.canvas,
@@ -313,8 +518,60 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.base),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            Text(
+              'Cara Menerima',
+              style: AppTypography.caption.copyWith(
+                fontWeight: FontWeight.w700,
+                color: AppColors.ink,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            // Ikon dilepas pada teks besar: ikon + label dua segmen tidak
+            // muat di 320dp, dan labelnya sendiri sudah jelas.
+            SegmentedButton<String>(
+              segments: [
+                ButtonSegment(
+                  value: 'DELIVERY',
+                  icon: _compactSegments(context)
+                      ? null
+                      : const Icon(Icons.local_shipping_outlined),
+                  label: const Text('Diantar', maxLines: 2),
+                ),
+                ButtonSegment(
+                  value: 'PICKUP',
+                  icon: _compactSegments(context)
+                      ? null
+                      : const Icon(Icons.storefront_outlined),
+                  label: const Text(
+                    'Ambil Sendiri',
+                    maxLines: 2,
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ],
+              selected: {_fulfillment},
+              showSelectedIcon: false,
+              style: SegmentedButton.styleFrom(minimumSize: const Size(44, 44)),
+              onSelectionChanged: (v) => setState(() {
+                _fulfillment = v.first;
+                // COD hanya untuk pesanan yang diantar (aturan backend).
+                if (_isPickup && _paymentMethod == 'COD')
+                  _paymentMethod = 'QRIS';
+              }),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              _isPickup
+                  ? 'Barang disiapkan penjual; ambil di Kopdes/toko tanpa antre. '
+                        'Alamat di bawah dipakai sebagai kontak pesanan.'
+                  : 'Diantar kurir ke alamat di bawah.',
+              style: caption,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            const Divider(),
+            const SizedBox(height: AppSpacing.sm),
             Row(
               children: [
                 const Icon(
@@ -323,37 +580,19 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                   size: 20,
                 ),
                 const SizedBox(width: AppSpacing.sm),
-                Text(
-                  'Alamat Pengiriman',
-                  style: AppTypography.caption.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.ink,
+                Flexible(
+                  child: Text(
+                    _isPickup ? 'Kontak Pesanan' : 'Alamat Pengiriman',
+                    style: AppTypography.caption.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.ink,
+                    ),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: AppSpacing.sm),
-            const Divider(),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              'Budi Santoso (Utama)',
-              style: AppTypography.bodyMedium.copyWith(
-                fontWeight: FontWeight.w700,
-                color: AppColors.ink,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              '081234567890',
-              style: AppTypography.captionSmall.copyWith(
-                color: AppColors.muted,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              'Jl. Merdeka No. 10, Sleman, DI Yogyakarta, 55281',
-              style: AppTypography.bodyMedium.copyWith(color: AppColors.body),
-            ),
+            addressBody,
           ],
         ),
       ),
@@ -409,11 +648,15 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        Text(
-                          'Rp ${(item.price * item.quantity).toStringAsFixed(0).replaceAllMapped(RegExp(r"(\d{1,3})(?=(\d{3})+(?!\d))"), (Match m) => "${m[1]}.")}',
-                          style: AppTypography.bodyMedium.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.ink,
+                        const SizedBox(width: AppSpacing.sm),
+                        Flexible(
+                          child: Text(
+                            'Rp ${(item.price * item.quantity).toStringAsFixed(0).replaceAllMapped(RegExp(r"(\d{1,3})(?=(\d{3})+(?!\d))"), (Match m) => "${m[1]}.")}',
+                            textAlign: TextAlign.right,
+                            style: AppTypography.bodyMedium.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.ink,
+                            ),
                           ),
                         ),
                       ],
@@ -428,7 +671,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     );
   }
 
-  Widget _buildPaymentMethodSection() {
+  Widget _buildPaymentMethodSection(num total) {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.canvas,
@@ -449,11 +692,13 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                   size: 20,
                 ),
                 const SizedBox(width: AppSpacing.sm),
-                Text(
-                  'Metode Pembayaran',
-                  style: AppTypography.caption.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.ink,
+                Flexible(
+                  child: Text(
+                    'Metode Pembayaran',
+                    style: AppTypography.caption.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.ink,
+                    ),
                   ),
                 ),
               ],
@@ -463,14 +708,14 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             const SizedBox(height: AppSpacing.sm),
             RadioListTile<String>(
               title: Text(
-                'QRIS (Pembayaran Instan)',
+                'Bayar Online',
                 style: AppTypography.bodyMedium.copyWith(
                   fontWeight: FontWeight.w600,
                   color: AppColors.ink,
                 ),
               ),
               subtitle: Text(
-                'Scan QR Code digital koperasi',
+                'QRIS, GoPay, ShopeePay, atau Virtual Account — dibayar setelah pesanan dibuat',
                 style: AppTypography.captionSmall.copyWith(
                   color: AppColors.muted,
                 ),
@@ -493,7 +738,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                 ),
               ),
               subtitle: Text(
-                'Bayar tunai saat kurir tiba',
+                _isPickup
+                    ? 'Tidak tersedia untuk ambil sendiri — bayar di muka.'
+                    : 'Bayar tunai saat kurir tiba',
                 style: AppTypography.captionSmall.copyWith(
                   color: AppColors.muted,
                 ),
@@ -501,10 +748,56 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
               value: 'COD',
               groupValue: _paymentMethod,
               activeColor: AppColors.primary,
-              onChanged: (val) {
-                setState(() {
-                  _paymentMethod = val!;
-                });
+              onChanged: _isPickup
+                  ? null
+                  : (val) {
+                      setState(() {
+                        _paymentMethod = val!;
+                      });
+                    },
+            ),
+            Consumer(
+              builder: (context, ref, _) {
+                final bal = ref.watch(walletBalanceProvider);
+                final balance = bal.valueOrNull?.balance;
+                final enough = balance != null && balance >= total;
+                final note = bal.isLoading
+                    ? 'Memuat saldo…'
+                    : balance == null
+                    ? 'Saldo belum termuat.'
+                    : enough
+                    ? 'Saldo ${formatRupiah(balance.round())} — langsung lunas'
+                    : 'Saldo ${formatRupiah(balance.round())} tidak cukup. Isi ulang '
+                          'di Profil > Saldo.';
+                // Saldo turun di bawah total setelah dipilih: kembali QRIS.
+                if (!enough && _paymentMethod == 'WALLET') {
+                  WidgetsBinding.instance.addPostFrameCallback(
+                    (_) => mounted
+                        ? setState(() => _paymentMethod = 'QRIS')
+                        : null,
+                  );
+                }
+                return RadioListTile<String>(
+                  title: Text(
+                    'Saldo KOMIT',
+                    style: AppTypography.bodyMedium.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.ink,
+                    ),
+                  ),
+                  subtitle: Text(
+                    note,
+                    style: AppTypography.captionSmall.copyWith(
+                      color: AppColors.muted,
+                    ),
+                  ),
+                  value: 'WALLET',
+                  groupValue: _paymentMethod,
+                  activeColor: AppColors.primary,
+                  onChanged: enough
+                      ? (v) => setState(() => _paymentMethod = v!)
+                      : null,
+                );
               },
             ),
           ],
@@ -537,46 +830,55 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       child: SafeArea(
         top: false,
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Total Pembayaran',
-                  style: AppTypography.captionSmall.copyWith(
-                    color: AppColors.muted,
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Total Pembayaran',
+                    style: AppTypography.captionSmall.copyWith(
+                      color: AppColors.muted,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  formatRupiah(total),
-                  style: AppTypography.titleMedium.copyWith(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w700,
+                  const SizedBox(height: 4),
+                  Text(
+                    formatRupiah(total),
+                    style: AppTypography.titleMedium.copyWith(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-            SizedBox(
-              height: 48,
-              child: ElevatedButton(
-                onPressed: _submitCheckout,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: AppColors.onPrimary,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppRadius.button),
+            const SizedBox(width: AppSpacing.md),
+            // Boleh menyempit dan labelnya membungkus: pada teks besar
+            // tombol bertinggi tetap 48 dengan label sebaris meluber.
+            Flexible(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 48),
+                child: ElevatedButton(
+                  onPressed: _submitCheckout,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: AppColors.onPrimary,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.button),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                ),
-                child: Text(
-                  'Konfirmasi & Bayar',
-                  style: AppTypography.buttonMd.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.onPrimary,
+                  child: Text(
+                    'Konfirmasi & Bayar',
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.buttonMd.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.onPrimary,
+                    ),
                   ),
                 ),
               ),
@@ -612,7 +914,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
               const SizedBox(height: AppSpacing.md),
 
               // 3. Payment Method Selection
-              _buildPaymentMethodSection(),
+              _buildPaymentMethodSection(totals.total),
               const SizedBox(height: AppSpacing.md),
 
               // 4. Financial Summary
@@ -657,46 +959,55 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       child: SafeArea(
         top: false,
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Total Pembayaran',
-                  style: AppTypography.captionSmall.copyWith(
-                    color: AppColors.muted,
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Total Pembayaran',
+                    style: AppTypography.captionSmall.copyWith(
+                      color: AppColors.muted,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  formatRupiah(total),
-                  style: AppTypography.titleMedium.copyWith(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w700,
+                  const SizedBox(height: 4),
+                  Text(
+                    formatRupiah(total),
+                    style: AppTypography.titleMedium.copyWith(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-            SizedBox(
-              height: 48,
-              child: ElevatedButton(
-                onPressed: _submitCheckout,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: AppColors.onPrimary,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppRadius.button),
+            const SizedBox(width: AppSpacing.md),
+            // Boleh menyempit dan labelnya membungkus: pada teks besar
+            // tombol bertinggi tetap 48 dengan label sebaris meluber.
+            Flexible(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 48),
+                child: ElevatedButton(
+                  onPressed: _submitCheckout,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: AppColors.onPrimary,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.button),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                ),
-                child: Text(
-                  'Konfirmasi & Bayar',
-                  style: AppTypography.buttonMd.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.onPrimary,
+                  child: Text(
+                    'Konfirmasi & Bayar',
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.buttonMd.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.onPrimary,
+                    ),
                   ),
                 ),
               ),

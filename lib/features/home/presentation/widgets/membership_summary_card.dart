@@ -13,7 +13,6 @@ class MembershipSummaryCard extends StatelessWidget {
   final MembershipSummary summary;
   final VoidCallback onTopUpTap;
   final VoidCallback onHistoryTap;
-  final VoidCallback onCouponTap;
   final VoidCallback onDetailTap;
 
   const MembershipSummaryCard({
@@ -21,16 +20,13 @@ class MembershipSummaryCard extends StatelessWidget {
     this.summary = MembershipSummary.none,
     required this.onTopUpTap,
     required this.onHistoryTap,
-    required this.onCouponTap,
     required this.onDetailTap,
   });
 
-  /// Bukan anggota: saldonya memang tidak ada, bukan nol. "Rp0" terbaca
-  /// seperti dompet kosong yang bisa diisi; "Bukan Anggota" menjelaskan
-  /// kenapa tidak ada apa-apa di sana.
-  String get _balanceLabel => summary.balance == null
-      ? 'Bukan Anggota'
-      : formatRupiah(summary.balance!);
+  /// Saldo yang belum termuat ditulis "—", bukan "Rp0": nol terbaca
+  /// seperti dompet yang memang kosong.
+  String get _balanceLabel =>
+      summary.balance == null ? '—' : formatRupiah(summary.balance!);
 
   String get _pointsLabel => formatThousands(summary.points);
 
@@ -62,7 +58,7 @@ class MembershipSummaryCard extends StatelessWidget {
                 child: _SummaryItem(
                   icon: Icons.account_balance_wallet_rounded,
                   iconColor: AppColors.primary,
-                  label: 'Saldo Anggota',
+                  label: 'Saldo KOMIT',
                   value: _balanceLabel,
                 ),
               ),
@@ -90,7 +86,6 @@ class MembershipSummaryCard extends StatelessWidget {
           QuickActionRow(
             onTopUpTap: onTopUpTap,
             onHistoryTap: onHistoryTap,
-            onCouponTap: onCouponTap,
             onDetailTap: onDetailTap,
           ),
         ],
@@ -176,14 +171,12 @@ class _VerticalDivider extends StatelessWidget {
 class QuickActionRow extends StatelessWidget {
   final VoidCallback onTopUpTap;
   final VoidCallback onHistoryTap;
-  final VoidCallback onCouponTap;
   final VoidCallback onDetailTap;
 
   const QuickActionRow({
     super.key,
     required this.onTopUpTap,
     required this.onHistoryTap,
-    required this.onCouponTap,
     required this.onDetailTap,
   });
 
@@ -195,7 +188,7 @@ class QuickActionRow extends StatelessWidget {
           child: _QuickAction(
             icon: Icons.add_rounded,
             label: 'Top Up',
-            semanticLabel: 'Top up saldo anggota',
+            semanticLabel: 'Isi ulang saldo KOMIT',
             onTap: onTopUpTap,
           ),
         ),
@@ -206,15 +199,6 @@ class QuickActionRow extends StatelessWidget {
             label: 'Riwayat',
             semanticLabel: 'Riwayat transaksi',
             onTap: onHistoryTap,
-          ),
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        Expanded(
-          child: _QuickAction(
-            icon: Icons.confirmation_number_outlined,
-            label: 'Kupon',
-            semanticLabel: 'Kupon saya',
-            onTap: onCouponTap,
           ),
         ),
         const SizedBox(width: AppSpacing.sm),

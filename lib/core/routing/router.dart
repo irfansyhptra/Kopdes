@@ -70,6 +70,10 @@ import '../../features/debug/presentation/screens/developer_debug_screen.dart';
 import '../../features/notification/presentation/screens/notification_screen.dart';
 
 // Shell Widget
+import '../../features/address/presentation/address_screens.dart';
+import '../../features/payment/presentation/payment_screen.dart';
+import '../../features/profile/presentation/screens/edit_profile_screen.dart';
+import '../../features/wallet/presentation/wallet_screen.dart';
 import '../../shared/widgets/app_shell.dart';
 
 final rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
@@ -315,6 +319,62 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/membership/register',
         builder: (context, state) => const MembershipRegisterScreen(),
+      ),
+      // ── Akun pembeli: saldo, pembayaran, profil, alamat ──
+      GoRoute(
+        path: '/wallet',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const WalletScreen(),
+      ),
+      GoRoute(
+        path: '/pay/order/:id',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => PaymentScreen(
+          target: (
+            topUp: false,
+            id: state.pathParameters['id'] ?? '',
+            method: state.uri.queryParameters['method'] ?? 'QRIS',
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/pay/topup/:id',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => PaymentScreen(
+          target: (
+            topUp: true,
+            id: state.pathParameters['id'] ?? '',
+            method: '',
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/profile/edit',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const EditProfileScreen(),
+      ),
+      GoRoute(
+        path: '/profile/security',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const AccountSecurityScreen(),
+      ),
+      GoRoute(
+        path: '/profile/addresses',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const AddressListScreen(),
+        routes: [
+          GoRoute(
+            path: 'new',
+            parentNavigatorKey: rootNavigatorKey,
+            builder: (context, state) => const AddressFormScreen(),
+          ),
+          GoRoute(
+            path: 'edit/:id',
+            parentNavigatorKey: rootNavigatorKey,
+            builder: (context, state) =>
+                AddressFormScreen(addressId: state.pathParameters['id']),
+          ),
+        ],
       ),
       GoRoute(
         path: '/admin/umkm-locations',

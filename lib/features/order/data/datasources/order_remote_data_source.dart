@@ -19,12 +19,14 @@ abstract class OrderRemoteDataSource {
   Future<OrderModel> checkoutCart({
     required String deliveryAddressId,
     required String paymentMethod,
+    String fulfillment = 'DELIVERY',
     List<String>? cartItemIds,
   });
   Future<OrderModel> createDirectOrder({
     required List<Map<String, dynamic>> items,
     required String deliveryAddressId,
     required String paymentMethod,
+    String fulfillment = 'DELIVERY',
   });
 
   /// Satu halaman riwayat beserta metadata paginasinya.
@@ -32,6 +34,9 @@ abstract class OrderRemoteDataSource {
   getOrderHistory({int page, int limit});
   Future<OrderModel> getOrderDetail(String orderId);
   Future<OrderModel> updateOrderStatus(String orderId, String status);
+
+  /// Pembeli menyatakan barang sudah diterima (validasi ganda langkah 2).
+  Future<void> confirmReceipt(String orderId);
   Future<List<Map<String, dynamic>>> getOrderTimeline(String orderId);
 }
 
@@ -105,6 +110,7 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
   Future<OrderModel> checkoutCart({
     required String deliveryAddressId,
     required String paymentMethod,
+    String fulfillment = 'DELIVERY',
     List<String>? cartItemIds,
   }) async {
     final response = await dio.post(
@@ -112,6 +118,7 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
       data: {
         'deliveryAddressId': deliveryAddressId,
         'paymentMethod': paymentMethod,
+        'fulfillment': fulfillment,
         // Dihilangkan berarti seluruh keranjang, sesuai perilaku lama server.
         if (cartItemIds != null && cartItemIds.isNotEmpty)
           'cartItemIds': cartItemIds,
@@ -125,6 +132,7 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
     required List<Map<String, dynamic>> items,
     required String deliveryAddressId,
     required String paymentMethod,
+    String fulfillment = 'DELIVERY',
   }) async {
     final response = await dio.post(
       '/orders',
@@ -132,6 +140,7 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
         'items': items,
         'deliveryAddressId': deliveryAddressId,
         'paymentMethod': paymentMethod,
+        'fulfillment': fulfillment,
       },
     );
     return OrderModel.fromJson(response.data['order'] as Map<String, dynamic>);
@@ -162,6 +171,10 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
     final response = await dio.get('/orders/$orderId');
     return OrderModel.fromJson(response.data['order'] as Map<String, dynamic>);
   }
+
+  @override
+  Future<void> confirmReceipt(String orderId) =>
+      dio.post('/orders/$orderId/confirm-receipt');
 
   @override
   Future<OrderModel> updateOrderStatus(String orderId, String status) async {

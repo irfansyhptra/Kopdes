@@ -6,6 +6,8 @@ import '../../../../core/theme/theme.dart';
 import '../../../../shared/widgets/apple_ui.dart';
 import '../../../auth/domain/entities/user.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../marketplace/presentation/providers/marketplace_provider.dart';
+import '../../../wallet/data/wallet_repository.dart';
 
 /// Profil Saya.
 ///
@@ -131,7 +133,7 @@ class _Header extends StatelessWidget {
               _HeaderIcon(
                 icon: Icons.settings_outlined,
                 label: 'Pengaturan',
-                onTap: () => _soon(context, 'Pengaturan akun'),
+                onTap: () => context.push('/profile/security'),
               ),
             ],
           ),
@@ -175,7 +177,7 @@ class _Header extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.base),
-          _EditProfileButton(onTap: () => _soon(context, 'Ubah profil')),
+          _EditProfileButton(onTap: () => context.push('/profile/edit')),
         ],
       ),
     );
@@ -404,48 +406,7 @@ class _SummaryCard extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.base),
         child: Column(
           children: [
-            IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  const Expanded(
-                    child: _SummaryStat(
-                      icon: Icons.account_balance_wallet_rounded,
-                      tint: AppColors.primary,
-                      label: 'Saldo',
-                    ),
-                  ),
-                  const VerticalDivider(
-                    width: 1,
-                    thickness: 1,
-                    indent: 6,
-                    endIndent: 6,
-                    color: AppColors.hairlineSoft,
-                  ),
-                  const Expanded(
-                    child: _SummaryStat(
-                      icon: Icons.star_rounded,
-                      tint: AppColors.warning,
-                      label: 'Poin',
-                    ),
-                  ),
-                  const VerticalDivider(
-                    width: 1,
-                    thickness: 1,
-                    indent: 6,
-                    endIndent: 6,
-                    color: AppColors.hairlineSoft,
-                  ),
-                  const Expanded(
-                    child: _SummaryStat(
-                      icon: Icons.confirmation_number_rounded,
-                      tint: AppColors.primary,
-                      label: 'Kupon',
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            const _WalletRow(),
             const Padding(
               padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
               child: Divider(
@@ -467,56 +428,67 @@ class _SummaryCard extends StatelessWidget {
 /// Nilainya sengaja "—". Tidak ada endpoint poin maupun kupon di backend, dan
 /// saldo punya endpoint (`/wallet`) yang belum dipanggil aplikasi. Slotnya
 /// disediakan supaya tinggal diisi begitu datanya benar-benar ada.
-class _SummaryStat extends StatelessWidget {
-  final IconData icon;
-  final Color tint;
-  final String label;
-
-  const _SummaryStat({
-    required this.icon,
-    required this.tint,
-    required this.label,
-  });
+/// Saldo KOMIT sungguhan; ketuk untuk isi ulang dan riwayat.
+///
+/// Menggantikan tiga angka "—" (Saldo, Poin, Kupon) yang tak pernah terisi:
+/// poin dan kupon belum ada di backend, jadi tidak ditampilkan.
+class _WalletRow extends ConsumerWidget {
+  const _WalletRow();
 
   @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-      child: Row(
-        children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: tint.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(AppleRadii.control),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final bal = ref.watch(walletBalanceProvider);
+    final value = bal.when(
+      data: (w) => formatRupiah(w.balance),
+      loading: () => 'Memuat…',
+      error: (_, __) => 'Belum termuat',
+    );
+    return ApplePressable(
+      onTap: () => context.push('/wallet'),
+      semanticLabel: 'Saldo KOMIT $value. Buka saldo',
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.base),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(AppleRadii.control),
+              ),
+              child: const Icon(
+                Icons.account_balance_wallet_rounded,
+                size: 19,
+                color: AppColors.primary,
+              ),
             ),
-            child: Icon(icon, size: 19, color: tint),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTypography.captionSmall.copyWith(fontSize: 11.5),
-                ),
-                Text(
-                  '—',
-                  style: AppTypography.titleMedium.copyWith(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.mutedSoft,
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Saldo KOMIT', style: AppTypography.captionSmall),
+                  Text(
+                    value,
+                    style: AppTypography.titleMedium.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.ink,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+            Text(
+              'Isi Ulang',
+              style: AppTypography.bodyMedium.copyWith(
+                fontWeight: FontWeight.w600,
+                color: AppColors.primaryText,
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: AppColors.muted),
+          ],
+        ),
       ),
     );
   }
@@ -578,18 +550,13 @@ class _ActivitySection extends StatelessWidget {
         AppColors.primary,
         () => context.go('/cart'),
       ),
-      _Activity(
-        'Favorit',
-        Icons.favorite_rounded,
-        AppColors.primary,
-        () => _soon(context, 'Produk favorit'),
-      ),
-      _Activity(
-        'Ulasan',
-        Icons.chat_bubble_rounded,
-        AppColors.warning,
-        () => _soon(context, 'Ulasan saya'),
-      ),
+      _Activity('Favorit', Icons.favorite_rounded, AppColors.primary, () {
+        // Favorit tersimpan di perangkat dan tampil di Marketplace.
+        ProviderScope.containerOf(
+          context,
+        ).read(showFavoritesProvider.notifier).state = true;
+        context.go('/products');
+      }),
       _Activity(
         'Riwayat',
         Icons.receipt_long_rounded,
@@ -686,19 +653,13 @@ class _AccountSection extends StatelessWidget {
           icon: Icons.person_rounded,
           tint: AppColors.primary,
           label: 'Data Pribadi',
-          onTap: () => _soon(context, 'Data pribadi'),
+          onTap: () => context.push('/profile/edit'),
         ),
         _MenuRow(
           icon: Icons.location_on_rounded,
           tint: AppColors.success,
           label: 'Alamat Pengiriman',
-          onTap: () => _soon(context, 'Alamat pengiriman'),
-        ),
-        _MenuRow(
-          icon: Icons.credit_card_rounded,
-          tint: AppColors.primary,
-          label: 'Metode Pembayaran',
-          onTap: () => _soon(context, 'Metode pembayaran'),
+          onTap: () => context.push('/profile/addresses'),
         ),
         _MenuRow(
           icon: Icons.groups_rounded,
@@ -727,14 +688,7 @@ class _SettingsSection extends StatelessWidget {
           icon: Icons.shield_rounded,
           tint: AppColors.success,
           label: 'Privasi & Keamanan',
-          onTap: () => _soon(context, 'Privasi & keamanan'),
-        ),
-        _MenuRow(
-          icon: Icons.language_rounded,
-          tint: AppColors.warning,
-          label: 'Bahasa',
-          trailing: 'Indonesia',
-          onTap: () => _soon(context, 'Pengaturan bahasa'),
+          onTap: () => context.push('/profile/security'),
         ),
       ],
     );
@@ -751,20 +705,20 @@ class _HelpSection extends StatelessWidget {
           icon: Icons.help_rounded,
           tint: AppColors.success,
           label: 'Pusat Bantuan',
-          onTap: () => _soon(context, 'Pusat bantuan'),
+          onTap: () => context.push('/info/bantuan-pembeli'),
         ),
         _MenuRow(
           icon: Icons.headset_mic_rounded,
           tint: AppColors.primary,
           label: 'Hubungi Kopdes',
-          onTap: () => _soon(context, 'Hubungi Kopdes'),
+          onTap: () => context.push('/koperasi'),
         ),
         _MenuRow(
           icon: Icons.info_rounded,
           tint: AppColors.warning,
           label: 'Tentang KMP Mitra',
           trailing: ProfileScreen._version.replaceFirst('KMP Mitra ', ''),
-          onTap: () => _soon(context, 'Tentang KMP Mitra'),
+          onTap: () => context.push('/info/tentang-komit'),
         ),
       ],
     );
@@ -949,17 +903,4 @@ class _LogoutRow extends ConsumerWidget {
       ),
     );
   }
-}
-
-void _soon(BuildContext context, String feature) {
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text('$feature belum tersedia.'),
-      behavior: SnackBarBehavior.floating,
-      backgroundColor: AppColors.ink,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadius.sm),
-      ),
-    ),
-  );
 }

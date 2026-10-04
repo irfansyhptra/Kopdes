@@ -82,8 +82,14 @@ class OrderStatusView {
 extension OrderStatusX on Order {
   OrderStatusView get statusView => OrderStatusView.of(status);
 
+  /// Tagihan online yang belum dibayar. COD dibayar saat barang tiba dan
+  /// saldo KOMIT lunas saat pesanan dibuat — keduanya tidak punya tagihan
+  /// untuk dibayar dari aplikasi.
   bool get isAwaitingPayment =>
-      paymentStatus == 'PENDING' && status == 'PENDING';
+      paymentStatus == 'PENDING' &&
+      status == 'PENDING' &&
+      paymentMethod != 'COD' &&
+      paymentMethod != 'WALLET';
 
   /// Konfirmasi penerimaan hanya masuk akal setelah barang benar-benar sampai.
   bool get canConfirmReceipt => status == 'DELIVERED';

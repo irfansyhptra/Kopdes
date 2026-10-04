@@ -5,7 +5,7 @@
 /// Angka yang tidak pernah berubah bukan informasi; ia hanya mengajari orang
 /// untuk tidak mempercayai angka lain di layar yang sama.
 class MembershipSummary {
-  /// Saldo dompet dalam rupiah. Null = belum jadi anggota koperasi mana pun.
+  /// Saldo dompet KOMIT dalam rupiah. Null = belum termuat.
   final double? balance;
 
   /// Poin belanja. Belum ada sumbernya di backend, jadi selalu 0 untuk

@@ -80,14 +80,10 @@ Widget _card([
   summary: summary,
   onTopUpTap: () {},
   onHistoryTap: () {},
-  onCouponTap: () {},
   onDetailTap: () {},
 );
 
-Widget _banner() => CompactPromoBanner(
-  items: CompactPromoBanner.defaultItems,
-  onCtaTap: (_) {},
-);
+Widget _banner() => CompactPromoBanner(items: _sampleBanners, onCtaTap: (_) {});
 
 Widget _categories() =>
     CategoryListWidget(onCategoryTap: (_) {}, onSeeAllTap: () {});
@@ -164,7 +160,7 @@ void main() {
     testWidgets('label aksi cepat tidak terpotong', (tester) async {
       await _pumpAt(tester, 320, _card());
 
-      for (final label in ['Top Up', 'Riwayat', 'Kupon', 'Detail']) {
+      for (final label in ['Top Up', 'Riwayat', 'Detail']) {
         final widget = tester.widget<Text>(find.text(label));
         expect(widget.overflow, TextOverflow.ellipsis);
         // Terpotong atau tidak diputuskan saat melukis; yang bisa diperiksa
@@ -206,7 +202,7 @@ void main() {
         tester,
         375,
         CompactPromoBanner(
-          items: CompactPromoBanner.defaultItems,
+          items: _sampleBanners,
           onCtaTap: (item) => tapped = item,
         ),
       );
@@ -276,3 +272,32 @@ void _badgeTests() {
     });
   });
 }
+
+/// Contoh isi banner untuk sapuan tata letak — teks panjang sengaja.
+const _sampleBanners = <PromoBannerItem>[
+  PromoBannerItem(
+    badge: 'GRATIS ONGKIR',
+    title: 'Pengiriman Cepat',
+    highlight: 'Kurir Desa',
+    description:
+        'Pengantaran langsung ke rumah warga oleh armada resmi KMP Mitra.',
+    cta: 'Pesan Sekarang',
+    icon: Icons.local_shipping_rounded,
+  ),
+  PromoBannerItem(
+    badge: 'PROMO ANGGOTA',
+    title: 'Belanja Hemat',
+    highlight: 'Minggu Ini',
+    description: 'Diskon spesial untuk anggota KMP Mitra.',
+    cta: 'Belanja Sekarang',
+    icon: Icons.local_offer_rounded,
+  ),
+  PromoBannerItem(
+    badge: 'DISKON SEMBAKO',
+    title: 'Beras & Minyak',
+    highlight: 'Super Murah',
+    description: 'Sembako berkualitas dengan harga subsidi anggota.',
+    cta: 'Lihat Promo',
+    icon: Icons.shopping_basket_rounded,
+  ),
+];

@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../../discovery/presentation/widgets/discovery_sections.dart';
+import '../../../wallet/data/wallet_repository.dart';
+import '../../domain/membership_summary.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -20,13 +23,11 @@ import '../../../order/presentation/cart_feedback.dart';
 import '../widgets/category_list_widget.dart';
 import '../widgets/compact_home_header.dart';
 import '../widgets/home_header_delegate.dart';
-import '../widgets/compact_promo_banner.dart';
 import '../widgets/membership_summary_card.dart';
 import '../widgets/promo_product_widget.dart';
 import '../../../koperasi/presentation/widgets/nearby_koperasi_section.dart';
 import '../../../koperasi/presentation/widgets/nearby_mitra_section.dart';
 import '../../../discovery/domain/discovery.dart';
-import '../../../discovery/presentation/widgets/discovery_sections.dart';
 import '../../../content/presentation/widgets/local_shopping_banner.dart';
 import '../../../content/presentation/widgets/membership_banner.dart';
 
@@ -345,19 +346,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   // begitu endpoint dompet & keanggotaan tersambung, dan
                   // sampai itu terjadi kartunya jujur mengatakan belum ada.
                   MembershipSummaryCard(
-                    onTopUpTap: () =>
-                        _showSnackBarMessage('Fitur Top Up Saldo Anggota'),
+                    // Saldo dompet sungguhan; null selama dimuat/gagal.
+                    summary: MembershipSummary(
+                      balance: ref
+                          .watch(walletBalanceProvider)
+                          .valueOrNull
+                          ?.balance,
+                    ),
+                    onTopUpTap: () => context.push('/wallet'),
                     onHistoryTap: () => context.push('/orders/history'),
-                    onCouponTap: () => _showSnackBarMessage('Kupon KMP Mitra'),
                     onDetailTap: () => context.go('/profile'),
                   ),
                   const SizedBox(height: AppSpacing.md),
 
                   // 5. Banner promosi ringkas.
-                  CompactPromoBanner(
-                    items: CompactPromoBanner.defaultItems,
-                    onCtaTap: (_) => context.go('/products'),
-                  ),
+                  // Dari `GET /banners` (diatur admin), bukan janji promo
+                  // yang ditulis di aplikasi.
+                  const BannerSection(),
                   const SizedBox(height: AppSpacing.lg),
 
                   // Kopdes Terdekat — punya state lokasi & error sendiri,

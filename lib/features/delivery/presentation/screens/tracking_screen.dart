@@ -255,38 +255,6 @@ class TrackingScreen extends StatelessWidget {
               ],
             ),
           ),
-
-          // ─── Confirm Button ───
-          Padding(
-            padding: const EdgeInsets.all(AppSpacing.base),
-            child: SafeArea(
-              top: false,
-              child: SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: ElevatedButton(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: const Text('Pesanan selesai dikonfirmasi'),
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppRadius.sm),
-                        ),
-                      ),
-                    );
-                    context.go('/home');
-                  },
-                  child: Text(
-                    'Konfirmasi Paket Diterima',
-                    style: AppTypography.buttonMd.copyWith(
-                      color: AppColors.onPrimary,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
         ],
       ),
     );

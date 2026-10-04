@@ -19,12 +19,14 @@ abstract class OrderRepository {
   Future<Order> checkoutCart({
     required String deliveryAddressId,
     required String paymentMethod,
+    String fulfillment = 'DELIVERY',
     List<String>? cartItemIds,
   });
   Future<Order> createDirectOrder({
     required List<Map<String, dynamic>> items,
     required String deliveryAddressId,
     required String paymentMethod,
+    String fulfillment = 'DELIVERY',
   });
 
   /// Satu halaman riwayat pesanan. Halaman pertama juga disimpan ke cache
@@ -32,5 +34,6 @@ abstract class OrderRepository {
   Future<Paginated<Order>> getOrderHistory({int page, int limit});
   Future<Order> getOrderDetail(String orderId);
   Future<Order> updateOrderStatus(String orderId, String status);
+  Future<void> confirmReceipt(String orderId);
   Future<List<Map<String, dynamic>>> getOrderTimeline(String orderId);
 }

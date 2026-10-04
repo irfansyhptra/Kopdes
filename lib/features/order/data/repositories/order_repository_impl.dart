@@ -166,11 +166,13 @@ class OrderRepositoryImpl implements OrderRepository {
   Future<Order> checkoutCart({
     required String deliveryAddressId,
     required String paymentMethod,
+    String fulfillment = 'DELIVERY',
     List<String>? cartItemIds,
   }) async {
     final orderModel = await remoteDataSource.checkoutCart(
       deliveryAddressId: deliveryAddressId,
       paymentMethod: paymentMethod,
+      fulfillment: fulfillment,
       cartItemIds: cartItemIds,
     );
     // Clear local draft cart
@@ -186,11 +188,13 @@ class OrderRepositoryImpl implements OrderRepository {
     required List<Map<String, dynamic>> items,
     required String deliveryAddressId,
     required String paymentMethod,
+    String fulfillment = 'DELIVERY',
   }) async {
     final orderModel = await remoteDataSource.createDirectOrder(
       items: items,
       deliveryAddressId: deliveryAddressId,
       paymentMethod: paymentMethod,
+      fulfillment: fulfillment,
     );
     // Cache order details
     final orderCache = _mapToOrderCache(orderModel);
@@ -257,6 +261,10 @@ class OrderRepositoryImpl implements OrderRepository {
       rethrow;
     }
   }
+
+  @override
+  Future<void> confirmReceipt(String orderId) =>
+      remoteDataSource.confirmReceipt(orderId);
 
   @override
   Future<Order> updateOrderStatus(String orderId, String status) async {

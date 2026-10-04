@@ -12,6 +12,7 @@ class OrderActionNotifier extends StateNotifier<AsyncValue<Order?>> {
   Future<Order?> checkout({
     required String deliveryAddressId,
     required String paymentMethod,
+    String fulfillment = 'DELIVERY',
     List<String>? cartItemIds,
   }) async {
     state = const AsyncValue.loading();
@@ -20,6 +21,7 @@ class OrderActionNotifier extends StateNotifier<AsyncValue<Order?>> {
       final order = await repo.checkoutCart(
         deliveryAddressId: deliveryAddressId,
         paymentMethod: paymentMethod,
+        fulfillment: fulfillment,
         cartItemIds: cartItemIds,
       );
       state = AsyncValue.data(order);
@@ -37,6 +39,7 @@ class OrderActionNotifier extends StateNotifier<AsyncValue<Order?>> {
     required List<Map<String, dynamic>> items,
     required String deliveryAddressId,
     required String paymentMethod,
+    String fulfillment = 'DELIVERY',
   }) async {
     state = const AsyncValue.loading();
     try {
@@ -45,6 +48,7 @@ class OrderActionNotifier extends StateNotifier<AsyncValue<Order?>> {
         items: items,
         deliveryAddressId: deliveryAddressId,
         paymentMethod: paymentMethod,
+        fulfillment: fulfillment,
       );
       state = AsyncValue.data(order);
       _ref.read(orderHistoryProvider.notifier).load();
@@ -62,6 +66,26 @@ class OrderActionNotifier extends StateNotifier<AsyncValue<Order?>> {
       await repo.updateOrderStatus(orderId, status);
       state = const AsyncValue.data(null);
       // Invalidate specific order detail, history, and timeline caches
+      _ref.invalidate(orderDetailProvider(orderId));
+      _ref.read(orderHistoryProvider.notifier).load();
+      _ref.invalidate(orderTimelineProvider(orderId));
+      return true;
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      return false;
+    }
+  }
+
+  /// "Konfirmasi Diterima": lewat `POST /orders/:id/confirm-receipt`.
+  ///
+  /// Bukan `updateStatus(…, 'COMPLETED')` seperti sebelumnya — endpoint
+  /// status hanya menerima pembatalan dari pembeli, jadi konfirmasi itu
+  /// selalu ditolak 403 dan pesanan tidak pernah selesai.
+  Future<bool> confirmReceipt(String orderId) async {
+    state = const AsyncValue.loading();
+    try {
+      await _ref.read(orderRepositoryProvider).confirmReceipt(orderId);
+      state = const AsyncValue.data(null);
       _ref.invalidate(orderDetailProvider(orderId));
       _ref.read(orderHistoryProvider.notifier).load();
       _ref.invalidate(orderTimelineProvider(orderId));

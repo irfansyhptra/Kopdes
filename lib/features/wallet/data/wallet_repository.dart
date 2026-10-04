@@ -18,6 +18,56 @@ class WalletBalance {
   }
 }
 
+/// Satu mutasi saldo (`WalletEntry`). `amount` bertanda: + masuk, − keluar.
+class WalletEntry {
+  final String id;
+  final double amount;
+  final double balanceAfter;
+
+  /// TOPUP, PAYMENT, REFUND, ADJUSTMENT.
+  final String type;
+  final String? description;
+  final DateTime createdAt;
+
+  const WalletEntry({
+    required this.id,
+    required this.amount,
+    required this.balanceAfter,
+    required this.type,
+    required this.description,
+    required this.createdAt,
+  });
+
+  String get label => switch (type) {
+    'TOPUP' => 'Isi ulang',
+    'PAYMENT' => 'Pembayaran pesanan',
+    'REFUND' => 'Pengembalian dana',
+    'ADJUSTMENT' => 'Koreksi saldo',
+    _ => type,
+  };
+
+  factory WalletEntry.fromJson(Map<String, dynamic> j) => WalletEntry(
+    id: j['id'] as String? ?? '',
+    amount: (j['amount'] as num?)?.toDouble() ?? 0,
+    balanceAfter: (j['balanceAfter'] as num?)?.toDouble() ?? 0,
+    type: j['type'] as String? ?? '',
+    description: j['description'] as String?,
+    createdAt:
+        DateTime.tryParse('${j['createdAt']}')?.toLocal() ?? DateTime.now(),
+  );
+}
+
+class WalletEntriesPage {
+  final List<WalletEntry> entries;
+  final int page;
+  final int totalPages;
+  const WalletEntriesPage({
+    required this.entries,
+    required this.page,
+    required this.totalPages,
+  });
+}
+
 /// Klien dompet.
 ///
 /// Sengaja TIDAK lewat [cachedFetch] seperti daftar produk. Pola cache itu
@@ -29,6 +79,22 @@ class WalletRepository {
   final Dio dio;
 
   const WalletRepository(this.dio);
+
+  Future<WalletEntriesPage> entries({int page = 1, int limit = 20}) async {
+    final r = await dio.get<dynamic>(
+      '/wallet/entries',
+      queryParameters: {'page': page, 'limit': limit},
+    );
+    final d = (r.data as Map<String, dynamic>)['data'] as Map<String, dynamic>;
+    return WalletEntriesPage(
+      entries: (d['entries'] as List? ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .map(WalletEntry.fromJson)
+          .toList(),
+      page: (d['page'] as num?)?.toInt() ?? page,
+      totalPages: (d['totalPages'] as num?)?.toInt() ?? 1,
+    );
+  }
 
   Future<WalletBalance> balance() async {
     final response = await dio.get<dynamic>('/wallet');

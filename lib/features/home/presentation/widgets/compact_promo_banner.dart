@@ -57,35 +57,6 @@ class CompactPromoBanner extends StatefulWidget {
     this.autoPlay = false,
   });
 
-  /// Isi bawaan, dipakai selama banner belum datang dari API.
-  static const List<PromoBannerItem> defaultItems = [
-    PromoBannerItem(
-      badge: 'GRATIS ONGKIR',
-      title: 'Pengiriman Cepat',
-      highlight: 'Kurir Desa',
-      description:
-          'Pengantaran langsung ke rumah warga oleh armada resmi KMP Mitra.',
-      cta: 'Pesan Sekarang',
-      icon: Icons.local_shipping_rounded,
-    ),
-    PromoBannerItem(
-      badge: 'PROMO ANGGOTA',
-      title: 'Belanja Hemat',
-      highlight: 'Minggu Ini',
-      description: 'Diskon spesial untuk anggota KMP Mitra.',
-      cta: 'Belanja Sekarang',
-      icon: Icons.local_offer_rounded,
-    ),
-    PromoBannerItem(
-      badge: 'DISKON SEMBAKO',
-      title: 'Beras & Minyak',
-      highlight: 'Super Murah',
-      description: 'Sembako berkualitas dengan harga subsidi anggota.',
-      cta: 'Lihat Promo',
-      icon: Icons.shopping_basket_rounded,
-    ),
-  ];
-
   @override
   State<CompactPromoBanner> createState() => _CompactPromoBannerState();
 }
