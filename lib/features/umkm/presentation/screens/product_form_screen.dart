@@ -10,7 +10,6 @@ import '../../../../shared/components/error_state_widget.dart';
 import '../../../../shared/widgets/apple_ui.dart';
 import '../controllers/product_controller.dart';
 import '../../data/models/product_model.dart';
-import 'product_detail_screen.dart'; // To use the detail provider
 import '../widgets/seller_page_ui.dart';
 
 class ProductFormScreen extends ConsumerStatefulWidget {

@@ -1,13 +1,19 @@
 import '../../data/models/product_model.dart';
 import '../../data/models/product_category_model.dart';
+import '../../data/models/seller_product_page.dart';
 
 abstract class ProductRepository {
-  Future<List<ProductModel>> getProducts({
+  Future<SellerProductPage> getProducts({
     String? search,
     String? categoryId,
+    StockLevel? stockLevel,
     int page = 1,
-    int limit = 10,
+    int limit = 20,
   });
+  Future<ProductModel> getProduct(String id);
+
+  /// Kategori yang dipakai produk toko ini, untuk chip filter.
+  Future<List<ProductCategoryModel>> getStoreCategories();
   Future<ProductModel> createProduct({
     required String name,
     required String description,

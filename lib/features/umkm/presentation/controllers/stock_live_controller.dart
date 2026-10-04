@@ -4,7 +4,6 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/stock_live_repository.dart';
-import 'inventory_controller.dart';
 import 'product_controller.dart';
 
 /// Keadaan pemantauan stok.
@@ -132,18 +131,28 @@ class StockLiveNotifier extends StateNotifier<StockLiveState>
     final fresh = incoming.where((m) => !seen.contains(m.id)).toList();
     if (fresh.isEmpty) return;
 
-    // Terbaru di atas, lalu dipotong.
-    final merged = [...fresh.reversed, ...state.movements];
+    // Terbaru di atas, lalu dipotong. Diurutkan menurut waktu, bukan
+    // dibalik: tarikan pertama (tanpa penanda) datang terbaru-dulu, tarikan
+    // susulan datang terlama-dulu — membalik keduanya sama rata menaruh
+    // riwayat awal dalam urutan terbalik.
+    final merged = [...fresh, ...state.movements]
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
     state = state.copyWith(
       movements: merged.length > maxMovements
           ? merged.sublist(0, maxMovements)
           : merged,
     );
 
-    // Angka stok di layar lain ikut menyusul: pergerakan dari kasir mengubah
-    // stok yang sama yang sedang ditampilkan daftar inventaris dan produk.
-    _ref.invalidate(sellerInventoryProvider);
-    _ref.invalidate(sellerProductsProvider);
+    // Angka stok di daftar produk ikut menyusul — hanya baris yang
+    // bergerak, terlama dulu supaya yang tersisa adalah angka terakhir.
+    final list = _ref.read(sellerProductListProvider.notifier);
+    for (final m
+        in fresh.reversed.toList()
+          ..sort((a, b) => a.createdAt.compareTo(b.createdAt))) {
+      if (m.productId != null && m.stockAfter != null) {
+        list.applyStock(m.productId!, m.stockAfter!);
+      }
+    }
   }
 
   @override

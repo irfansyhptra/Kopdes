@@ -5,25 +5,12 @@ import '../../../../core/theme/theme.dart';
 import '../../../../shared/components/error_state_widget.dart';
 import '../../../../shared/widgets/product_image_loader.dart';
 import '../controllers/product_controller.dart';
-import '../controllers/providers.dart';
 import '../../data/models/product_model.dart';
 import '../../../../core/network/error_message.dart';
 import '../../../../shared/widgets/apple_feedback.dart';
 import '../../../../shared/widgets/apple_ui.dart';
 import '../../../order/data/review_repository.dart';
 import '../widgets/seller_page_ui.dart';
-
-final sellerProductDetailProvider = FutureProvider.family<ProductModel, String>(
-  (ref, id) async {
-    final products = await ref
-        .read(productRepositoryProvider)
-        .getProducts(limit: 100);
-    return products.firstWhere(
-      (p) => p.id == id,
-      orElse: () => throw Exception('Produk tidak ditemukan'),
-    );
-  },
-);
 
 class ProductDetailScreen extends ConsumerStatefulWidget {
   final String productId;

@@ -7,25 +7,40 @@ class ProductService {
   final Dio dio;
   ProductService({required this.dio});
 
-  Future<List<ProductModel>> getProducts({
+  /// Satu halaman produk toko, JSON apa adanya: `products`, `meta`,
+  /// `summary`, `lowStockThreshold`.
+  Future<Map<String, dynamic>> fetchProducts({
     String? search,
     String? categoryId,
+    String? stockStatus,
     int page = 1,
-    int limit = 10,
+    int limit = 20,
   }) async {
-    final params = <String, dynamic>{'page': page, 'limit': limit};
-    if (search != null && search.isNotEmpty) params['search'] = search;
-    if (categoryId != null && categoryId.isNotEmpty) {
-      params['categoryId'] = categoryId;
-    }
+    final response = await dio.get(
+      '/seller/products',
+      queryParameters: {
+        'page': page,
+        'limit': limit,
+        if (search != null && search.isNotEmpty) 'search': search,
+        if (categoryId != null && categoryId.isNotEmpty)
+          'categoryId': categoryId,
+        if (stockStatus != null) 'stockStatus': stockStatus,
+      },
+    );
+    return (response.data as Map<String, dynamic>)['data']
+        as Map<String, dynamic>;
+  }
 
-    final response = await dio.get('/seller/products', queryParameters: params);
-    final responseMap = response.data as Map<String, dynamic>;
-    final dataMap = responseMap['data'] as Map<String, dynamic>;
-    final list = dataMap['products'] as List? ?? [];
-    return list
-        .map((p) => ProductModel.fromJson(p as Map<String, dynamic>))
-        .toList();
+  Future<Map<String, dynamic>> fetchProduct(String id) async {
+    final response = await dio.get('/seller/products/$id');
+    return (response.data as Map<String, dynamic>)['data']
+        as Map<String, dynamic>;
+  }
+
+  /// Kategori yang dipakai produk toko ini (bukan seluruh katalog).
+  Future<List<dynamic>> fetchStoreCategories() async {
+    final response = await dio.get('/seller/products/categories');
+    return (response.data as Map<String, dynamic>)['data'] as List? ?? [];
   }
 
   Future<ProductModel> createProduct({

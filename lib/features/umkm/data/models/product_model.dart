@@ -41,7 +41,7 @@ class ProductModel {
       price: json['price'] is num
           ? (json['price'] as num).toDouble()
           : double.tryParse(json['price'].toString()) ?? 0.0,
-      stock: json['stock'] as int? ?? 0,
+      stock: (json['stock'] as num?)?.toInt() ?? 0,
       categoryId: json['categoryId'] as String,
       category: json['category'] != null
           ? ProductCategoryModel.fromJson(
@@ -56,6 +56,20 @@ class ProductModel {
           : double.tryParse(json['rating'].toString()) ?? 0.0,
     );
   }
+
+  ProductModel copyWith({int? stock, bool? isActive}) => ProductModel(
+    id: id,
+    name: name,
+    description: description,
+    price: price,
+    stock: stock ?? this.stock,
+    categoryId: categoryId,
+    category: category,
+    images: images,
+    isApproved: isApproved,
+    isActive: isActive ?? this.isActive,
+    rating: rating,
+  );
 
   Map<String, dynamic> toJson() {
     return {

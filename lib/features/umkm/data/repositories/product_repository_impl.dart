@@ -2,23 +2,42 @@ import '../../domain/repositories/product_repository.dart';
 import '../services/product_service.dart';
 import '../models/product_model.dart';
 import '../models/product_category_model.dart';
+import '../models/seller_product_page.dart';
 
 class ProductRepositoryImpl implements ProductRepository {
   final ProductService service;
   ProductRepositoryImpl({required this.service});
 
+  // Tanpa cachedFetch, sengaja: ini daftar stok milik penjual sendiri, yang
+  // juga digeser kasir POS. Angka stok 5 menit yang lalu bukan "data basi
+  // yang masih berguna" — ia bisa membuat penjual menjual barang yang habis.
   @override
-  Future<List<ProductModel>> getProducts({
+  Future<SellerProductPage> getProducts({
     String? search,
     String? categoryId,
+    StockLevel? stockLevel,
     int page = 1,
-    int limit = 10,
-  }) => service.getProducts(
-    search: search,
-    categoryId: categoryId,
-    page: page,
-    limit: limit,
+    int limit = 20,
+  }) async => SellerProductPage.fromJson(
+    await service.fetchProducts(
+      search: search,
+      categoryId: categoryId,
+      stockStatus: stockLevel?.wire,
+      page: page,
+      limit: limit,
+    ),
   );
+
+  @override
+  Future<ProductModel> getProduct(String id) async =>
+      ProductModel.fromJson(await service.fetchProduct(id));
+
+  @override
+  Future<List<ProductCategoryModel>> getStoreCategories() async =>
+      (await service.fetchStoreCategories())
+          .whereType<Map<String, dynamic>>()
+          .map(ProductCategoryModel.fromJson)
+          .toList();
 
   @override
   Future<ProductModel> createProduct({

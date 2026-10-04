@@ -3,10 +3,15 @@ class ProductCategoryModel {
   final String name;
   final String? description;
 
+  /// Jumlah produk toko di kategori ini — hanya dari
+  /// `GET /seller/products/categories`.
+  final int? productCount;
+
   const ProductCategoryModel({
     required this.id,
     required this.name,
     this.description,
+    this.productCount,
   });
 
   factory ProductCategoryModel.fromJson(Map<String, dynamic> json) {
@@ -14,6 +19,7 @@ class ProductCategoryModel {
       id: json['id'] as String,
       name: json['name'] as String,
       description: json['description'] as String?,
+      productCount: (json['productCount'] as num?)?.toInt(),
     );
   }
 

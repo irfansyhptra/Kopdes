@@ -1144,35 +1144,9 @@ String formatRupiah(num value) => 'Rp${formatThousands(value)}';
 String formatThousands(num value) =>
     value.toStringAsFixed(0).replaceAllMapped(_thousands, (m) => '${m[1]}.');
 
-/// Lebar maksimum satu kartu produk di konsol penjual.
-///
-/// 420 berarti satu kolom pada ponsel dan dua kolom mulai dari tablet. Dulu
-/// kolomnya dipaksa dua di semua lebar, dan di situlah tabrakannya: baris
-/// kontrol berisi Switch (51px) dan dua tombol 44px — 139px perabot tetap —
-/// sedangkan kartu di layar 320dp hanya selebar 106dp di dalam paddingnya.
-/// Tidak ada rasio yang bisa memperbaiki itu; yang salah jumlah kolomnya.
-const double sellerProductCardMaxWidth = 420;
-
-/// Tinggi kartu produk penjual, dalam piksel.
-///
-/// `mainAxisExtent`, bukan `childAspectRatio`: isinya mendatar — gambar di
-/// kiri, teks dan kendali di kanan — jadi tingginya ditentukan kolom kanan,
-/// bukan lebar kartu. Rasio mengikat keduanya, lalu meluber begitu kartunya
-/// menyempit.
-///
-/// Angkanya diukur, bukan ditebak — lihat test/seller_product_card_test.dart,
-/// yang menyapu 320–768dp dan skala teks 1,0–2,0x.
-double sellerProductCardHeight(BuildContext context) {
-  final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
-  // Hanya bagian teks yang ikut skala; gambar dan target sentuh tidak.
-  const fixed = 104.0; // kendali 44pt yang membungkus, plus padding
-  const text = 112.0; // nama, meta (bisa dua baris), dan harga
-  return fixed + text * textScale.clamp(1.0, 2.0);
-}
-
 /// Tinggi tile angka pada dasbor (KPI 2 kolom).
 ///
-/// Sama alasannya dengan [sellerProductCardHeight]: isinya — ikon, label, dan
+/// `mainAxisExtent`, bukan `childAspectRatio`: isinya — ikon, label, dan
 /// satu angka — tingginya tidak bergantung pada lebar kartu, jadi mengikatnya
 /// lewat `childAspectRatio` hanya membuat tile meluber di layar sempit dan
 /// berlubang di tablet.

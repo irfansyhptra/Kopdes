@@ -56,6 +56,11 @@ class AppColors {
   static const Color warning = Color(0xFFFF9F0A);
   static const Color error = Color(0xFFFF3B30);
   static const Color errorText = Color(0xFFC13515);
+
+  // Versi teks dari warna status. `success`/`warning` di atas putih hanya
+  // ±2,2:1 — cukup untuk titik, tidak untuk dibaca. Keduanya ≥4,5:1.
+  static const Color successText = Color(0xFF1E7B34);
+  static const Color warningText = Color(0xFF9A5B00);
 }
 
 class AppRadius {
