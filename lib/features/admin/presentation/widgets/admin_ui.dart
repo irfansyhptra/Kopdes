@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/theme.dart';
+import '../../../../shared/widgets/apple_ui.dart';
 
 // Helper UI bersama untuk halaman-halaman Admin Kopdes.
 
@@ -58,9 +59,9 @@ class StatusChip extends StatelessWidget {
       padding:
           padding ?? const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.10),
+        color: color.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(AppRadius.pill),
-        border: Border.all(color: color.withOpacity(0.20), width: 0.8),
+        border: Border.all(color: color.withValues(alpha: 0.20), width: 0.8),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -186,21 +187,23 @@ class AdminStatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return AdminCard(
       onTap: onTap,
-      padding: const EdgeInsets.all(AppSpacing.base),
+      margin: EdgeInsets.zero,
+      padding: const EdgeInsets.all(AppSpacing.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                padding: const EdgeInsets.all(10),
+                width: 36,
+                height: 36,
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
                 ),
-                child: Icon(icon, color: color, size: 22),
+                child: Icon(icon, color: color, size: 19),
               ),
               if (trendText != null)
                 Container(
@@ -211,7 +214,7 @@ class AdminStatCard extends StatelessWidget {
                   decoration: BoxDecoration(
                     color:
                         (isPositiveTrend ? AppColors.success : AppColors.error)
-                            .withOpacity(0.1),
+                            .withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(AppRadius.pill),
                   ),
                   child: Row(
@@ -242,30 +245,43 @@ class AdminStatCard extends StatelessWidget {
                 ),
             ],
           ),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            value,
-            style: AppTypography.titleLarge.copyWith(
-              fontWeight: FontWeight.w800,
-              color: AppColors.ink,
-              height: 1.1,
+          const SizedBox(height: AppSpacing.sm),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              maxLines: 1,
+              style: AppTypography.titleLarge.copyWith(
+                fontWeight: FontWeight.w800,
+                color: AppColors.ink,
+                height: 1.1,
+              ),
             ),
           ),
           const SizedBox(height: 2),
-          Text(
-            title,
-            style: AppTypography.captionSmall.copyWith(
-              color: AppColors.muted,
-              fontWeight: FontWeight.w600,
+          Flexible(
+            child: Text(
+              title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: AppTypography.captionSmall.copyWith(
+                color: AppColors.muted,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           if (subtitle != null) ...[
             const SizedBox(height: 2),
-            Text(
-              subtitle!,
-              style: AppTypography.captionSmall.copyWith(
-                fontSize: 10,
-                color: AppColors.mutedSoft,
+            Flexible(
+              child: Text(
+                subtitle!,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.captionSmall.copyWith(
+                  fontSize: 10,
+                  color: AppColors.mutedSoft,
+                ),
               ),
             ),
           ],
@@ -309,14 +325,20 @@ class AdminAsyncList<T> extends StatelessWidget {
             physics: const AlwaysScrollableScrollPhysics(
               parent: BouncingScrollPhysics(),
             ),
-            padding: const EdgeInsets.all(AppSpacing.base),
+            padding: const EdgeInsets.only(top: AppSpacing.base, bottom: 112),
             children: [
-              if (header != null) header!,
-              if (items.isEmpty)
-                _EmptyState(title: emptyTitle, icon: emptyIcon)
-              else
-                ...items.map(itemBuilder),
-              const SizedBox(height: AppSpacing.section),
+              AppleContentBoundary(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (header != null) header!,
+                    if (items.isEmpty)
+                      _EmptyState(title: emptyTitle, icon: emptyIcon)
+                    else
+                      ...items.map(itemBuilder),
+                  ],
+                ),
+              ),
             ],
           ),
         );
@@ -332,16 +354,25 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 96),
-      child: Column(
+    return AdminCard(
+      margin: EdgeInsets.zero,
+      child: Row(
         children: [
-          Icon(icon, size: 56, color: AppColors.mutedSoft),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: AppTypography.bodyMedium.copyWith(color: AppColors.muted),
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: AppColors.surfaceSoft,
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
+            child: Icon(icon, size: 20, color: AppColors.mutedSoft),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Text(
+              title,
+              style: AppTypography.bodyMedium.copyWith(color: AppColors.muted),
+            ),
           ),
         ],
       ),
@@ -391,7 +422,7 @@ class ActionOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     if (!visible) return const SizedBox.shrink();
     return Container(
-      color: Colors.black.withOpacity(0.3),
+      color: Colors.black.withValues(alpha: 0.3),
       child: const Center(
         child: CircularProgressIndicator(color: AppColors.primary),
       ),

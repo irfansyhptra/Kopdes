@@ -31,7 +31,12 @@ class SellerDashboardStats {
   final int totalOrders;
   final int productsSold;
   final double todayEarnings;
+
+  /// Jumlah PESANAN hari ini, bukan jumlah baris barang — satu pesanan
+  /// berisi tiga barang tetap satu transaksi.
+  final int todayOrders;
   final double monthlyEarnings;
+  final int monthlyOrders;
   final double storeRating;
   final int lowStockCount;
   final int newOrdersCount;
@@ -41,7 +46,9 @@ class SellerDashboardStats {
     required this.totalOrders,
     required this.productsSold,
     required this.todayEarnings,
+    this.todayOrders = 0,
     required this.monthlyEarnings,
+    this.monthlyOrders = 0,
     required this.storeRating,
     required this.lowStockCount,
     required this.newOrdersCount,
@@ -55,6 +62,8 @@ class SellerDashboardStats {
       todayEarnings: json['todayEarnings'] is num
           ? (json['todayEarnings'] as num).toDouble()
           : double.tryParse(json['todayEarnings'].toString()) ?? 0.0,
+      todayOrders: (json['todayOrders'] as num?)?.toInt() ?? 0,
+      monthlyOrders: (json['monthlyOrders'] as num?)?.toInt() ?? 0,
       monthlyEarnings: json['monthlyEarnings'] is num
           ? (json['monthlyEarnings'] as num).toDouble()
           : double.tryParse(json['monthlyEarnings'].toString()) ?? 0.0,

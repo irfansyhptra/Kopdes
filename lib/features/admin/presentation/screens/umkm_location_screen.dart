@@ -22,7 +22,7 @@ class UmkmLocationScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.surfaceSoft,
-      appBar: AppBar(title: const Text('Lokasi Mitra UMKM')),
+      appBar: adminAppBar(context, 'Lokasi Mitra UMKM'),
       body: async.when(
         loading: () => const Center(
           child: CircularProgressIndicator(color: AppColors.primary),
@@ -39,16 +39,19 @@ class UmkmLocationScreen extends ConsumerWidget {
           }
           final belumDiisi = mitras.where((m) => !m.hasCoordinates).length;
 
-          return ListView.separated(
-            padding: const EdgeInsets.all(AppSpacing.base),
-            itemCount: mitras.length + 1,
-            separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.md),
-            itemBuilder: (context, index) {
-              if (index == 0) {
-                return _Banner(count: belumDiisi, total: mitras.length);
-              }
-              return _MitraLocationTile(mitra: mitras[index - 1]);
-            },
+          return AppleContentBoundary(
+            child: ListView.separated(
+              padding: const EdgeInsets.only(top: AppSpacing.base, bottom: 112),
+              itemCount: mitras.length + 1,
+              separatorBuilder: (_, __) =>
+                  const SizedBox(height: AppSpacing.sm),
+              itemBuilder: (context, index) {
+                if (index == 0) {
+                  return _Banner(count: belumDiisi, total: mitras.length);
+                }
+                return _MitraLocationTile(mitra: mitras[index - 1]);
+              },
+            ),
           );
         },
       ),

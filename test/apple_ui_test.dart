@@ -69,6 +69,82 @@ void main() {
     expect(taps, 1); // tetap 1: tombol mati tidak memicu apa pun
   });
 
+  group('AppleResponsiveGrid', () {
+    Future<void> pumpGrid(
+      WidgetTester tester,
+      double width, {
+      double textScale = 1,
+    }) async {
+      tester.view.physicalSize = Size(width, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: MediaQuery(
+            data: MediaQueryData(textScaler: TextScaler.linear(textScale)),
+            child: Scaffold(
+              body: Padding(
+                padding: const EdgeInsets.all(AppSpacing.base),
+                child: AppleResponsiveGrid(
+                  minimumItemWidth: 128,
+                  maxColumns: 4,
+                  itemExtentBuilder: (context, _) =>
+                      dashboardTileHeight(context),
+                  children: const [
+                    ColoredBox(color: Colors.red),
+                    ColoredBox(color: Colors.green),
+                    ColoredBox(color: Colors.blue),
+                    ColoredBox(color: Colors.amber),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+    }
+
+    testWidgets('memakai dua kolom pada ponsel sempit', (tester) async {
+      await pumpGrid(tester, 320);
+      final grid = tester.widget<GridView>(find.byType(GridView));
+      final delegate =
+          grid.gridDelegate as SliverGridDelegateWithFixedCrossAxisCount;
+      expect(delegate.crossAxisCount, 2);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('bertambah menjadi empat kolom saat ruang cukup', (
+      tester,
+    ) async {
+      await pumpGrid(tester, 768);
+      final grid = tester.widget<GridView>(find.byType(GridView));
+      final delegate =
+          grid.gridDelegate as SliverGridDelegateWithFixedCrossAxisCount;
+      expect(delegate.crossAxisCount, 4);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('tinggi grid tumbuh mengikuti Dynamic Type', (tester) async {
+      await pumpGrid(tester, 320, textScale: 1);
+      var grid = tester.widget<GridView>(find.byType(GridView));
+      final normal =
+          (grid.gridDelegate as SliverGridDelegateWithFixedCrossAxisCount)
+              .mainAxisExtent!;
+
+      await pumpGrid(tester, 320, textScale: 2);
+      grid = tester.widget<GridView>(find.byType(GridView));
+      final large =
+          (grid.gridDelegate as SliverGridDelegateWithFixedCrossAxisCount)
+              .mainAxisExtent!;
+
+      expect(large, greaterThan(normal));
+      expect(tester.takeException(), isNull);
+    });
+  });
+
   testWidgets('AppleProductTile menampilkan harga coret & badge', (
     tester,
   ) async {

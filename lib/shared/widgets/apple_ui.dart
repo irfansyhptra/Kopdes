@@ -285,6 +285,166 @@ class AppleSectionHeader extends StatelessWidget {
   }
 }
 
+/// Kepadatan vertikal sebuah section.
+///
+/// [compact] dipakai ketika isinya singkat seperti grid KPI atau pintasan.
+/// [regular] memberi napas lebih untuk formulir, grafik, dan isi yang perlu
+/// dibaca lebih lama.
+enum AppleSectionDensity { compact, regular }
+
+/// Section adaptif yang menyatukan judul dan isi tanpa membuat kartu tambahan.
+///
+/// Pengelompokan dibawa oleh alignment dan jarak. Permukaan/kartu hanya dibuat
+/// oleh [child] bila kontennya memang membutuhkan satu kelompok interaksi.
+class AppleSection extends StatelessWidget {
+  final String title;
+  final String? subtitle;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+  final Widget child;
+  final AppleSectionDensity density;
+  final EdgeInsetsGeometry headerPadding;
+
+  const AppleSection({
+    super.key,
+    required this.title,
+    required this.child,
+    this.subtitle,
+    this.actionLabel,
+    this.onAction,
+    this.density = AppleSectionDensity.compact,
+    this.headerPadding = EdgeInsets.zero,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        AppleSectionHeader(
+          title: title,
+          subtitle: subtitle,
+          actionLabel: actionLabel,
+          onAction: onAction,
+          padding: headerPadding,
+        ),
+        SizedBox(
+          height: density == AppleSectionDensity.compact
+              ? AppSpacing.sm
+              : AppSpacing.md,
+        ),
+        child,
+      ],
+    );
+  }
+}
+
+typedef AppleGridExtentBuilder =
+    double Function(BuildContext context, double itemWidth);
+
+/// Grid Apple-style yang memilih jumlah kolom dari lebar yang benar-benar ada.
+///
+/// [minimumItemWidth] menjaga tile tidak menyempit sampai teks dan target sentuh
+/// bertabrakan. [maxColumns] membatasi density di layar lebar. Tinggi tile bisa
+/// mengikuti Dynamic Type lewat [itemExtentBuilder], sehingga desain menjadi
+/// lebih rapat pada teks normal tetapi tetap tumbuh saat teks diperbesar.
+class AppleResponsiveGrid extends StatelessWidget {
+  final List<Widget> children;
+  final double minimumItemWidth;
+  final int maxColumns;
+  final double spacing;
+  final double runSpacing;
+  final double childAspectRatio;
+  final AppleGridExtentBuilder? itemExtentBuilder;
+
+  const AppleResponsiveGrid({
+    super.key,
+    required this.children,
+    this.minimumItemWidth = 136,
+    this.maxColumns = 4,
+    this.spacing = AppSpacing.md,
+    this.runSpacing = AppSpacing.md,
+    this.childAspectRatio = 1,
+    this.itemExtentBuilder,
+  }) : assert(minimumItemWidth > 0),
+       assert(maxColumns > 0);
+
+  @override
+  Widget build(BuildContext context) {
+    if (children.isEmpty) return const SizedBox.shrink();
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availableWidth = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : minimumItemWidth;
+        final fittingColumns =
+            ((availableWidth + spacing) / (minimumItemWidth + spacing)).floor();
+        final columns = fittingColumns.clamp(1, maxColumns);
+        final itemWidth = (availableWidth - spacing * (columns - 1)) / columns;
+        final itemExtent = itemExtentBuilder?.call(context, itemWidth);
+
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: children.length,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: columns,
+            crossAxisSpacing: spacing,
+            mainAxisSpacing: runSpacing,
+            mainAxisExtent: itemExtent,
+            childAspectRatio: childAspectRatio,
+          ),
+          itemBuilder: (context, index) => children[index],
+        );
+      },
+    );
+  }
+}
+
+/// Batas lebar dan gutter adaptif yang sama untuk customer, UMKM, dan Kopdes.
+class AppleContentBoundary extends StatelessWidget {
+  final Widget child;
+  final double maxWidth;
+  final EdgeInsetsGeometry? padding;
+  final Alignment alignment;
+
+  const AppleContentBoundary({
+    super.key,
+    required this.child,
+    this.maxWidth = 920,
+    this.padding,
+    this.alignment = Alignment.topCenter,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final horizontal = constraints.maxWidth >= 1024
+            ? AppSpacing.xl
+            : constraints.maxWidth >= 600
+            ? AppSpacing.lg
+            : constraints.maxWidth < 360
+            ? AppSpacing.md
+            : AppSpacing.base;
+
+        return Align(
+          alignment: alignment,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: maxWidth),
+            child: Padding(
+              padding: padding ?? EdgeInsets.symmetric(horizontal: horizontal),
+              child: child,
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
 // ─────────────────────────────────────────────────────────────
 // Card menu — tile kategori/menu bergaya iOS (squircle tonal)
 // ─────────────────────────────────────────────────────────────
@@ -1018,11 +1178,11 @@ double sellerProductCardHeight(BuildContext context) {
 /// berlubang di tablet.
 double dashboardTileHeight(BuildContext context) {
   final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
-  return 64.0 + 52.0 * textScale.clamp(1.0, 2.0);
+  return 104.0 + 52.0 * (textScale.clamp(1.0, 2.0) - 1);
 }
 
 /// Tinggi tile pintasan fitur, yang punya subjudul dua baris.
 double featureTileHeight(BuildContext context) {
   final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
-  return 68.0 + 64.0 * textScale.clamp(1.0, 2.0);
+  return 112.0 + 72.0 * (textScale.clamp(1.0, 2.0) - 1);
 }

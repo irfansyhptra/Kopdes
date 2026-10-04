@@ -25,22 +25,11 @@ class SellerContentBoundary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final horizontal = constraints.maxWidth >= 840
-            ? AppSpacing.xl
-            : AppSpacing.base;
-        return Align(
-          alignment: alignment,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: maxWidth),
-            child: Padding(
-              padding: padding ?? EdgeInsets.symmetric(horizontal: horizontal),
-              child: child,
-            ),
-          ),
-        );
-      },
+    return AppleContentBoundary(
+      maxWidth: maxWidth,
+      padding: padding,
+      alignment: alignment,
+      child: child,
     );
   }
 }

@@ -47,13 +47,13 @@ class KopdesEmployeeDashboardPage extends ConsumerWidget {
                   children: [
                     const SizedBox(height: KopdesSpacing.base),
                     EmployeeKpiSection(columns: spec.kpiColumns),
-                    const SizedBox(height: KopdesSpacing.xl),
+                    const SizedBox(height: KopdesSpacing.base),
                     QuickAccessSection(columns: spec.quickActionColumns),
-                    const SizedBox(height: KopdesSpacing.xl),
+                    const SizedBox(height: KopdesSpacing.base),
                     TodayOrdersSection(compact: spec.isCompact),
-                    const SizedBox(height: KopdesSpacing.lg),
+                    const SizedBox(height: KopdesSpacing.base),
                     DashboardInsightPanels(spec: spec),
-                    const SizedBox(height: KopdesSpacing.lg),
+                    const SizedBox(height: KopdesSpacing.base),
                     const KopdesAiInsightBanner(),
                     // Ruang untuk bottom navigation: tanpa ini banner AI
                     // tertutup bar dan tidak pernah bisa ditekan.

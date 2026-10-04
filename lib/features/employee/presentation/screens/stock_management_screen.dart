@@ -81,7 +81,10 @@ class _StockManagementScreenState extends ConsumerState<StockManagementScreen> {
       bottomNavigationBar: const EmployeeBottomNavigation(
         activeItem: EmployeeNavItem.stock,
       ),
-      body: _showHistory ? const _HistoryList() : _stockBody(),
+      body: KopdesContentBoundary(
+        padding: EdgeInsets.zero,
+        child: _showHistory ? const _HistoryList() : _stockBody(),
+      ),
     );
   }
 
@@ -91,9 +94,14 @@ class _StockManagementScreenState extends ConsumerState<StockManagementScreen> {
 
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.all(KopdesSpacing.md),
-          child: Row(
+        SizedBox(
+          height: 52,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(
+              horizontal: KopdesSpacing.md,
+              vertical: KopdesSpacing.sm,
+            ),
             children: [
               for (final option in const [
                 ('all', 'Produk Aktif'),

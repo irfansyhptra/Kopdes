@@ -2,24 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/theme.dart';
-import '../../../../shared/components/dashboard_card.dart';
-import '../../../../shared/components/statistic_card.dart';
-import '../../../../shared/widgets/shimmer_loading.dart';
 import '../../../../core/network/error_message.dart';
 import '../../../../shared/widgets/app_glass_chrome.dart';
 import '../../../../shared/widgets/apple_feedback.dart';
-import '../../../../shared/widgets/apple_ui.dart';
 import '../../../chat/presentation/providers/chat_providers.dart';
 import '../../../notification/presentation/providers/notification_provider.dart';
+import '../widgets/seller_dashboard_sections.dart';
 import '../widgets/seller_header.dart';
-import '../widgets/seller_page_ui.dart';
 import '../controllers/seller_dashboard_controller.dart';
 import '../../data/models/seller_model.dart';
 import 'product_screen.dart';
 import 'order_screen.dart';
 import '../../../chat/presentation/screens/conversation_list_screen.dart';
 import 'store_profile_screen.dart';
-import 'package:intl/intl.dart';
 
 // Dasbor Penjual UMKM: Multi-Tab Navigation Shell & Selling Features.
 class SellerDashboardScreen extends ConsumerStatefulWidget {
@@ -166,8 +161,6 @@ class _SellerDashboardOverviewTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final statsState = ref.watch(sellerStatsProvider);
-
     final chatCount = ref
         .watch(conversationsProvider)
         .maybeWhen(
@@ -203,9 +196,9 @@ class _SellerDashboardOverviewTab extends ConsumerWidget {
               loading: () =>
                   const Center(child: AppleActivityIndicator(size: 28)),
               // Dulu kegagalan di sini diganti toko contoh lengkap dengan
-              // pendapatan Rp2.450.000 dan 12 transaksi. Angka karangan di
-              // dasbor penjual lebih buruk daripada layar error: pemiliknya
-              // mengambil keputusan dagang dari angka itu.
+              // pendapatan Rp2.450.000. Angka karangan di dasbor penjual
+              // lebih buruk daripada layar error: pemiliknya mengambil
+              // keputusan dagang dari angka itu.
               error: (error, _) => _LoadFailed(
                 message: networkErrorMessage(error),
                 onRetry: () {
@@ -215,8 +208,10 @@ class _SellerDashboardOverviewTab extends ConsumerWidget {
                   ref.invalidate(sellerStatsProvider);
                 },
               ),
-              data: (dashboard) =>
-                  _buildDashboardContent(context, ref, dashboard, statsState),
+              data: (dashboard) => _OverviewBody(
+                dashboard: dashboard,
+                onNavigateTab: onNavigateTab,
+              ),
             ),
           ),
         ],
@@ -232,13 +227,25 @@ class _SellerDashboardOverviewTab extends ConsumerWidget {
     'SUSPENDED' => 'Toko ditangguhkan',
     _ => 'Status toko belum diketahui',
   };
+}
 
-  Widget _buildDashboardContent(
-    BuildContext context,
-    WidgetRef ref,
-    SellerModel dashboard,
-    AsyncValue<List<dynamic>> statsState,
-  ) {
+/// Isi dasbor di antara kepala halaman dan bilah navigasi.
+///
+/// `CustomScrollView`: tiap bagian adalah slivernya sendiri, jadi daftar
+/// panjang di masa depan bisa ditambahkan tanpa membungkus ulang semuanya.
+/// Lebarnya dijepit di tablet — dasbor selebar 1024dp membuat satu baris
+/// angka terentang sampai sulit dipindai.
+class _OverviewBody extends ConsumerWidget {
+  final SellerModel dashboard;
+  final ValueChanged<int> onNavigateTab;
+
+  const _OverviewBody({required this.dashboard, required this.onNavigateTab});
+
+  /// Lebar isi maksimum. Di atas ini kolomnya dipusatkan.
+  static const double _maxContentWidth = 560;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
     final stats = dashboard.stats;
 
     return RefreshIndicator(
@@ -247,406 +254,140 @@ class _SellerDashboardOverviewTab extends ConsumerWidget {
         ref.invalidate(sellerStatsProvider);
       },
       color: AppColors.primary,
-      child: SellerContentBoundary(
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(
-            parent: BouncingScrollPhysics(),
-          ),
-          padding: const EdgeInsets.fromLTRB(0, AppSpacing.base, 0, 112),
-          children: [
-            AppleCard(
-              onTap: () => context.push('/umkm/products/new'),
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              child: Row(
-                children: [
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryTint,
-                      borderRadius: BorderRadius.circular(AppRadius.md),
-                    ),
-                    child: const Icon(
-                      Icons.add_business_rounded,
-                      color: AppColors.primary,
-                      size: 24,
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Tambah produk baru',
-                          style: AppTypography.bodyLarge.copyWith(
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: -0.2,
-                          ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final side = constraints.maxWidth > _maxContentWidth
+              ? (constraints.maxWidth - _maxContentWidth) / 2
+              : 0.0;
+
+          return CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
+            ),
+            slivers: [
+              SliverPadding(
+                padding: EdgeInsets.fromLTRB(
+                  AppSpacing.base + side,
+                  AppSpacing.md,
+                  AppSpacing.base + side,
+                  // Ruang untuk bilah navigasi mengambang.
+                  112,
+                ),
+                sliver: SliverList.list(
+                  children: [
+                    SalesSummaryCard(stats: stats),
+                    const SizedBox(height: AppSpacing.md),
+
+                    QuickActionsRow(
+                      actions: [
+                        SellerQuickAction(
+                          icon: Icons.add_business_outlined,
+                          label: 'Tambah Produk',
+                          onTap: () => context.push('/umkm/products/new'),
                         ),
-                        const SizedBox(height: AppSpacing.xs),
-                        Text(
-                          'Lengkapi foto, harga, dan stok untuk mulai berjualan.',
-                          style: AppTypography.captionSmall.copyWith(
-                            height: 1.35,
-                          ),
+                        SellerQuickAction(
+                          icon: Icons.receipt_long_outlined,
+                          label: 'Pesanan',
+                          onTap: () => onNavigateTab(2),
+                        ),
+                        SellerQuickAction(
+                          icon: Icons.inventory_2_outlined,
+                          label: 'Stok',
+                          // Kendali stok melebur ke halaman Produk; tidak ada
+                          // lagi halaman stok tersendiri untuk dituju.
+                          onTap: () => onNavigateTab(1),
+                        ),
+                        SellerQuickAction(
+                          icon: Icons.account_balance_wallet_outlined,
+                          label: 'Keuangan',
+                          // Saldo dompet toko tinggal di halaman Toko.
+                          onTap: () => onNavigateTab(4),
                         ),
                       ],
                     ),
-                  ),
-                  const Icon(
-                    Icons.chevron_right_rounded,
-                    color: AppColors.primary,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
+                    const SizedBox(height: AppSpacing.md),
 
-            // Revenue Overview Card
-            AppleCard(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Pendapatan Bulan Ini',
-                        style: AppTypography.captionSmall.copyWith(
-                          color: AppColors.muted,
-                          fontWeight: FontWeight.w600,
+                    AttentionSection(
+                      onSeeAll: () => onNavigateTab(2),
+                      items: [
+                        AttentionItem(
+                          icon: Icons.receipt_long_outlined,
+                          tint: AppColors.primary,
+                          title: 'Pesanan baru',
+                          urgentMessage: 'Menunggu diproses',
+                          calmMessage: 'Tidak ada pesanan yang menunggu',
+                          count: stats.newOrdersCount,
+                          onTap: () => onNavigateTab(2),
                         ),
-                      ),
-                      const Icon(
-                        Icons.monetization_on_outlined,
-                        color: AppColors.primary,
-                        size: 20,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    'Rp ${stats.monthlyEarnings.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
-                    style: AppTypography.displayMedium.copyWith(
-                      color: AppColors.ink,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Hari Ini: Rp ${stats.todayEarnings.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
-                        style: AppTypography.caption.copyWith(
-                          color: AppColors.body,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.sm,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(AppRadius.pill),
-                        ),
-                        child: Text(
-                          '${stats.totalOrders} Transaksi',
-                          style: AppTypography.badge.copyWith(
-                            color: AppColors.primary,
-                            fontSize: 10,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-
-            // Grid Quick Stats
-            // Tinggi dalam piksel, bukan rasio: rasio mengikat tinggi pada
-            // lebar, sehingga kartu yang sama meluber di layar sempit dan
-            // menyisakan lubang kosong di tablet.
-            LayoutBuilder(
-              builder: (context, constraints) => GridView(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: constraints.maxWidth >= 720 ? 4 : 2,
-                  crossAxisSpacing: AppSpacing.md,
-                  mainAxisSpacing: AppSpacing.md,
-                  mainAxisExtent: dashboardTileHeight(context),
-                ),
-                children: [
-                  DashboardCard(
-                    title: 'Produk Aktif',
-                    value: '${stats.totalProducts}',
-                    icon: Icons.inventory_2_outlined,
-                    iconColor: AppColors.primary,
-                  ),
-                  DashboardCard(
-                    title: 'Pesanan Baru',
-                    value: '${stats.newOrdersCount}',
-                    icon: Icons.notifications_active_outlined,
-                    iconColor: AppColors.warning,
-                    subtitle: stats.newOrdersCount > 0
-                        ? 'Perlu diproses!'
-                        : 'Semua diproses',
-                  ),
-                  DashboardCard(
-                    title: 'Total Terjual',
-                    value: '${stats.productsSold}',
-                    icon: Icons.local_mall_outlined,
-                    iconColor: AppColors.success,
-                  ),
-                  DashboardCard(
-                    title: 'Rating Toko',
-                    value: stats.storeRating > 0
-                        ? stats.storeRating.toStringAsFixed(1)
-                        : '-',
-                    icon: Icons.star_border_rounded,
-                    iconColor: AppColors.warning,
-                    subtitle: stats.storeRating > 0
-                        ? 'Sangat bagus'
-                        : 'Belum ada ulasan',
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-
-            // Features Navigation Shortcuts Grid
-            const AppleSectionHeader(title: 'Fitur Penjualan Utama'),
-            const SizedBox(height: AppSpacing.sm),
-            LayoutBuilder(
-              builder: (context, constraints) => GridView(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: constraints.maxWidth >= 720 ? 4 : 2,
-                  crossAxisSpacing: AppSpacing.md,
-                  mainAxisSpacing: AppSpacing.md,
-                  mainAxisExtent: featureTileHeight(context),
-                ),
-                children: [
-                  _FeatureCard(
-                    icon: Icons.add_circle_outline_rounded,
-                    title: 'Jual Produk Baru',
-                    subtitle: 'Tambah barang untuk dijual',
-                    color: AppColors.primary,
-                    onTap: () => context.push('/umkm/products/new'),
-                  ),
-                  _FeatureCard(
-                    icon: Icons.shopping_bag_outlined,
-                    title: 'Katalog Produk',
-                    subtitle: 'Edit harga & stok barang',
-                    color: AppColors.primary,
-                    onTap: () => onNavigateTab(1),
-                  ),
-                  _FeatureCard(
-                    icon: Icons.receipt_long_outlined,
-                    title: 'Pesanan Masuk',
-                    subtitle: 'Kelola order pelanggan',
-                    color: AppColors.warning,
-                    onTap: () => onNavigateTab(2),
-                  ),
-                  _FeatureCard(
-                    icon: Icons.inventory_outlined,
-                    title: 'Stok & Inventaris',
-                    subtitle: 'Cek stok hampir habis',
-                    color: AppColors.warning,
-                    onTap: () => onNavigateTab(3),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-
-            // Statistics Weekly Graph
-            statsState.when(
-              loading: () => const ShimmerGroup(
-                child: ShimmerBox(
-                  width: double.infinity,
-                  height: 160,
-                  borderRadius: 24,
-                ),
-              ),
-              error: (err, _) => Container(),
-              data: (dataList) {
-                if (dataList.isEmpty) return Container();
-                return StatisticCard(
-                  data: dataList,
-                  title: 'Performa Penjualan Mingguan',
-                );
-              },
-            ),
-            const SizedBox(height: AppSpacing.lg),
-
-            // Recent Activities Feed
-            if (dashboard.recentActivities.isNotEmpty) ...[
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Aktivitas Terbaru Toko',
-                    style: AppTypography.titleMedium.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.ink,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.md),
-              ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: dashboard.recentActivities.length,
-                separatorBuilder: (_, __) =>
-                    const SizedBox(height: AppSpacing.xs),
-                itemBuilder: (context, index) {
-                  final act = dashboard.recentActivities[index];
-                  IconData actIcon = Icons.notifications_outlined;
-                  Color actColor = AppColors.muted;
-
-                  if (act.type == 'ORDER') {
-                    actIcon = Icons.shopping_basket_rounded;
-                    actColor = AppColors.primary;
-                  } else if (act.type == 'REVIEW') {
-                    actIcon = Icons.star_rounded;
-                    actColor = AppColors.warning;
-                  } else if (act.type == 'STOCK_WARN') {
-                    actIcon = Icons.warning_amber_rounded;
-                    actColor = AppColors.error;
-                  }
-
-                  return Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.md,
-                      vertical: AppSpacing.md,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceSoft,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppColors.hairlineSoft),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(AppSpacing.sm),
-                          decoration: BoxDecoration(
-                            color: actColor.withValues(alpha: 0.1),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(actIcon, size: 18, color: actColor),
-                        ),
-                        const SizedBox(width: AppSpacing.md),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                act.title,
-                                style: AppTypography.bodyMedium.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.ink,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                act.description,
-                                style: AppTypography.bodyMedium.copyWith(
-                                  color: AppColors.body,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                DateFormat(
-                                  'dd MMM, HH:mm',
-                                ).format(act.timestamp),
-                                style: AppTypography.captionSmall,
-                              ),
-                            ],
-                          ),
+                        AttentionItem(
+                          icon: Icons.warning_amber_rounded,
+                          tint: AppColors.warning,
+                          title: 'Stok menipis',
+                          urgentMessage: 'Segera tambah stok produk Anda',
+                          calmMessage: 'Stok produk aman',
+                          count: stats.lowStockCount,
+                          onTap: () => onNavigateTab(1),
                         ),
                       ],
                     ),
-                  );
-                },
+                    const SizedBox(height: AppSpacing.md),
+
+                    StoreSummaryGrid(
+                      cells: [
+                        StoreSummaryCell(
+                          icon: Icons.inventory_2_outlined,
+                          tint: AppColors.success,
+                          label: 'Produk Aktif',
+                          value: '${stats.totalProducts}',
+                        ),
+                        StoreSummaryCell(
+                          icon: Icons.shopping_bag_outlined,
+                          tint: AppColors.primary,
+                          label: 'Terjual',
+                          value: '${stats.productsSold}',
+                        ),
+                        StoreSummaryCell(
+                          icon: Icons.star_outline_rounded,
+                          tint: AppColors.warning,
+                          label: 'Rating Toko',
+                          // Garis, bukan 0,0: rentang penilaian 1–5, jadi
+                          // nol bukan nilai yang pernah bisa diberikan.
+                          value: stats.storeRating > 0
+                              ? stats.storeRating
+                                    .toStringAsFixed(1)
+                                    .replaceAll('.', ',')
+                              : '—',
+                          note: stats.storeRating > 0
+                              ? null
+                              : 'Belum ada ulasan',
+                        ),
+                        const StoreSummaryCell(
+                          icon: Icons.bar_chart_rounded,
+                          tint: AppColors.primary,
+                          label: 'Kunjungan Toko',
+                          // Backend belum menghitung kunjungan sama sekali.
+                          // Garis, bukan angka rekaan.
+                          value: '—',
+                          note: 'Belum ada data',
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+
+                    StoreTipsRow(
+                      actionLabel: 'Lengkapi Profil',
+                      // Tidak ada halaman tips: tabel ContentPage kosong dan
+                      // `/info/:slug` akan mendarat di halaman gagal. Yang
+                      // ditawarkan adalah tujuan yang benar-benar ada, dan
+                      // labelnya menyebut apa yang sebenarnya terjadi.
+                      onTap: () => onNavigateTab(4),
+                    ),
+                  ],
+                ),
               ),
             ],
-            const SizedBox(height: AppSpacing.section),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _FeatureCard extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _FeatureCard({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.all(AppSpacing.base),
-        decoration: BoxDecoration(
-          color: AppColors.canvas,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.hairlineSoft),
-          boxShadow: AppElevation.soft,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(AppRadius.md),
-              ),
-              child: Icon(icon, size: 22, color: color),
-            ),
-            const Spacer(),
-            Text(
-              title,
-              style: AppTypography.bodyMedium.copyWith(
-                fontWeight: FontWeight.w700,
-                color: AppColors.ink,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              subtitle,
-              style: AppTypography.captionSmall.copyWith(
-                color: AppColors.muted,
-                fontSize: 10,
-              ),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }

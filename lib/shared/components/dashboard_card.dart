@@ -25,7 +25,7 @@ class DashboardCard extends StatelessWidget {
         bgColor != AppColors.canvas && bgColor != AppColors.surfaceSoft;
 
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.base),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(20),
@@ -58,7 +58,8 @@ class DashboardCard extends StatelessWidget {
               ),
               const SizedBox(width: AppSpacing.xs),
               Container(
-                padding: const EdgeInsets.all(6),
+                width: 28,
+                height: 28,
                 decoration: BoxDecoration(
                   color: isDarkBg
                       ? AppColors.canvas.withValues(alpha: 0.12)
@@ -73,7 +74,7 @@ class DashboardCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: AppSpacing.xs),
           // Angka mengecil agar muat, bukan terpotong: "Rp2.450.000" di
           // kartu seperempat layar adalah hal pertama yang dicari pemiliknya.
           FittedBox(

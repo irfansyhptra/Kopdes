@@ -29,7 +29,10 @@ class FinanceReportScreen extends ConsumerWidget {
           style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
         ),
       ),
-      body: allowed ? const _Report() : const _NoAccess(),
+      body: KopdesContentBoundary(
+        padding: EdgeInsets.zero,
+        child: allowed ? const _Report() : const _NoAccess(),
+      ),
     );
   }
 }

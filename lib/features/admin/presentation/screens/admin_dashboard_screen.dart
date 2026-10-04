@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/theme.dart';
 import '../../../../shared/widgets/app_glass_chrome.dart';
+import '../../../../shared/widgets/apple_ui.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../product/presentation/providers/product_provider.dart';
 import '../../../product/presentation/screens/admin/admin_product_list_screen.dart';
@@ -105,369 +106,255 @@ class _AdminOverviewTab extends ConsumerWidget {
     final ordersAsync = ref.watch(adminOrdersProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.canvas,
-      appBar: AppBar(
-        backgroundColor: AppColors.canvas,
-        elevation: 0,
-        automaticallyImplyLeading: false,
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.1),
-                shape: BoxShape.circle,
+      backgroundColor: AppColors.surfaceSoft,
+      body: Column(
+        children: [
+          GlassPageHeader(
+            title: 'Dashboard Kopdes',
+            subtitle: 'Selamat bekerja, ${user?.name ?? 'Admin Kopdes'}',
+            actions: [
+              GlassIconButton(
+                icon: Icons.forum_outlined,
+                label: 'Percakapan Admin',
+                onDark: true,
+                onTap: () => context.push('/admin/chat'),
               ),
-              child: const Icon(
-                Icons.admin_panel_settings_rounded,
-                color: AppColors.primary,
-                size: 20,
+              GlassIconButton(
+                icon: Icons.notifications_none_rounded,
+                label: 'Notifikasi',
+                onDark: true,
+                onTap: () => context.push('/notifications'),
               ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Text(
-              'Dashboard Admin Kopdes',
-              style: AppTypography.titleMedium.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.forum_outlined, color: AppColors.ink),
-            tooltip: 'Percakapan Admin',
-            onPressed: () => context.push('/admin/chat'),
+            ],
           ),
-          IconButton(
-            icon: const Icon(
-              Icons.notifications_none_rounded,
-              color: AppColors.ink,
+          Expanded(
+            child: RefreshIndicator(
+              color: AppColors.primary,
+              onRefresh: () async {
+                ref.invalidate(adminProductsProvider);
+                ref.invalidate(mitraListProvider);
+                ref.invalidate(adminOrdersProvider);
+              },
+              child: AppleContentBoundary(
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(
+                    parent: BouncingScrollPhysics(),
+                  ),
+                  padding: const EdgeInsets.fromLTRB(
+                    0,
+                    AppSpacing.base,
+                    0,
+                    112,
+                  ),
+                  children: [
+                    AppleSection(
+                      title: 'Statistik Sistem',
+                      child: AppleResponsiveGrid(
+                        minimumItemWidth: 128,
+                        maxColumns: 4,
+                        itemExtentBuilder: (context, _) {
+                          final scale =
+                              MediaQuery.textScalerOf(context).scale(14) / 14;
+                          return 128 + 64 * (scale.clamp(1.0, 2.0) - 1);
+                        },
+                        children: [
+                          AdminStatCard(
+                            title: 'Barang Ritel',
+                            value: productsAsync.when(
+                              data: (list) => '${list.length}',
+                              loading: () => '...',
+                              error: (_, __) => '-',
+                            ),
+                            subtitle: productsAsync.when(
+                              data: (list) =>
+                                  '${list.where((p) => p.isActive).length} Aktif',
+                              loading: () => '',
+                              error: (_, __) => '',
+                            ),
+                            icon: Icons.inventory_2_outlined,
+                            color: AppColors.primary,
+                            onTap: () => onNavigateTab(1),
+                          ),
+                          AdminStatCard(
+                            title: 'Mitra UMKM',
+                            value: mitraAsync.when(
+                              data: (list) => '${list.length}',
+                              loading: () => '...',
+                              error: (_, __) => '-',
+                            ),
+                            subtitle: mitraAsync.when(
+                              data: (list) =>
+                                  '${list.where((m) => m.status == 'PENDING_VERIFICATION').length} Menunggu',
+                              loading: () => '',
+                              error: (_, __) => '',
+                            ),
+                            icon: Icons.storefront_outlined,
+                            color: AppColors.success,
+                            onTap: () => onNavigateTab(2),
+                          ),
+                          AdminStatCard(
+                            title: 'Pesanan Masuk',
+                            value: ordersAsync.when(
+                              data: (list) => '${list.length}',
+                              loading: () => '...',
+                              error: (_, __) => '-',
+                            ),
+                            subtitle: ordersAsync.when(
+                              data: (list) =>
+                                  '${list.where((o) => o.status == 'PENDING' || o.status == 'PAID').length} Perlu Proses',
+                              loading: () => '',
+                              error: (_, __) => '',
+                            ),
+                            icon: Icons.receipt_long_outlined,
+                            color: AppColors.warning,
+                            onTap: () => onNavigateTab(3),
+                          ),
+                          AdminStatCard(
+                            title: 'Omzet Koperasi',
+                            value: ordersAsync.when(
+                              data: (list) {
+                                final total = list.fold<num>(
+                                  0,
+                                  (sum, item) => sum + item.totalAmount,
+                                );
+                                return rupiah(total);
+                              },
+                              loading: () => '...',
+                              error: (_, __) => 'Rp 0',
+                            ),
+                            subtitle: 'Total akumulasi pesanan',
+                            icon: Icons.account_balance_wallet_outlined,
+                            color: AppColors.primaryActive,
+                            onTap: () => onNavigateTab(3),
+                          ),
+                        ],
+                      ),
+                    ),
+                    mitraAsync.maybeWhen(
+                      data: (mitras) {
+                        final pendingCount = mitras
+                            .where((m) => m.status == 'PENDING_VERIFICATION')
+                            .length;
+                        if (pendingCount == 0) {
+                          return const SizedBox(height: AppSpacing.base);
+                        }
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: AppSpacing.base,
+                          ),
+                          child: _ModerationNotice(
+                            count: pendingCount,
+                            onTap: () => onNavigateTab(2),
+                          ),
+                        );
+                      },
+                      orElse: () => const SizedBox(height: AppSpacing.base),
+                    ),
+                    AppleSection(
+                      title: 'Akses Pintas Pengelolaan',
+                      child: AppleResponsiveGrid(
+                        minimumItemWidth: 128,
+                        maxColumns: 4,
+                        itemExtentBuilder: (context, _) {
+                          final scale =
+                              MediaQuery.textScalerOf(context).scale(14) / 14;
+                          return 124 + 72 * (scale.clamp(1.0, 2.0) - 1);
+                        },
+                        children: [
+                          _QuickShortcutCard(
+                            icon: Icons.inventory_2_outlined,
+                            title: 'Kelola Barang Ritel',
+                            subtitle: 'Tambah & edit stok produk',
+                            color: AppColors.primary,
+                            onTap: () => onNavigateTab(1),
+                          ),
+                          _QuickShortcutCard(
+                            icon: Icons.verified_user_outlined,
+                            title: 'Pengelolaan Mitra',
+                            subtitle: 'Verifikasi & kelola UMKM',
+                            color: AppColors.success,
+                            onTap: () => onNavigateTab(2),
+                          ),
+                          _QuickShortcutCard(
+                            icon: Icons.receipt_long_outlined,
+                            title: 'Pesanan Masuk',
+                            subtitle: 'Ubah status order',
+                            color: AppColors.warning,
+                            onTap: () => onNavigateTab(3),
+                          ),
+                          _QuickShortcutCard(
+                            icon: Icons.local_shipping_outlined,
+                            title: 'Penugasan Kurir',
+                            subtitle: 'Atur pengantaran barang',
+                            color: AppColors.primaryActive,
+                            onTap: () => onNavigateTab(3),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-            tooltip: 'Notifikasi',
-            onPressed: () => context.push('/notifications'),
           ),
         ],
       ),
-      body: RefreshIndicator(
-        color: AppColors.primary,
-        onRefresh: () async {
-          ref.invalidate(adminProductsProvider);
-          ref.invalidate(mitraListProvider);
-          ref.invalidate(adminOrdersProvider);
-        },
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(
-            parent: BouncingScrollPhysics(),
+    );
+  }
+}
+
+class _ModerationNotice extends StatelessWidget {
+  final int count;
+  final VoidCallback onTap;
+
+  const _ModerationNotice({required this.count, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return AdminCard(
+      onTap: onTap,
+      margin: EdgeInsets.zero,
+      padding: const EdgeInsets.all(AppSpacing.md),
+      borderColor: AppColors.warning,
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: AppColors.warning.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(AppRadius.sm),
+            ),
+            child: const Icon(
+              Icons.hourglass_top_rounded,
+              color: AppColors.warning,
+              size: 20,
+            ),
           ),
-          padding: const EdgeInsets.all(AppSpacing.base),
-          children: [
-            // Welcome Banner Card
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [AppColors.primary, AppColors.primaryActive],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(AppRadius.card),
-                boxShadow: AppElevation.card,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(AppRadius.pill),
-                        ),
-                        child: Text(
-                          'KOPERASI DESA DIGITAL',
-                          style: AppTypography.captionSmall.copyWith(
-                            color: AppColors.onPrimary,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ),
-                      const Icon(
-                        Icons.nature_people_rounded,
-                        color: AppColors.onPrimary,
-                        size: 24,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  Text(
-                    'Selamat datang,',
-                    style: AppTypography.captionSmall.copyWith(
-                      color: AppColors.onPrimary.withOpacity(0.85),
-                      fontSize: 13,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    user?.name ?? 'Admin Kopdes',
-                    style: AppTypography.titleLarge.copyWith(
-                      color: AppColors.onPrimary,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    'Kelola katalog barang, verifikasi mitra UMKM, dan atur alur pengiriman desa.',
-                    style: AppTypography.captionSmall.copyWith(
-                      color: AppColors.onPrimary.withOpacity(0.9),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-
-            // Section Metric Stats Header
-            Text(
-              'Statistik Sistem',
-              style: AppTypography.caption.copyWith(
-                color: AppColors.ink,
-                fontWeight: FontWeight.w700,
-                fontSize: 16,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-
-            // Stat Cards Grid
-            Row(
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Expanded(
-                  child: AdminStatCard(
-                    title: 'Barang Ritel',
-                    value: productsAsync.when(
-                      data: (list) => '${list.length}',
-                      loading: () => '...',
-                      error: (_, __) => '-',
-                    ),
-                    subtitle: productsAsync.when(
-                      data: (list) =>
-                          '${list.where((p) => p.isActive).length} Aktif',
-                      loading: () => '',
-                      error: (_, __) => '',
-                    ),
-                    icon: Icons.inventory_2_outlined,
-                    color: AppColors.primary,
-                    onTap: () => onNavigateTab(1),
+                Text(
+                  'Verifikasi Mitra UMKM',
+                  style: AppTypography.bodyMedium.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.ink,
                   ),
                 ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: AdminStatCard(
-                    title: 'Mitra UMKM',
-                    value: mitraAsync.when(
-                      data: (list) => '${list.length}',
-                      loading: () => '...',
-                      error: (_, __) => '-',
-                    ),
-                    subtitle: mitraAsync.when(
-                      data: (list) =>
-                          '${list.where((m) => m.status == 'PENDING_VERIFICATION').length} Menunggu',
-                      loading: () => '',
-                      error: (_, __) => '',
-                    ),
-                    icon: Icons.storefront_outlined,
-                    color: AppColors.success,
-                    onTap: () => onNavigateTab(2),
-                  ),
+                const SizedBox(height: 2),
+                Text(
+                  '$count pendaftaran baru menunggu peninjauan.',
+                  style: AppTypography.captionSmall,
                 ),
               ],
             ),
-            const SizedBox(height: AppSpacing.sm),
-            Row(
-              children: [
-                Expanded(
-                  child: AdminStatCard(
-                    title: 'Pesanan Masuk',
-                    value: ordersAsync.when(
-                      data: (list) => '${list.length}',
-                      loading: () => '...',
-                      error: (_, __) => '-',
-                    ),
-                    subtitle: ordersAsync.when(
-                      data: (list) =>
-                          '${list.where((o) => o.status == 'PENDING' || o.status == 'PAID').length} Perlu Proses',
-                      loading: () => '',
-                      error: (_, __) => '',
-                    ),
-                    icon: Icons.receipt_long_outlined,
-                    color: AppColors.warning,
-                    onTap: () => onNavigateTab(3),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: AdminStatCard(
-                    title: 'Omzet Koperasi',
-                    value: ordersAsync.when(
-                      data: (list) {
-                        final total = list.fold<num>(
-                          0,
-                          (sum, item) => sum + item.totalAmount,
-                        );
-                        return rupiah(total);
-                      },
-                      loading: () => '...',
-                      error: (_, __) => 'Rp 0',
-                    ),
-                    subtitle: 'Total akumulasi pesanan',
-                    icon: Icons.account_balance_wallet_outlined,
-                    color: AppColors.primaryActive,
-                    onTap: () => onNavigateTab(3),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.xl),
-
-            // Moderation & Action Alert Notice if any pending items
-            mitraAsync.maybeWhen(
-              data: (mitras) {
-                final pendingCount = mitras
-                    .where((m) => m.status == 'PENDING_VERIFICATION')
-                    .length;
-                if (pendingCount == 0) return const SizedBox.shrink();
-
-                return Column(
-                  children: [
-                    AdminCard(
-                      borderColor: AppColors.warning,
-                      gradient: LinearGradient(
-                        colors: [
-                          AppColors.warning.withOpacity(0.08),
-                          AppColors.canvas,
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: AppColors.warning.withOpacity(0.2),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.hourglass_top_rounded,
-                              color: AppColors.warning,
-                              size: 22,
-                            ),
-                          ),
-                          const SizedBox(width: AppSpacing.md),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Verifikasi Mitra UMKM',
-                                  style: AppTypography.bodyMedium.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.ink,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'Ada $pendingCount pendaftaran mitra UMKM baru menunggu verifikasi Anda.',
-                                  style: AppTypography.captionSmall,
-                                ),
-                              ],
-                            ),
-                          ),
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.warning,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: AppSpacing.md,
-                                vertical: 8,
-                              ),
-                              minimumSize: Size.zero,
-                            ),
-                            onPressed: () => onNavigateTab(2),
-                            child: Text(
-                              'Tinjau',
-                              style: AppTypography.buttonSm.copyWith(
-                                color: AppColors.onPrimary,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-                  ],
-                );
-              },
-              orElse: () => const SizedBox.shrink(),
-            ),
-
-            // Quick Access Grid
-            Text(
-              'Akses Pintas Pengelolaan',
-              style: AppTypography.caption.copyWith(
-                color: AppColors.ink,
-                fontWeight: FontWeight.w700,
-                fontSize: 16,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-
-            GridView.count(
-              crossAxisCount: 2,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisSpacing: AppSpacing.md,
-              mainAxisSpacing: AppSpacing.md,
-              childAspectRatio: 1.1,
-              children: [
-                _QuickShortcutCard(
-                  icon: Icons.inventory_2_outlined,
-                  title: 'Kelola Barang Ritel',
-                  subtitle: 'Tambah & edit stok produk',
-                  color: AppColors.primary,
-                  onTap: () => onNavigateTab(1),
-                ),
-                _QuickShortcutCard(
-                  icon: Icons.verified_user_outlined,
-                  title: 'Pengelolaan Mitra',
-                  subtitle: 'Verifikasi & kelola UMKM',
-                  color: AppColors.success,
-                  onTap: () => onNavigateTab(2),
-                ),
-                _QuickShortcutCard(
-                  icon: Icons.receipt_long_outlined,
-                  title: 'Pesanan Masuk',
-                  subtitle: 'Ubah status order',
-                  color: AppColors.warning,
-                  onTap: () => onNavigateTab(3),
-                ),
-                _QuickShortcutCard(
-                  icon: Icons.local_shipping_outlined,
-                  title: 'Penugasan Kurir',
-                  subtitle: 'Atur pengantaran barang',
-                  color: AppColors.primaryActive,
-                  onTap: () => onNavigateTab(3),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.section),
-          ],
-        ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          const Icon(Icons.chevron_right_rounded, color: AppColors.mutedSoft),
+        ],
       ),
     );
   }
@@ -492,33 +379,43 @@ class _QuickShortcutCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return AdminCard(
       onTap: onTap,
-      padding: const EdgeInsets.all(AppSpacing.base),
+      margin: EdgeInsets.zero,
+      padding: const EdgeInsets.all(AppSpacing.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(AppRadius.md),
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(AppRadius.sm),
             ),
-            child: Icon(icon, color: color, size: 22),
+            child: Icon(icon, color: color, size: 19),
           ),
-          const Spacer(),
-          Text(
-            title,
-            style: AppTypography.bodyMedium.copyWith(
-              fontWeight: FontWeight.w700,
-              color: AppColors.ink,
+          const SizedBox(height: AppSpacing.sm),
+          Flexible(
+            child: Text(
+              title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: AppTypography.bodyMedium.copyWith(
+                fontWeight: FontWeight.w700,
+                color: AppColors.ink,
+              ),
             ),
           ),
           const SizedBox(height: 2),
-          Text(
-            subtitle,
-            style: AppTypography.captionSmall.copyWith(
-              color: AppColors.muted,
-              fontSize: 11,
+          Flexible(
+            child: Text(
+              subtitle,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: AppTypography.captionSmall.copyWith(
+                color: AppColors.muted,
+                fontSize: 11,
+              ),
             ),
           ),
         ],

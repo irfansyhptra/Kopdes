@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/theme.dart';
+import '../../../../shared/widgets/apple_ui.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../widgets/admin_ui.dart';
 
@@ -13,80 +14,81 @@ class AdminProfileScreen extends ConsumerWidget {
     final user = ref.watch(authProvider).user;
 
     return Scaffold(
-      backgroundColor: AppColors.canvas,
+      backgroundColor: AppColors.surfaceSoft,
       appBar: adminAppBar(context, 'Profil'),
-      body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.base),
-        children: [
-          const SizedBox(height: AppSpacing.md),
-          Center(
-            child: CircleAvatar(
-              radius: 44,
-              backgroundColor: AppColors.primarySoft,
+      body: AppleContentBoundary(
+        child: ListView(
+          padding: const EdgeInsets.only(top: AppSpacing.base, bottom: 112),
+          children: [
+            const SizedBox(height: AppSpacing.md),
+            Center(
+              child: CircleAvatar(
+                radius: 44,
+                backgroundColor: AppColors.primarySoft,
+                child: Text(
+                  (user?.name.isNotEmpty ?? false)
+                      ? user!.name[0].toUpperCase()
+                      : 'A',
+                  style: AppTypography.displayMedium.copyWith(
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Center(
               child: Text(
-                (user?.name.isNotEmpty ?? false)
-                    ? user!.name[0].toUpperCase()
-                    : 'A',
-                style: AppTypography.displayMedium.copyWith(
-                  color: AppColors.primary,
+                user?.name ?? 'Admin Kopdes',
+                style: AppTypography.titleMedium.copyWith(
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Center(
-            child: Text(
-              user?.name ?? 'Admin Kopdes',
-              style: AppTypography.titleMedium.copyWith(
-                fontWeight: FontWeight.w700,
+            const SizedBox(height: 2),
+            Center(
+              child: StatusChip(
+                label: _roleLabel(user?.role),
+                color: AppColors.primary,
               ),
             ),
-          ),
-          const SizedBox(height: 2),
-          Center(
-            child: StatusChip(
-              label: _roleLabel(user?.role),
-              color: AppColors.primary,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.xl),
-          AdminCard(
-            child: Column(
-              children: [
-                _infoTile(Icons.email_outlined, 'Email', user?.email ?? '-'),
-                Divider(color: AppColors.hairlineSoft, height: 1),
-                _infoTile(
-                  Icons.phone_outlined,
-                  'Telepon',
-                  (user?.phone.isNotEmpty ?? false) ? user!.phone : '-',
-                ),
-                Divider(color: AppColors.hairlineSoft, height: 1),
-                _infoTile(
-                  Icons.store_mall_directory_outlined,
-                  'Koperasi',
-                  'KOPDES',
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          OutlinedButton.icon(
-            icon: const Icon(Icons.logout_rounded, color: AppColors.error),
-            label: Text(
-              'Keluar',
-              style: AppTypography.buttonMd.copyWith(color: AppColors.error),
-            ),
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size.fromHeight(50),
-              side: BorderSide(color: AppColors.error.withOpacity(0.4)),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadius.card),
+            const SizedBox(height: AppSpacing.base),
+            AdminCard(
+              child: Column(
+                children: [
+                  _infoTile(Icons.email_outlined, 'Email', user?.email ?? '-'),
+                  Divider(color: AppColors.hairlineSoft, height: 1),
+                  _infoTile(
+                    Icons.phone_outlined,
+                    'Telepon',
+                    (user?.phone.isNotEmpty ?? false) ? user!.phone : '-',
+                  ),
+                  Divider(color: AppColors.hairlineSoft, height: 1),
+                  _infoTile(
+                    Icons.store_mall_directory_outlined,
+                    'Koperasi',
+                    'KOPDES',
+                  ),
+                ],
               ),
             ),
-            onPressed: () => _confirmLogout(context, ref),
-          ),
-          const SizedBox(height: AppSpacing.section),
-        ],
+            const SizedBox(height: AppSpacing.base),
+            OutlinedButton.icon(
+              icon: const Icon(Icons.logout_rounded, color: AppColors.error),
+              label: Text(
+                'Keluar',
+                style: AppTypography.buttonMd.copyWith(color: AppColors.error),
+              ),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size.fromHeight(50),
+                side: BorderSide(color: AppColors.error.withValues(alpha: 0.4)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.card),
+                ),
+              ),
+              onPressed: () => _confirmLogout(context, ref),
+            ),
+          ],
+        ),
       ),
     );
   }

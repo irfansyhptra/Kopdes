@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../auth/domain/entities/user.dart';
+import '../../../../shared/widgets/apple_ui.dart';
 import '../employee_theme.dart';
 import '../providers/employee_providers.dart';
 
@@ -82,23 +83,16 @@ class QuickAccessSection extends ConsumerWidget {
       children: [
         const KopdesSectionHeader(title: 'Akses Cepat'),
         const SizedBox(height: KopdesSpacing.md),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            const gap = KopdesSpacing.sm;
-            final width =
-                (constraints.maxWidth - gap * (columns - 1)) / columns;
-            return Wrap(
-              spacing: gap,
-              runSpacing: gap,
-              children: [
-                for (final action in _actions)
-                  SizedBox(
-                    width: width,
-                    child: _QuickTile(action: action),
-                  ),
-              ],
-            );
+        AppleResponsiveGrid(
+          minimumItemWidth: 64,
+          maxColumns: columns,
+          spacing: KopdesSpacing.sm,
+          runSpacing: KopdesSpacing.sm,
+          itemExtentBuilder: (context, _) {
+            final scale = MediaQuery.textScalerOf(context).scale(12) / 12;
+            return 86 + 38 * (scale.clamp(1.0, 2.0) - 1);
           },
+          children: [for (final action in _actions) _QuickTile(action: action)],
         ),
       ],
     );

@@ -1,19 +1,22 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/theme.dart';
+import '../../../shared/widgets/apple_ui.dart';
+
 /// Palet dashboard Pegawai Kopdes.
 ///
 /// Terpisah dari `AppColors` karena dashboard staf memakai identitas Merah
 /// Putih yang lebih pekat daripada etalase pelanggan; menggabungkannya akan
 /// mengubah warna seluruh aplikasi pembeli.
 class KopdesEmployeeColors {
-  static const primary = Color(0xFFD7192D);
-  static const darkRed = Color(0xFF79000D);
-  static const brightRed = Color(0xFFED102D);
-  static const background = Color(0xFFF7F7F8);
-  static const surface = Color(0xFFFFFFFF);
-  static const textPrimary = Color(0xFF1D1D1F);
-  static const textSecondary = Color(0xFF6E6E73);
-  static const divider = Color(0x1A3C3C43);
+  static const primary = AppColors.primary;
+  static const darkRed = AppColors.darkRed;
+  static const brightRed = AppColors.brightRed;
+  static const background = AppColors.surfaceSoft;
+  static const surface = AppColors.canvas;
+  static const textPrimary = AppColors.ink;
+  static const textSecondary = AppColors.muted;
+  static const divider = AppColors.hairlineSoft;
   static const success = Color(0xFF159455);
   static const warning = Color(0xFFF59E0B);
   static const info = Color(0xFF2878D0);
@@ -36,10 +39,33 @@ class KopdesSpacing {
 }
 
 class KopdesRadii {
-  static const double surface = 18;
-  static const double tile = 16;
+  static const double surface = AppRadius.card;
+  static const double tile = AppRadius.lg;
   static const double bottomNav = 24;
   static const double pill = 999;
+}
+
+/// Batas baca untuk halaman operasional Kopdes di ponsel dan tablet.
+class KopdesContentBoundary extends StatelessWidget {
+  const KopdesContentBoundary({
+    super.key,
+    required this.child,
+    this.padding,
+    this.maxWidth = 920,
+  });
+
+  final Widget child;
+  final EdgeInsetsGeometry? padding;
+  final double maxWidth;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppleContentBoundary(
+      maxWidth: maxWidth,
+      padding: padding,
+      child: child,
+    );
+  }
 }
 
 /// Kartu putih dengan sudut lembut — dipakai KPI, pesanan, stok, keuangan.
@@ -63,6 +89,7 @@ class KopdesSurface extends StatelessWidget {
         color: KopdesEmployeeColors.surface,
         borderRadius: BorderRadius.circular(radius),
         border: Border.all(color: KopdesEmployeeColors.divider, width: 0.5),
+        boxShadow: AppElevation.soft,
       ),
       child: child,
     );
