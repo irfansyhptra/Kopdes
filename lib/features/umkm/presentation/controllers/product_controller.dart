@@ -249,37 +249,6 @@ class ProductController extends StateNotifier<AsyncValue<void>> {
       _ref = ref,
       super(const AsyncValue.data(null));
 
-  Future<bool> createProduct({
-    required String name,
-    required String description,
-    required double price,
-    required int stock,
-    required String categoryId,
-    List<dynamic>? images,
-  }) async {
-    state = const AsyncValue.loading();
-    try {
-      await _repository.createProduct(
-        name: name,
-        description: description,
-        price: price,
-        stock: stock,
-        categoryId: categoryId,
-        images: images,
-      );
-      state = const AsyncValue.data(null);
-      // Produk baru belum punya tempat di halaman yang sudah dimuat, dan
-      // kategorinya bisa jadi chip baru.
-      _ref.invalidate(sellerProductListProvider);
-      _ref.invalidate(sellerStoreCategoriesProvider);
-      _refreshDashboard();
-      return true;
-    } catch (e, st) {
-      state = AsyncValue.error(e, st);
-      return false;
-    }
-  }
-
   Future<bool> updateProduct({
     required String id,
     String? name,

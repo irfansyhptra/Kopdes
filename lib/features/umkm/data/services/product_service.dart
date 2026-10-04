@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/product_model.dart';
@@ -120,6 +122,24 @@ class ProductService {
     final response = await dio.put('/seller/products/$id', data: formData);
     final responseMap = response.data as Map<String, dynamic>;
     return ProductModel.fromJson(responseMap['data'] as Map<String, dynamic>);
+  }
+
+  /// Menambah SATU foto ke produk lewat `PUT /seller/products/:id`.
+  ///
+  /// Satu foto per permintaan, sengaja: Vercel menolak badan permintaan di
+  /// atas 4,5 MB, dan lima foto ponsel dalam satu kiriman melewatinya —
+  /// produk gagal tersimpan seluruhnya. Foto pertama yang masuk ke produk
+  /// tanpa foto menjadi foto utama, jadi urutan unggah = urutan tampil.
+  Future<void> addProductImage(String id, String path) async {
+    final name = path.split(Platform.pathSeparator).last;
+    await dio.put(
+      '/seller/products/$id',
+      data: FormData.fromMap({
+        // Nama berkas berekstensi: Dio menebak Content-Type darinya, dan
+        // backend hanya menerima image/jpeg, png, webp.
+        'images': await MultipartFile.fromFile(path, filename: name),
+      }),
+    );
   }
 
   Future<void> deleteProduct(String id) async {

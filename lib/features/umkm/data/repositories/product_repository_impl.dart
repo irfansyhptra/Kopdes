@@ -81,5 +81,9 @@ class ProductRepositoryImpl implements ProductRepository {
   Future<void> deleteProduct(String id) => service.deleteProduct(id);
 
   @override
+  Future<void> addProductImage(String id, String path) =>
+      service.addProductImage(id, path);
+
+  @override
   Future<List<ProductCategoryModel>> getCategories() => service.getCategories();
 }

@@ -33,5 +33,8 @@ abstract class ProductRepository {
     List<dynamic>? newImages,
   });
   Future<void> deleteProduct(String id);
+
+  /// Satu foto per panggilan — lihat `ProductService.addProductImage`.
+  Future<void> addProductImage(String id, String path);
   Future<List<ProductCategoryModel>> getCategories();
 }
