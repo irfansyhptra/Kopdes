@@ -24,7 +24,6 @@ import '../widgets/category_list_widget.dart';
 import '../widgets/compact_home_header.dart';
 import '../widgets/home_header_delegate.dart';
 import '../widgets/membership_summary_card.dart';
-import '../widgets/promo_product_widget.dart';
 import '../../../koperasi/presentation/widgets/nearby_koperasi_section.dart';
 import '../../../koperasi/presentation/widgets/nearby_mitra_section.dart';
 import '../../../discovery/domain/discovery.dart';
@@ -110,46 +109,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   /// Tinggi bilah navigasi mengambang; dipakai sebagai padding bawah supaya
   /// produk terakhir tidak tertutup.
   static const double _navBarClearance = 96;
-
-  static const List<PromoProductItemData> _promoProducts = [
-    PromoProductItemData(
-      id: 'promo-1',
-      name: 'Beras Premium',
-      subtitle: 'Larisst 5kg',
-      discountBadge: '-20%',
-      currentPrice: 64000,
-      originalPrice: 80000,
-      imageUrl: 'https://picsum.photos/id/1050/400/300',
-      isFavorite: true,
-    ),
-    PromoProductItemData(
-      id: 'promo-2',
-      name: 'Minyak Goreng',
-      subtitle: 'Bimoli 2L Pouch',
-      discountBadge: '-15%',
-      currentPrice: 34000,
-      originalPrice: 40000,
-      imageUrl: 'https://picsum.photos/id/1051/400/300',
-    ),
-    PromoProductItemData(
-      id: 'promo-3',
-      name: 'Indomie Soto Mie',
-      subtitle: 'Karton (40x85g)',
-      discountBadge: '-18%',
-      currentPrice: 95000,
-      originalPrice: 116000,
-      imageUrl: 'https://picsum.photos/id/1070/400/300',
-    ),
-    PromoProductItemData(
-      id: 'promo-4',
-      name: 'Sunlight Jeruk Nipis',
-      subtitle: 'Pouch 755ml',
-      discountBadge: '-17%',
-      currentPrice: 15500,
-      originalPrice: 18700,
-      imageUrl: 'https://picsum.photos/id/1080/400/300',
-    ),
-  ];
 
   Future<void> _onRefresh() async {
     ref.invalidate(categoriesProvider);
@@ -381,18 +340,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                   const SizedBox(height: AppSpacing.base),
 
-                  // 7. Promo Terbaik.
-                  PromoProductWidget(
-                    products: _promoProducts,
-                    onProductTap: (_) => context.go('/products'),
-                    onAddToCartTap: (item) => _showSnackBarMessage(
-                      '${item.name} ditambahkan ke keranjang',
-                    ),
-                    onFavoriteToggle: (_) {},
-                    onSeeAllTap: () => context.go('/products'),
-                  ),
-                  const SizedBox(height: AppSpacing.base),
-
+                  // "Promo Terbaik" dihapus: empat produk & harga coret yang
+                  // ditulis di aplikasi, dengan tombol "tambah" yang tidak
+                  // menambahkan apa pun. Backend belum punya promo/diskon.
                   // 6. Produk UMKM Pilihan.
                   FeaturedUmkmSection(onAddToCart: _handleAddDiscoveryProduct),
                   const SizedBox(height: AppSpacing.lg),
