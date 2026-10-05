@@ -62,6 +62,7 @@ import '../../features/admin/presentation/screens/courier_management_screen.dart
 import '../../features/admin/presentation/screens/admin_profile_screen.dart';
 import '../../features/admin/data/kopdes_console.dart';
 import '../../features/admin/presentation/screens/payout_queue_screen.dart';
+import '../../features/admin/presentation/screens/mitra_income_screen.dart';
 import '../../features/admin/presentation/screens/staff_accounts_screen.dart';
 import '../../features/umkm/presentation/screens/umkm_apply_screen.dart';
 import '../../features/chat/presentation/screens/conversation_list_screen.dart';
@@ -600,6 +601,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/admin/kopdes/store/security',
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const AccountSecurityScreen(),
+      ),
+      GoRoute(
+        path: '/admin/mitra-income',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const MitraIncomeScreen(),
       ),
       GoRoute(
         path: '/admin/staff',

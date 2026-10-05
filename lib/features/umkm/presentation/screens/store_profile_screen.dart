@@ -885,6 +885,13 @@ class _ManageSection extends ConsumerWidget {
             .then((_) => ref.invalidate(kopdesDashboardProvider)),
       ),
       _ManageTile(
+        icon: Icons.savings_outlined,
+        tint: AppColors.success,
+        title: 'Uang masuk dari mitra',
+        subtitle: 'Fee penjualan barang mitra',
+        onTap: () => context.push('/admin/mitra-income'),
+      ),
+      _ManageTile(
         icon: Icons.gpp_maybe_outlined,
         tint: AppColors.warning,
         title: 'Moderasi produk UMKM',
