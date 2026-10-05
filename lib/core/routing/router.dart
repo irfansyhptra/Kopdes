@@ -99,36 +99,48 @@ Widget _chatDetail(GoRouterState state, ChatChannel fallbackChannel) {
   );
 }
 
-// Class to adapt Stream to Listenable for GoRouter refreshListenable
-class GoRouterRefreshStream extends ChangeNotifier {
-  late final StreamSubscription<dynamic> _subscription;
-
-  GoRouterRefreshStream(Stream<dynamic> stream) {
-    notifyListeners();
-    _subscription = stream.asBroadcastStream().listen(
-      (dynamic _) => notifyListeners(),
-    );
-  }
-
-  @override
-  void dispose() {
-    _subscription.cancel();
-    super.dispose();
-  }
+/// Memberi tahu GoRouter bahwa `redirect` perlu dijalankan ulang.
+///
+/// Sekadar lonceng: ia tidak membawa data apa pun, dan tidak membangun
+/// ulang apa pun. Itulah bedanya dengan `ref.watch` di badan provider.
+class _RedirectTrigger extends ChangeNotifier {
+  void ping() => notifyListeners();
 }
 
+/// Router aplikasi. **Dibuat sekali**, lalu hanya disegarkan.
+///
+/// Dulu badan provider ini memanggil `ref.watch(authProvider)`, sehingga
+/// setiap perubahan status masuk MEMBANGUN ULANG GoRouter. `MaterialApp
+/// .router` lalu memasang Navigator yang sama sekali baru, dan rute yang
+/// didorong secara imperatif — dialog — ikut terbuang bersama yang lama.
+///
+/// Akibatnya di perangkat: menekan "Masuk" menyetel status ke `loading`,
+/// router dibangun ulang pada detik yang sama, dan modal tunggu yang baru
+/// saja muncul langsung hilang. Hal yang sama menimpa modal "Gagal masuk".
+/// Dua-duanya lulus di tes karena tes itu memasang layarnya di `MaterialApp`
+/// polos, tanpa router yang bisa membuangnya.
+///
+/// Sekarang keadaan dibaca di dalam `redirect` dengan `ref.read`, dan
+/// perubahannya cukup membunyikan [_RedirectTrigger] lewat `ref.listen` —
+/// `redirect` dijalankan ulang tanpa satu pun widget dibangun ulang.
 final routerProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authProvider);
-  final splashFinished = ref.watch(splashFinishedProvider);
-  final onboardingCompleted = ref.watch(onboardingCompletedProvider);
+  final trigger = _RedirectTrigger();
+  ref.onDispose(trigger.dispose);
+  ref.listen(authProvider, (_, __) => trigger.ping());
+  ref.listen(splashFinishedProvider, (_, __) => trigger.ping());
+  ref.listen(onboardingCompletedProvider, (_, __) => trigger.ping());
 
   return GoRouter(
     navigatorKey: rootNavigatorKey,
     initialLocation: '/splash',
-    refreshListenable: GoRouterRefreshStream(
-      ref.watch(authProvider.notifier).stream,
-    ),
+    refreshListenable: trigger,
     redirect: (context, state) {
+      // Dibaca segar tiap kali `redirect` berjalan, bukan ditangkap saat
+      // provider dibuat — kalau ditangkap, nilainya beku selamanya.
+      final authState = ref.read(authProvider);
+      final splashFinished = ref.read(splashFinishedProvider);
+      final onboardingCompleted = ref.read(onboardingCompletedProvider);
+
       final status = authState.status;
       final user = authState.user;
       final currentLoc = state.uri.path;

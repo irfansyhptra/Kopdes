@@ -277,9 +277,10 @@ abstract class _FeedbackCardApi {
 class AppleFeedback {
   final _FeedbackCardApi _state;
   final NavigatorState _navigator;
+  final Route<void> _route;
   bool _closed = false;
 
-  AppleFeedback._(this._state, this._navigator);
+  AppleFeedback._(this._state, this._navigator, this._route);
 
   /// Menampilkan overlay pemuatan dan mengembalikan pegangannya.
   ///
@@ -290,15 +291,19 @@ class AppleFeedback {
     final key = GlobalKey<_AppleFeedbackCardState>();
     final navigator = Navigator.of(context, rootNavigator: true);
 
-    showDialog<void>(
+    // Rutenya didorong sendiri, bukan lewat `showDialog`, supaya objek
+    // rutenya dipegang. `showDialog` tidak mengembalikannya, dan tanpa itu
+    // penutupan hanya bisa menebak lewat `canPop()` — yang menjawab "ada
+    // sesuatu di atas tumpukan", bukan "dialog ini masih ada".
+    final route = DialogRoute<void>(
       context: context,
-      useRootNavigator: true,
       barrierDismissible: false,
       barrierColor: const Color(0x591D1D1F),
       builder: (_) => _AppleFeedbackCard(key: key, message: message),
     );
+    navigator.push(route);
 
-    return AppleFeedback._(key.currentState ?? _pending(key), navigator);
+    return AppleFeedback._(key.currentState ?? _pending(key), navigator, route);
   }
 
   /// `showDialog` belum membangun kartunya saat [show] kembali, jadi
@@ -316,10 +321,15 @@ class AppleFeedback {
       _finish(_Phase.failure, title, body, null);
 
   /// Menutup tanpa menampilkan hasil.
+  ///
+  /// `removeRoute` atas rute miliknya sendiri, bukan `pop()`: ia menutup
+  /// tepat dialog ini di mana pun posisinya dalam tumpukan, dan tidak ikut
+  /// menutup halaman yang kebetulan ada di atasnya. `isActive` menjaga
+  /// perkara rutenya sudah lenyap lebih dulu — mis. navigator diganti.
   void dismiss() {
     if (_closed) return;
     _closed = true;
-    if (_navigator.canPop()) _navigator.pop();
+    if (_route.isActive) _navigator.removeRoute(_route);
   }
 
   Future<void> _finish(

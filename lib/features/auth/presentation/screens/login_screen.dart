@@ -56,8 +56,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         if (error != null) throw AuthFailure(error);
         return true;
       },
-      successTitle: 'Berhasil masuk',
-      successMessage: 'Sebentar, menyiapkan berandamu.',
+      // Tanpa modal sukses: begitu sesi terbentuk, router sudah memindahkan
+      // halaman ke beranda di belakang overlay. Menahan kabar "Berhasil
+      // masuk" selama 1,4 detik hanya menunda orang melihat berandanya.
       failureTitle: 'Gagal masuk',
     );
   }
