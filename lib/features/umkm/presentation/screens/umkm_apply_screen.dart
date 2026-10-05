@@ -88,8 +88,10 @@ class _StatusCard extends ConsumerWidget {
       ),
       _ => (
         'Menunggu verifikasi',
-        'Pengurus $kopdes sedang memeriksa data usaha Anda. Anda akan '
-            'mendapat notifikasi setelah diputuskan.',
+        // Belum ada notifikasi dari server: notifikasi aplikasi hanya
+        // mencatat kejadian di ponsel ini. Jangan menjanjikan kabar.
+        'Pengurus $kopdes sedang memeriksa data usaha Anda. Buka halaman '
+            'ini lagi untuk melihat keputusannya.',
       ),
     };
     return StoreSurface(
