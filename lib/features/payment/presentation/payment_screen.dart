@@ -174,60 +174,78 @@ class PaymentScreen extends ConsumerWidget {
       }
     });
 
-    return Scaffold(
-      backgroundColor: AppColors.surfaceSoft,
-      body: Column(
-        children: [
-          SellerSubpageHeader(
-            title: target.topUp ? 'Isi Ulang Saldo' : 'Pembayaran',
-            subtitle: 'Diproses aman oleh Midtrans',
-            onBack: () => context.pop(),
-          ),
-          Expanded(
-            child: async.when(
-              loading: () => const StoreSubpageBody(
-                children: [SectionSkeleton(height: 420)],
-              ),
-              error: (e, _) => StoreSubpageBody(
-                children: [
-                  SectionError(
-                    message:
-                        'Tagihan belum berhasil dibuat. ${networkErrorMessage(e)}',
-                    onRetry: session.start,
-                  ),
-                ],
-              ),
-              data: (p) => StoreSubpageBody(
-                children: [
-                  _AmountCard(pay: p),
-                  const SizedBox(height: AppSpacing.md),
-                  switch (p.status) {
-                    PayStatus.pending => _Instructions(
-                      pay: p,
-                      onCheck: session.check,
-                      onChangeMethod: target.topUp
-                          ? null
-                          : () => _pickMethod(context, ref),
+    // Checkout sampai ke sini lewat `context.go`, yang MENGGANTI tumpukan
+    // halaman — jadi tidak ada apa pun untuk di-`pop`, dan tombol kembali
+    // maupun tombol kembali ponsel sama-sama diam. Tagihannya sendiri sudah
+    // tersimpan, jadi yang benar bukan mengunci layar ini, melainkan
+    // memulangkan pembeli ke pesanannya (atau ke dompet untuk isi ulang),
+    // tempat tagihan itu bisa dibuka lagi.
+    void back() {
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        context.go(target.topUp ? '/wallet' : '/orders/${target.id}');
+      }
+    }
+
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) back();
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.surfaceSoft,
+        body: Column(
+          children: [
+            SellerSubpageHeader(
+              title: target.topUp ? 'Isi Ulang Saldo' : 'Pembayaran',
+              subtitle: 'Diproses aman oleh Midtrans',
+              onBack: back,
+            ),
+            Expanded(
+              child: async.when(
+                loading: () => const StoreSubpageBody(
+                  children: [SectionSkeleton(height: 420)],
+                ),
+                error: (e, _) => StoreSubpageBody(
+                  children: [
+                    SectionError(
+                      message:
+                          'Tagihan belum berhasil dibuat. ${networkErrorMessage(e)}',
+                      onRetry: session.start,
                     ),
-                    PayStatus.paid => _Done(
-                      topUp: target.topUp,
-                      onDone: () => target.topUp
-                          ? context.pop()
-                          : context.go('/orders/${target.id}'),
-                    ),
-                    _ => _Failed(
-                      expired: p.status == PayStatus.expired,
-                      topUp: target.topUp,
-                      onRetry: target.topUp
-                          ? () => context.pop()
-                          : session.start,
-                    ),
-                  },
-                ],
+                  ],
+                ),
+                data: (p) => StoreSubpageBody(
+                  children: [
+                    _AmountCard(pay: p),
+                    const SizedBox(height: AppSpacing.md),
+                    switch (p.status) {
+                      PayStatus.pending => _Instructions(
+                        pay: p,
+                        onCheck: session.check,
+                        onChangeMethod: target.topUp
+                            ? null
+                            : () => _pickMethod(context, ref),
+                      ),
+                      PayStatus.paid => _Done(
+                        topUp: target.topUp,
+                        onDone: () => target.topUp
+                            ? back()
+                            : context.go('/orders/${target.id}'),
+                      ),
+                      _ => _Failed(
+                        expired: p.status == PayStatus.expired,
+                        topUp: target.topUp,
+                        onRetry: target.topUp ? back : session.start,
+                      ),
+                    },
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
