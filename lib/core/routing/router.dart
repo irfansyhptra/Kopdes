@@ -50,7 +50,8 @@ import '../../features/umkm/presentation/screens/account_security_screen.dart';
 import '../../features/ai_assistant/presentation/screens/ai_assistant_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
 import '../../features/admin/presentation/screens/admin_dashboard_screen.dart';
-import '../../features/courier/presentation/screens/courier_dashboard_screen.dart';
+import '../../features/courier/presentation/screens/courier_console_screen.dart';
+import '../../features/courier/presentation/screens/courier_task_detail_screen.dart';
 import '../../features/product/presentation/screens/admin/admin_product_list_screen.dart';
 import '../../features/product/presentation/screens/admin/admin_product_form_screen.dart';
 import '../../features/product/presentation/screens/admin/admin_category_list_screen.dart';
@@ -415,13 +416,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const SessionExpiredScreen(),
       ),
+      // `:orderId`, bukan deliveryId: pelacakan dibaca per pesanan — itu
+      // yang dipegang pembeli, dan endpoint-nya memakai kunci yang sama.
       GoRoute(
-        path: '/tracking/:id',
+        path: '/tracking/:orderId',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) {
-          final id = state.pathParameters['id'] ?? '';
-          return TrackingScreen(deliveryId: id);
-        },
+        builder: (context, state) =>
+            TrackingScreen(orderId: state.pathParameters['orderId'] ?? ''),
       ),
       GoRoute(
         path: '/admin',
@@ -461,10 +462,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           // Tanpa deliveryId, layar pelacakan tidak punya yang bisa dilacak;
           // pegawai dikirim ke daftar pengantaran untuk memilih dulu.
-          final id = state.uri.queryParameters['deliveryId'];
+          final id = state.uri.queryParameters['orderId'];
           return id == null || id.isEmpty
               ? const CourierManagementScreen()
-              : TrackingScreen(deliveryId: id);
+              : TrackingScreen(orderId: id);
         },
       ),
       GoRoute(
@@ -674,6 +675,18 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/courier',
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const CourierDashboardScreen(),
+        routes: [
+          GoRoute(
+            path: 'tugas/:id',
+            builder: (context, state) => CourierTaskDetailScreen(
+              deliveryId: state.pathParameters['id'] ?? '',
+            ),
+          ),
+          GoRoute(
+            path: 'akun/keamanan',
+            builder: (context, state) => const AccountSecurityScreen(),
+          ),
+        ],
       ),
       GoRoute(
         path: '/umkm',

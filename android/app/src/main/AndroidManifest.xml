@@ -72,5 +72,17 @@
             <action android:name="android.intent.action.VIEW"/>
             <data android:scheme="https"/>
         </intent>
+        <!-- Navigasi kurir: skema Google Maps membuka langsung mode
+             mengemudi. Tanpa dideklarasikan, canLaunchUrl selalu false dan
+             tombol Navigasi jatuh ke tautan web. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="google.navigation"/>
+        </intent>
+        <!-- Tombol Telepon di kartu pembeli dan toko. -->
+        <intent>
+            <action android:name="android.intent.action.DIAL"/>
+            <data android:scheme="tel"/>
+        </intent>
     </queries>
 </manifest>

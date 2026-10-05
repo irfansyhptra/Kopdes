@@ -88,7 +88,7 @@ class _AccountSecurityScreenState extends ConsumerState<AccountSecurityScreen> {
           borderRadius: BorderRadius.circular(AppleRadii.tile),
         ),
         title: const Text('Keluar dari akun?'),
-        content: const Text('Anda perlu masuk lagi untuk mengelola toko.'),
+        content: const Text('Anda perlu masuk lagi untuk membuka akun ini.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),

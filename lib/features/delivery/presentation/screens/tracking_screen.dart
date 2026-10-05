@@ -1,258 +1,102 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import '../../../../core/network/error_message.dart';
 import '../../../../core/theme/theme.dart';
-import '../../../../localization/app_localizations.dart';
+import '../../../../shared/widgets/apple_ui.dart';
+import '../../../courier/data/courier_models.dart';
+import '../../../umkm/presentation/widgets/seller_page_ui.dart';
+import '../../../umkm/presentation/widgets/store_page_ui.dart';
+import '../../data/tracking_repository.dart';
+import '../widgets/delivery_map.dart';
 
-class TrackingScreen extends StatelessWidget {
-  final String deliveryId;
+/// Lacak Pesanan — peta posisi kurir dan tujuan, untuk pemesan.
+///
+/// Dulu halaman ini menggambar peta palsu dengan `CustomPaint` dan dua
+/// penanda yang tidak berhubungan dengan pesanan mana pun. Sekarang isinya
+/// titik yang benar-benar dikirim kurir; bila ia belum mengirim satu pun,
+/// halaman mengatakannya apa adanya alih-alih menampilkan peta karangan.
+class TrackingScreen extends ConsumerStatefulWidget {
+  final String orderId;
 
-  const TrackingScreen({super.key, required this.deliveryId});
+  const TrackingScreen({super.key, required this.orderId});
 
-  Widget _buildHeaderButton({
-    required Widget child,
-    Color backgroundColor = const Color(0x26FFFFFF),
-    Color borderColor = const Color(0x1AFFFFFF),
-  }) {
-    return Container(
-      width: 40,
-      height: 40,
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: borderColor, width: 1.2),
-      ),
-      child: Center(child: child),
-    );
+  @override
+  ConsumerState<TrackingScreen> createState() => _TrackingScreenState();
+}
+
+class _TrackingScreenState extends ConsumerState<TrackingScreen> {
+  Timer? _poll;
+
+  @override
+  void initState() {
+    super.initState();
+    _poll = Timer.periodic(trackingPollInterval, (_) {
+      if (!mounted) return;
+      // Berhenti menyegarkan begitu tidak ada lagi yang berubah: pengantaran
+      // yang sudah selesai tidak akan bergerak lagi.
+      final t = ref.read(orderTrackingProvider(widget.orderId)).valueOrNull;
+      if (t != null && !t.isMoving) return;
+      ref.invalidate(orderTrackingProvider(widget.orderId));
+    });
   }
 
-  Widget _buildCustomHeader(
-    BuildContext context,
-    AppLocalizations? localizations,
-  ) {
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.only(
-        top: MediaQuery.of(context).padding.top + 16,
-        left: 20,
-        right: 20,
-        bottom: 24,
-      ),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFFD32F2F), Color(0xFFC62828)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(32),
-          bottomRight: Radius.circular(32),
-        ),
-      ),
-      child: Row(
-        children: [
-          _buildHeaderButton(
-            child: IconButton(
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
-              icon: const Icon(
-                Icons.chevron_left_rounded,
-                color: Colors.white,
-                size: 24,
-              ),
-              onPressed: () {
-                if (context.canPop()) {
-                  context.pop();
-                } else {
-                  context.go('/home');
-                }
-              },
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Text(
-              localizations?.translate('orderTracking') ?? 'Lacak Pesanan',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+  @override
+  void dispose() {
+    _poll?.cancel();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final localizations = AppLocalizations.of(context);
+    final async = ref.watch(orderTrackingProvider(widget.orderId));
 
     return Scaffold(
-      backgroundColor: AppColors.canvas,
+      backgroundColor: AppColors.surfaceSoft,
       body: Column(
         children: [
-          _buildCustomHeader(context, localizations),
-          // ─── Map Placeholder ───
-          Container(
-            height: 200,
-            margin: const EdgeInsets.all(AppSpacing.base),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceSoft,
-              borderRadius: BorderRadius.circular(AppRadius.card),
-            ),
-            child: Stack(
-              children: [
-                Positioned.fill(child: CustomPaint(painter: _MapPainter())),
-                // Origin
-                Positioned(
-                  left: 50,
-                  top: 45,
-                  child: _MapMarker(
-                    icon: Icons.storefront_rounded,
-                    label: 'UMKM',
-                    color: AppColors.primary,
-                  ),
-                ),
-                // Destination
-                Positioned(
-                  right: 60,
-                  bottom: 35,
-                  child: _MapMarker(
-                    icon: Icons.home_rounded,
-                    label: 'Tujuan',
-                    color: AppColors.ink,
-                  ),
-                ),
-                // Courier
-                Positioned(
-                  left: 150,
-                  top: 80,
-                  child: Column(
-                    children: [
-                      Container(
-                        width: 32,
-                        height: 32,
-                        decoration: const BoxDecoration(
-                          color: AppColors.primary,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.two_wheeler_rounded,
-                          color: AppColors.onPrimary,
-                          size: 18,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+          SellerSubpageHeader(
+            title: 'Lacak Pesanan',
+            subtitle: async.valueOrNull?.courierName == null
+                ? null
+                : 'Kurir ${async.valueOrNull!.courierName}',
+            onBack: () =>
+                context.canPop() ? context.pop() : context.go('/orders/history'),
           ),
-
-          // ─── Courier Info ───
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.base),
-            child: Container(
-              padding: const EdgeInsets.all(AppSpacing.base),
-              decoration: BoxDecoration(
-                color: AppColors.canvas,
-                borderRadius: BorderRadius.circular(AppRadius.card),
-                border: Border.all(color: AppColors.hairlineSoft),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryTint,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Center(
-                      child: Text(
-                        'B',
-                        style: TextStyle(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 18,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Budi Santoso',
-                          style: AppTypography.bodyMedium.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.ink,
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.xxs),
-                        Text(
-                          'Honda Supra X • AB 1234 CD',
-                          style: AppTypography.captionSmall,
-                        ),
-                      ],
-                    ),
-                  ),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.star_rounded,
-                        color: AppColors.warning,
-                        size: 16,
-                      ),
-                      const SizedBox(width: AppSpacing.xxs),
-                      Text(
-                        '4.9',
-                        style: AppTypography.caption.copyWith(
-                          color: AppColors.ink,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          const SizedBox(height: AppSpacing.lg),
-
-          // ─── Timeline ───
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-              children: [
-                _TimelineStep(
-                  title: 'Paket Sedang Diantar',
-                  description: 'Kurir menuju lokasi Anda. Estimasi: 15 menit.',
-                  time: '14:20',
-                  isActive: true,
+            child: RefreshIndicator(
+              color: AppColors.primary,
+              onRefresh: () async {
+                ref.invalidate(orderTrackingProvider(widget.orderId));
+                try {
+                  await ref.read(orderTrackingProvider(widget.orderId).future);
+                } catch (_) {}
+              },
+              child: async.when(
+                skipLoadingOnRefresh: true,
+                loading: () => const StoreSubpageBody(
+                  children: [
+                    SectionSkeleton(height: 240),
+                    SizedBox(height: AppSpacing.md),
+                    SectionSkeleton(height: 140),
+                  ],
                 ),
-                _TimelineStep(
-                  title: 'Pesanan Diambil Kurir',
-                  description: 'Paket diserahkan oleh Toko UMKM Mandiri.',
-                  time: '13:55',
+                error: (e, _) => StoreSubpageBody(
+                  children: [
+                    SectionError(
+                      message: networkErrorMessage(e),
+                      onRetry: () => ref.invalidate(
+                        orderTrackingProvider(widget.orderId),
+                      ),
+                    ),
+                  ],
                 ),
-                _TimelineStep(
-                  title: 'Pembayaran Terverifikasi',
-                  description: 'Dana berhasil diverifikasi via QRIS.',
-                  time: '13:40',
-                ),
-                _TimelineStep(
-                  title: 'Pesanan Dibuat',
-                  description: 'Pesanan terdaftar di sistem KOPDES.',
-                  time: '13:30',
-                  isLast: true,
-                ),
-              ],
+                data: (t) => _Body(tracking: t),
+              ),
             ),
           ),
         ],
@@ -261,155 +105,194 @@ class TrackingScreen extends StatelessWidget {
   }
 }
 
-// ─── Sub-widgets ───
-
-class _MapMarker extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-
-  const _MapMarker({
-    required this.icon,
-    required this.label,
-    required this.color,
-  });
+class _Body extends StatelessWidget {
+  final OrderTracking tracking;
+  const _Body({required this.tracking});
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: color, size: 26),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: AppTypography.captionSmall.copyWith(
-            fontWeight: FontWeight.w600,
-            fontSize: 10,
-            color: AppColors.ink,
-          ),
+    final stage = TaskStage.of(tracking.status);
+    final points = <MapPoint>[
+      if (tracking.hasCourierPoint)
+        MapPoint(
+          latitude: tracking.courierLat!,
+          longitude: tracking.courierLng!,
+          icon: Icons.two_wheeler_rounded,
+          tint: const Color(0xFF2F6FDB),
+          label: 'Posisi kurir',
         ),
-      ],
-    );
-  }
-}
+      if (tracking.hasDestinationPoint)
+        MapPoint(
+          latitude: tracking.destinationLat!,
+          longitude: tracking.destinationLng!,
+          icon: Icons.home_rounded,
+          tint: AppColors.primary,
+          label: 'Alamat Anda',
+        ),
+    ];
 
-class _TimelineStep extends StatelessWidget {
-  final String title;
-  final String description;
-  final String time;
-  final bool isActive;
-  final bool isLast;
+    final distance =
+        (tracking.hasCourierPoint && tracking.hasDestinationPoint)
+        ? straightLineDistance(
+            tracking.courierLat!,
+            tracking.courierLng!,
+            tracking.destinationLat!,
+            tracking.destinationLng!,
+          )
+        : null;
 
-  const _TimelineStep({
-    required this.title,
-    required this.description,
-    required this.time,
-    this.isActive = false,
-    this.isLast = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final dotColor = isActive ? AppColors.primary : AppColors.hairline;
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return StoreSubpageBody(
       children: [
-        // Time
-        SizedBox(
-          width: 46,
-          child: Padding(
-            padding: const EdgeInsets.only(top: 2),
-            child: Text(
-              time,
-              style: AppTypography.captionSmall.copyWith(
-                color: isActive ? AppColors.primary : AppColors.mutedSoft,
-                fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
-              ),
+        if (points.isNotEmpty)
+          DeliveryMap(points: points, height: 240)
+        else
+          StoreSurface(
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.location_searching_rounded,
+                  color: AppColors.muted,
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Text(
+                    stage.carrying
+                        ? 'Kurir belum mengirim posisinya. Peta muncul begitu '
+                              'titik pertamanya masuk.'
+                        : 'Peta muncul setelah kurir mengambil barang Anda.',
+                    style: AppTypography.bodyMedium.copyWith(
+                      fontSize: 13.5,
+                      color: AppColors.body,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-        ),
-        // Dot + line
-        Column(
-          children: [
-            Container(
-              width: 12,
-              height: 12,
-              decoration: BoxDecoration(
-                color: dotColor,
-                shape: BoxShape.circle,
+        const SizedBox(height: AppSpacing.md),
+
+        StoreSurface(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              StatusPill(
+                icon: stage.icon,
+                label: stage.label,
+                tint: stage.tint,
+                text: stage.textTint,
               ),
-            ),
-            if (!isLast)
-              Container(width: 1.5, height: 48, color: AppColors.hairlineSoft),
-          ],
+              if (distance != null) ...[
+                const SizedBox(height: AppSpacing.md),
+                Text(
+                  'Sekitar $distance dari alamat Anda — garis lurus, bukan '
+                  'jarak jalan.',
+                  style: AppTypography.bodyMedium.copyWith(
+                    fontSize: 13.5,
+                    color: AppColors.body,
+                  ),
+                ),
+              ],
+              if (tracking.courierSeenAt != null) ...[
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'Posisi terakhir ${dateTimeId(tracking.courierSeenAt!)}.',
+                  style: AppTypography.captionSmall.copyWith(
+                    fontSize: 12.5,
+                    color: AppColors.muted,
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
-        const SizedBox(width: AppSpacing.base),
-        // Content
-        Expanded(
+        const SizedBox(height: AppSpacing.lg),
+
+        const StoreSectionHeader('Kurir'),
+        StoreSurface(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const IconTile(
+                Icons.two_wheeler_rounded,
+                tint: Color(0xFF2F6FDB),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      tracking.courierName ?? 'Belum ada kurir',
+                      style: AppTypography.bodyMedium.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                    Text(
+                      tracking.courierName == null
+                          ? 'Pesanan menunggu diambil kurir Kopdes.'
+                          : (tracking.courierPhone ?? 'Nomor tidak tersedia'),
+                      style: AppTypography.captionSmall.copyWith(
+                        fontSize: 12.5,
+                        color: AppColors.muted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (tracking.courierPhone != null &&
+                  tracking.courierPhone!.isNotEmpty)
+                IconButton(
+                  constraints: const BoxConstraints.tightFor(
+                    width: 44,
+                    height: 44,
+                  ),
+                  tooltip: 'Telepon kurir',
+                  onPressed: () =>
+                      launchUrl(Uri.parse('tel:${tracking.courierPhone}')),
+                  icon: const Icon(Icons.call_rounded, color: AppColors.primary),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+
+        const StoreSectionHeader('Tujuan'),
+        StoreSurface(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                title,
+                tracking.destinationLabel.isEmpty
+                    ? 'Alamat pengiriman'
+                    : tracking.destinationLabel,
                 style: AppTypography.bodyMedium.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: isActive ? AppColors.ink : AppColors.mutedSoft,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.ink,
                 ),
               ),
-              const SizedBox(height: AppSpacing.xxs),
+              const SizedBox(height: 2),
               Text(
-                description,
+                tracking.destinationAddress,
                 style: AppTypography.captionSmall.copyWith(
-                  color: isActive ? AppColors.muted : AppColors.mutedSoft,
+                  fontSize: 12.5,
+                  color: AppColors.muted,
                 ),
               ),
-              const SizedBox(height: AppSpacing.md),
             ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+
+        OutlinedButton.icon(
+          onPressed: () => context.push('/orders/${tracking.orderId}'),
+          icon: const Icon(Icons.receipt_long_outlined, size: 18),
+          label: const Text('Lihat Detail Pesanan'),
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size.fromHeight(48),
           ),
         ),
       ],
     );
   }
-}
-
-class _MapPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final gridPaint = Paint()
-      ..color = AppColors.hairlineSoft.withOpacity(0.5)
-      ..strokeWidth = 0.5
-      ..style = PaintingStyle.stroke;
-
-    // Grid
-    for (double i = 0; i < size.width; i += 24) {
-      canvas.drawLine(Offset(i, 0), Offset(i, size.height), gridPaint);
-    }
-    for (double i = 0; i < size.height; i += 24) {
-      canvas.drawLine(Offset(0, i), Offset(size.width, i), gridPaint);
-    }
-
-    // Route path
-    final routePaint = Paint()
-      ..color = AppColors.primary.withOpacity(0.3)
-      ..strokeWidth = 3
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-
-    final path = Path()
-      ..moveTo(70, 65)
-      ..quadraticBezierTo(size.width * 0.4, size.height * 0.2, 160, 100)
-      ..quadraticBezierTo(
-        size.width * 0.7,
-        size.height * 0.75,
-        size.width - 80,
-        size.height - 50,
-      );
-
-    canvas.drawPath(path, routePaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

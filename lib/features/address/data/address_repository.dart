@@ -15,6 +15,11 @@ class Address {
   final String postalCode;
   final bool isDefault;
 
+  /// Titik rumah. Null bila pengguna belum pernah menyimpannya — kurir
+  /// kemudian mengantar dengan membaca alamat tertulis saja.
+  final double? latitude;
+  final double? longitude;
+
   const Address({
     required this.id,
     required this.title,
@@ -25,7 +30,11 @@ class Address {
     required this.state,
     required this.postalCode,
     required this.isDefault,
+    this.latitude,
+    this.longitude,
   });
+
+  bool get hasPoint => latitude != null && longitude != null;
 
   /// "Jl. …, Kota, Provinsi 23115".
   String get oneLine => '$street, $city, $state $postalCode';
@@ -40,6 +49,8 @@ class Address {
     state: j['state'] as String? ?? '',
     postalCode: j['postalCode'] as String? ?? '',
     isDefault: j['isDefault'] == true,
+    latitude: (j['latitude'] as num?)?.toDouble(),
+    longitude: (j['longitude'] as num?)?.toDouble(),
   );
 }
 
@@ -53,6 +64,8 @@ class AddressInput {
   final String state;
   final String postalCode;
   final bool isDefault;
+  final double? latitude;
+  final double? longitude;
 
   const AddressInput({
     required this.title,
@@ -63,6 +76,8 @@ class AddressInput {
     required this.state,
     required this.postalCode,
     this.isDefault = false,
+    this.latitude,
+    this.longitude,
   });
 
   Map<String, dynamic> toJson() => {
@@ -74,6 +89,12 @@ class AddressInput {
     'state': state,
     'postalCode': postalCode,
     'isDefault': isDefault,
+    // Hanya dikirim bila ada: mengirim null akan menghapus titik yang
+    // sudah tersimpan hanya karena pengguna mengubah kode posnya.
+    if (latitude != null && longitude != null) ...{
+      'latitude': latitude,
+      'longitude': longitude,
+    },
   };
 }
 

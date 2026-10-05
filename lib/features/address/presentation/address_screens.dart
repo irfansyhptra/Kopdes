@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -304,6 +305,11 @@ class _AddressFormScreenState extends ConsumerState<AddressFormScreen> {
   final _postal = TextEditingController();
   bool _isDefault = false;
   bool _loaded = false;
+  bool _locating = false;
+
+  /// Titik rumah yang akan disimpan bersama alamat.
+  double? _lat;
+  double? _lng;
   bool _saving = false;
   bool _touched = false;
   String _snapshot = '';
@@ -319,7 +325,8 @@ class _AddressFormScreenState extends ConsumerState<AddressFormScreen> {
   ];
 
   String get _current =>
-      [..._all.map((c) => c.text.trim()), '$_isDefault'].join('|');
+      [..._all.map((c) => c.text.trim()), '$_isDefault', '$_lat', '$_lng']
+          .join('|');
 
   @override
   void initState() {
@@ -343,6 +350,8 @@ class _AddressFormScreenState extends ConsumerState<AddressFormScreen> {
         _state.text = a.state;
         _postal.text = a.postalCode;
         _isDefault = a.isDefault;
+        _lat = a.latitude;
+        _lng = a.longitude;
         _loaded = true;
         _snapshot = _current;
       });
@@ -380,6 +389,8 @@ class _AddressFormScreenState extends ConsumerState<AddressFormScreen> {
       state: _state.text.trim(),
       postalCode: _postal.text.trim(),
       isDefault: _isDefault,
+      latitude: _lat,
+      longitude: _lng,
     );
     Address? saved;
     final ok = await runWithFeedback(
@@ -398,6 +409,48 @@ class _AddressFormScreenState extends ConsumerState<AddressFormScreen> {
     if (!mounted) return;
     setState(() => _saving = false);
     if (ok) context.pop(saved);
+  }
+
+  /// Menyimpan titik rumah dari GPS.
+  ///
+  /// Gagal atau ditolak tidak menghentikan apa pun: alamatnya tetap bisa
+  /// disimpan tanpa titik, dan kurir membaca alamat tertulisnya.
+  Future<void> _captureLocation() async {
+    setState(() => _locating = true);
+    try {
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        throw 'Layanan lokasi di ponsel ini sedang mati. Nyalakan lewat Pengaturan.';
+      }
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        throw 'Izin lokasi ditolak. Alamat tetap bisa disimpan tanpa titik peta.';
+      }
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 15),
+        ),
+      );
+      if (!mounted) return;
+      setState(() {
+        _lat = pos.latitude;
+        _lng = pos.longitude;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          content: Text(e is String ? e : 'Lokasi belum bisa diambil.'),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _locating = false);
+    }
   }
 
   @override
@@ -463,6 +516,11 @@ class _AddressFormScreenState extends ConsumerState<AddressFormScreen> {
                 ),
                 field(_city, 'Kota/kabupaten', 'city', hint: 'Banda Aceh'),
                 field(_state, 'Provinsi', 'state'),
+                _LocationField(
+                  hasPoint: _lat != null && _lng != null,
+                  busy: _locating,
+                  onTap: _captureLocation,
+                ),
                 field(
                   _postal,
                   'Kode pos',
@@ -484,6 +542,69 @@ class _AddressFormScreenState extends ConsumerState<AddressFormScreen> {
             ),
           ),
       ],
+    );
+  }
+}
+
+/// Baris "Gunakan lokasi saya" di form alamat.
+///
+/// Titiklah yang membuat kurir melihat rumah di peta, jadi manfaatnya
+/// disebutkan di sini — bukan sekadar tombol tanpa alasan.
+class _LocationField extends StatelessWidget {
+  final bool hasPoint;
+  final bool busy;
+  final VoidCallback onTap;
+
+  const _LocationField({
+    required this.hasPoint,
+    required this.busy,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const FieldLabel('Titik rumah di peta'),
+          OutlinedButton.icon(
+            onPressed: busy ? null : onTap,
+            icon: Icon(
+              hasPoint ? Icons.check_circle_rounded : Icons.my_location_rounded,
+              size: 18,
+            ),
+            label: Text(
+              busy
+                  ? 'Mengambil lokasi…'
+                  : hasPoint
+                  ? 'Titik tersimpan · Perbarui'
+                  : 'Gunakan lokasi saya',
+            ),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(48),
+              foregroundColor: hasPoint
+                  ? AppColors.successText
+                  : AppColors.primaryText,
+              side: BorderSide(
+                color: hasPoint ? AppColors.success : AppColors.hairline,
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            hasPoint
+                ? 'Kurir melihat titik ini di peta saat mengantar.'
+                : 'Berdirilah di depan rumah, lalu ketuk. Boleh dilewati — '
+                      'kurir tetap bisa mengantar dengan alamat tertulis.',
+            style: AppTypography.captionSmall.copyWith(
+              fontSize: 12.5,
+              color: AppColors.muted,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

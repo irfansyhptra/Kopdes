@@ -271,15 +271,15 @@ class _Actions extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Saat pesanan sedang diantar, tombol yang sama diberi label "Lacak
-    // Pesanan": halaman detail memuat lini masa pengirimannya. Rute
-    // `/tracking/:id` sengaja tidak dipakai — rute itu menuntut deliveryId,
-    // sedangkan `/orders/history` tidak mengembalikan relasi pengiriman, jadi
-    // mengirim id pesanan ke sana akan membuka halaman yang salah.
+    // Pesanan yang sedang diantar dibawa ke peta pelacakan; sisanya ke
+    // halaman detail. `/tracking/:orderId` memakai id pesanan, jadi id yang
+    // sudah ada di tangan sini sudah cukup.
     final buttons = <Widget>[
       _OrderButton(
         label: order.canTrack ? 'Lacak Pesanan' : 'Lihat Detail',
-        onTap: () => context.push('/orders/${order.id}'),
+        onTap: () => context.push(
+          order.canTrack ? '/tracking/${order.id}' : '/orders/${order.id}',
+        ),
       ),
     ];
 
