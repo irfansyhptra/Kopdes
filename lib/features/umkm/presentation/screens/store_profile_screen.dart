@@ -885,6 +885,13 @@ class _ManageSection extends ConsumerWidget {
             .then((_) => ref.invalidate(kopdesDashboardProvider)),
       ),
       _ManageTile(
+        icon: Icons.cancel_schedule_send_outlined,
+        tint: AppColors.warning,
+        title: 'Pengajuan pembatalan',
+        subtitle: 'Setujui atau tolak permintaan pembeli',
+        onTap: () => context.push('/admin/orders/cancellations'),
+      ),
+      _ManageTile(
         icon: Icons.savings_outlined,
         tint: AppColors.success,
         title: 'Uang masuk dari mitra',
@@ -961,6 +968,13 @@ class _ManageSection extends ConsumerWidget {
             ? 'Atur rekening untuk pencairan'
             : '${bank.bankName} ${bank.accountNumber}',
         onTap: () => context.push(StoreRoutes.bankAccount),
+      ),
+      _ManageTile(
+        icon: Icons.cancel_schedule_send_outlined,
+        tint: AppColors.warning,
+        title: 'Pengajuan pembatalan',
+        subtitle: 'Setujui atau tolak permintaan pembeli',
+        onTap: () => context.push('/umkm/orders/cancellations'),
       ),
       _ManageTile(
         icon: Icons.settings_outlined,

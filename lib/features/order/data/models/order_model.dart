@@ -80,6 +80,10 @@ class OrderModel extends Order {
     super.invoice,
     required super.createdAt,
     required super.updatedAt,
+    super.cancelRequestedAt,
+    super.cancelReason,
+    super.cancelDecidedAt,
+    super.cancelRejectReason,
   });
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
@@ -118,8 +122,15 @@ class OrderModel extends Order {
       updatedAt: json['updatedAt'] != null
           ? DateTime.parse(json['updatedAt'] as String)
           : DateTime.now(),
+      cancelRequestedAt: _dateOrNull(json['cancelRequestedAt']),
+      cancelReason: json['cancelReason'] as String?,
+      cancelDecidedAt: _dateOrNull(json['cancelDecidedAt']),
+      cancelRejectReason: json['cancelRejectReason'] as String?,
     );
   }
+
+  static DateTime? _dateOrNull(Object? v) =>
+      v == null ? null : DateTime.tryParse('$v')?.toLocal();
 
   Map<String, dynamic> toJson() {
     return {

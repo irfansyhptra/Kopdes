@@ -37,6 +37,9 @@ abstract class OrderRemoteDataSource {
 
   /// Pembeli menyatakan barang sudah diterima (validasi ganda langkah 2).
   Future<void> confirmReceipt(String orderId);
+
+  /// Pembeli MENGAJUKAN pembatalan; toko yang menyetujuinya.
+  Future<void> requestCancellation(String orderId, String reason);
   Future<List<Map<String, dynamic>>> getOrderTimeline(String orderId);
 }
 
@@ -175,6 +178,10 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
   @override
   Future<void> confirmReceipt(String orderId) =>
       dio.post('/orders/$orderId/confirm-receipt');
+
+  @override
+  Future<void> requestCancellation(String orderId, String reason) =>
+      dio.post('/orders/$orderId/cancellation', data: {'reason': reason});
 
   @override
   Future<OrderModel> updateOrderStatus(String orderId, String status) async {

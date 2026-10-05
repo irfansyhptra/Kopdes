@@ -673,6 +673,12 @@ class _AccountSection extends StatelessWidget {
           label: 'Daftar Mitra UMKM',
           onTap: () => context.push('/daftar-mitra'),
         ),
+        _MenuRow(
+          icon: Icons.cancel_schedule_send_rounded,
+          tint: AppColors.muted,
+          label: 'Pesanan Dibatalkan',
+          onTap: () => context.push('/orders/cancellations'),
+        ),
       ],
     );
   }

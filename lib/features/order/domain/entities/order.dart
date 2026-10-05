@@ -71,6 +71,14 @@ class Order {
   final DateTime createdAt;
   final DateTime updatedAt;
 
+  /// Pengajuan pembatalan oleh pemesan. Null berarti belum pernah diajukan.
+  final DateTime? cancelRequestedAt;
+  final String? cancelReason;
+
+  /// Kapan toko menjawab. Null selagi pengajuan masih menunggu.
+  final DateTime? cancelDecidedAt;
+  final String? cancelRejectReason;
+
   const Order({
     required this.id,
     required this.customerId,
@@ -87,7 +95,26 @@ class Order {
     this.invoice,
     required this.createdAt,
     required this.updatedAt,
+    this.cancelRequestedAt,
+    this.cancelReason,
+    this.cancelDecidedAt,
+    this.cancelRejectReason,
   });
+
+  /// Keadaan pengajuan pembatalan, diturunkan dari ketiga kolomnya —
+  /// bentuk yang sama dengan yang dipakai backend.
+  CancellationState get cancellation {
+    if (cancelRequestedAt == null) return CancellationState.none;
+    if (cancelDecidedAt == null) return CancellationState.requested;
+    return status == 'CANCELLED'
+        ? CancellationState.approved
+        : CancellationState.rejected;
+  }
+
+  /// Pembatalan hanya bisa diajukan selama toko belum mulai menyiapkan.
+  bool get canRequestCancellation =>
+      (status == 'PENDING' || status == 'PAID') &&
+      cancellation != CancellationState.requested;
 
   /// Nomor yang ditunjukkan ke pemesan: nomor invoice bila sudah terbit,
   /// kalau belum potongan id pesanan — bukan UUID penuh yang tak terbaca.
@@ -112,4 +139,15 @@ class Order {
   bool get hasPaymentBreakdown => subtotal > 0;
 
   int get totalRounded => totalAmount.round();
+}
+
+/// Keadaan pengajuan pembatalan sebuah pesanan.
+enum CancellationState {
+  none,
+  requested('Menunggu jawaban toko'),
+  approved('Dibatalkan'),
+  rejected('Pengajuan ditolak');
+
+  final String label;
+  const CancellationState([this.label = '']);
 }

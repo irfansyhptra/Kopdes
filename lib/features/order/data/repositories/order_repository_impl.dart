@@ -267,6 +267,10 @@ class OrderRepositoryImpl implements OrderRepository {
       remoteDataSource.confirmReceipt(orderId);
 
   @override
+  Future<void> requestCancellation(String orderId, String reason) =>
+      remoteDataSource.requestCancellation(orderId, reason);
+
+  @override
   Future<Order> updateOrderStatus(String orderId, String status) async {
     final order = await remoteDataSource.updateOrderStatus(orderId, status);
     final cacheOrder = _mapToOrderCache(order);

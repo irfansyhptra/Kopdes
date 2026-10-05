@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../data/cancellation_repository.dart';
 import '../../domain/entities/order.dart';
 import '../../domain/repositories/order_repository.dart';
 import 'cart_provider.dart';
@@ -69,6 +70,24 @@ class OrderActionNotifier extends StateNotifier<AsyncValue<Order?>> {
       _ref.invalidate(orderDetailProvider(orderId));
       _ref.read(orderHistoryProvider.notifier).load();
       _ref.invalidate(orderTimelineProvider(orderId));
+      return true;
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      return false;
+    }
+  }
+
+  /// Mengajukan pembatalan. Pesanannya BELUM batal — toko yang memutuskan.
+  Future<bool> requestCancellation(String orderId, String reason) async {
+    state = const AsyncValue.loading();
+    try {
+      await _ref
+          .read(orderRepositoryProvider)
+          .requestCancellation(orderId, reason);
+      state = const AsyncValue.data(null);
+      _ref.invalidate(orderDetailProvider(orderId));
+      _ref.read(orderHistoryProvider.notifier).load();
+      _ref.invalidate(cancellationsProvider);
       return true;
     } catch (e, st) {
       state = AsyncValue.error(e, st);

@@ -35,5 +35,6 @@ abstract class OrderRepository {
   Future<Order> getOrderDetail(String orderId);
   Future<Order> updateOrderStatus(String orderId, String status);
   Future<void> confirmReceipt(String orderId);
+  Future<void> requestCancellation(String orderId, String reason);
   Future<List<Map<String, dynamic>>> getOrderTimeline(String orderId);
 }

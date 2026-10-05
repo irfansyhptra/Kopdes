@@ -32,6 +32,8 @@ import '../../features/product/presentation/screens/product_detail_screen.dart';
 import '../../features/order/presentation/screens/orders_page.dart';
 import '../../features/order/presentation/screens/checkout_screen.dart';
 import '../../features/order/presentation/screens/order_success_screen.dart';
+import '../../features/order/presentation/screens/cancellation_review_screen.dart';
+import '../../features/order/presentation/screens/cancellations_screen.dart';
 import '../../features/order/presentation/screens/order_history_screen.dart';
 import '../../features/order/presentation/screens/order_detail_screen.dart';
 import '../../features/delivery/presentation/screens/tracking_screen.dart';
@@ -602,6 +604,18 @@ final routerProvider = Provider<GoRouter>((ref) {
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const AccountSecurityScreen(),
       ),
+      // Satu layar, dua sisi toko: alamat endpoint-nya ditentukan peran
+      // yang masuk, jadi rutenya cukup dua yang menunjuk ke layar sama.
+      GoRoute(
+        path: '/admin/orders/cancellations',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const CancellationReviewScreen(),
+      ),
+      GoRoute(
+        path: '/umkm/orders/cancellations',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const CancellationReviewScreen(),
+      ),
       GoRoute(
         path: '/admin/mitra-income',
         parentNavigatorKey: rootNavigatorKey,
@@ -786,6 +800,14 @@ final routerProvider = Provider<GoRouter>((ref) {
         parentNavigatorKey: rootNavigatorKey,
         pageBuilder: (context, state) =>
             _slideTransition(state, const OrderHistoryScreen()),
+      ),
+      // Didaftarkan sebelum ':id' agar "cancellations" tidak tertangkap
+      // sebagai id pesanan.
+      GoRoute(
+        path: '/orders/cancellations',
+        parentNavigatorKey: rootNavigatorKey,
+        pageBuilder: (context, state) =>
+            _slideTransition(state, const CancellationsScreen()),
       ),
       GoRoute(
         path: '/orders/:id',

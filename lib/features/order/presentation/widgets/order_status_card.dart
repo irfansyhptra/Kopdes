@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../shared/widgets/reason_dialog.dart';
 import '../../../payment/presentation/payment_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -319,11 +320,14 @@ class _Actions extends ConsumerWidget {
           ),
         );
       }
-      // Pembeli boleh membatalkan pesanannya selama belum dibayar dan
-      // belum diproses (aturan `updateStatus` di backend).
-      if (order.status == 'PENDING' && order.paymentStatus != 'PAID') {
+      // Pembatalan bukan tombol sepihak: pembeli mengajukan, toko yang
+      // memutuskan. Hanya selama toko belum mulai menyiapkan pesanannya.
+      if (order.canRequestCancellation) {
         buttons.add(
-          _OrderButton(label: 'Batalkan', onTap: () => _cancel(context, ref)),
+          _OrderButton(
+            label: 'Ajukan Pembatalan',
+            onTap: () => _requestCancel(context, ref),
+          ),
         );
       }
       if (order.canConfirmReceipt) {
@@ -347,44 +351,41 @@ class _Actions extends ConsumerWidget {
     );
   }
 
-  Future<void> _cancel(BuildContext context, WidgetRef ref) async {
-    final yes = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Batalkan pesanan?'),
-        content: const Text(
-          'Pesanan dibatalkan dan stok dikembalikan ke penjual. Tindakan ini '
-          'tidak bisa diurungkan.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Tidak'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: AppColors.errorText),
-            child: const Text('Batalkan Pesanan'),
-          ),
-        ],
-      ),
+  /// Mengajukan pembatalan beserta alasannya.
+  ///
+  /// Alasan wajib: toko yang memutuskan, dan ia tidak bisa memutuskan
+  /// apa pun dari pengajuan kosong.
+  /// Mengajukan pembatalan beserta alasannya.
+  ///
+  /// Alasan wajib: toko yang memutuskan, dan ia tidak bisa memutuskan
+  /// apa pun dari pengajuan kosong.
+  Future<void> _requestCancel(BuildContext context, WidgetRef ref) async {
+    final reason = await askReason(
+      context,
+      title: 'Ajukan pembatalan?',
+      message:
+          'Pesanan belum langsung batal. Toko akan memeriksa pengajuan Anda '
+          'lebih dulu.',
+      label: 'Alasan pembatalan',
+      hint: 'Mis. salah alamat, barang keliru',
+      confirmLabel: 'Kirim Pengajuan',
     );
-    if (yes != true) return;
+    if (reason == null || !context.mounted) return;
+
     final ok = await ref
         .read(orderActionProvider.notifier)
-        .updateStatus(order.id, 'CANCELLED');
+        .requestCancellation(order.id, reason);
     if (!context.mounted) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
+          behavior: SnackBarBehavior.floating,
           content: Text(
             ok
-                ? 'Pesanan dibatalkan'
-                : 'Pesanan belum bisa dibatalkan. Bila sudah dibayar atau '
-                      'diproses, hubungi pengurus Kopdes.',
+                ? 'Pengajuan dikirim. Tunggu jawaban toko.'
+                : 'Pengajuan belum terkirim. Coba lagi sebentar lagi.',
           ),
-          behavior: SnackBarBehavior.floating,
         ),
       );
   }
