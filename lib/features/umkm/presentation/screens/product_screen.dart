@@ -14,6 +14,7 @@ import '../../../../shared/widgets/shimmer_loading.dart';
 import '../../data/models/product_model.dart';
 import '../../data/models/seller_product_page.dart';
 import '../controllers/inventory_controller.dart';
+import '../../data/store_scope.dart';
 import '../controllers/product_controller.dart';
 import '../widgets/seller_page_ui.dart';
 import '../widgets/seller_product_list_ui.dart';
@@ -115,9 +116,11 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
   Future<void> _onAction(ProductModel product, SellerProductAction action) {
     switch (action) {
       case SellerProductAction.view:
-        return context.push('/umkm/products/detail/${product.id}');
+        return context.push(
+          ref.read(storeScopeProvider).detailRoute(product.id),
+        );
       case SellerProductAction.edit:
-        return context.push('/umkm/products/edit/${product.id}');
+        return context.push(ref.read(storeScopeProvider).editRoute(product.id));
       case SellerProductAction.toggleActive:
         final show = !product.isActive;
         return runWithFeedback(
@@ -195,7 +198,7 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
     return Scaffold(
       backgroundColor: AppColors.surfaceSoft,
       body: SellerPageChrome(
-        title: 'Produk Toko',
+        title: ref.watch(storeScopeProvider).productsTitle,
         subtitle: storeTotal == null
             ? 'Kelola etalase dan ketersediaan produk'
             : '$storeTotal produk di etalase Anda',
@@ -204,7 +207,8 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
             icon: Icons.add_rounded,
             label: 'Tambah produk',
             onDark: true,
-            onTap: () => context.push('/umkm/products/new'),
+            onTap: () =>
+                context.push(ref.read(storeScopeProvider).newProductRoute),
           ),
         ],
         headerChild: _SearchField(
@@ -368,7 +372,8 @@ class _ProductList extends ConsumerWidget {
               'Tambahkan produk pertama Anda supaya pembeli di desa bisa '
               'menemukannya di marketplace.',
           actionLabel: 'Tambah Produk',
-          onAction: () => context.push('/umkm/products/new'),
+          onAction: () =>
+              context.push(ref.read(storeScopeProvider).newProductRoute),
         );
       } else {
         message = ProductListMessage(
@@ -423,7 +428,9 @@ class _ProductList extends ConsumerWidget {
               key: ValueKey(product.id),
               product: product,
               level: state.levelOf(product),
-              onTap: () => context.push('/umkm/products/detail/${product.id}'),
+              onTap: () => context.push(
+                ref.read(storeScopeProvider).detailRoute(product.id),
+              ),
               onAdjustStock: () =>
                   onAdjustStock(product, state.lowStockThreshold),
               onAction: (a) => onAction(product, a),

@@ -7,6 +7,7 @@ import '../../../../core/network/error_message.dart';
 import '../../../../core/theme/theme.dart';
 import '../../../../shared/widgets/apple_feedback.dart';
 import '../../data/models/store_model.dart';
+import '../../data/store_scope.dart';
 import '../controllers/store_controller.dart';
 import '../widgets/product_form_ui.dart';
 import '../widgets/store_form_page.dart';
@@ -22,8 +23,8 @@ class StoreProfileRules {
     return null;
   }
 
-  static String? description(String v) =>
-      v.trim().length > 300 ? 'Deskripsi maksimal 300 huruf.' : null;
+  static String? description(String v, {int max = 300}) =>
+      v.trim().length > max ? 'Deskripsi maksimal $max huruf.' : null;
 
   static String? address(String v) {
     final t = v.trim();
@@ -34,9 +35,17 @@ class StoreProfileRules {
   }
 
   /// Ponsel Indonesia: 08…, 628…, atau +628…, 10–15 digit.
-  static String? phone(String v) {
+  ///
+  /// Kopdes boleh memakai telepon kantor (`landline`), seperti
+  /// `UpdateKopdesProfileDto`: 0 atau +62 lalu 7–13 digit.
+  static String? phone(String v, {bool landline = false}) {
     final t = v.replaceAll(RegExp(r'[\s-]'), '');
     if (t.isEmpty) return 'Nomor telepon wajib diisi.';
+    if (landline) {
+      return RegExp(r'^(\+62|0)\d{7,13}$').hasMatch(t)
+          ? null
+          : 'Gunakan nomor telepon Indonesia, mis. 0651xxxxxx.';
+    }
     if (!RegExp(r'^(\+62|62|0)8\d{7,12}$').hasMatch(t)) {
       return 'Gunakan nomor ponsel Indonesia, mis. 0812xxxxxxx.';
     }
@@ -60,6 +69,8 @@ class _StoreEditScreenState extends ConsumerState<StoreEditScreen> {
   StoreModel? _original;
   bool _saving = false;
   bool _touched = false;
+
+  bool get _kopdes => ref.read(storeScopeProvider).isKopdes;
 
   @override
   void initState() {
@@ -91,12 +102,15 @@ class _StoreEditScreenState extends ConsumerState<StoreEditScreen> {
     return _name.text.trim() != o.businessName ||
         _description.text.trim() != o.description ||
         _address.text.trim() != o.address ||
-        _category != o.category;
+        (!_kopdes && _category != o.category);
   }
 
   Map<String, String> get _errors => {
     'name': ?StoreProfileRules.name(_name.text),
-    'description': ?StoreProfileRules.description(_description.text),
+    'description': ?StoreProfileRules.description(
+      _description.text,
+      max: _kopdes ? 500 : 300,
+    ),
     'address': ?StoreProfileRules.address(_address.text),
   };
 
@@ -113,7 +127,7 @@ class _StoreEditScreenState extends ConsumerState<StoreEditScreen> {
           businessName: _name.text.trim(),
           description: _description.text.trim(),
           address: _address.text.trim(),
-          category: _category,
+          category: _kopdes ? null : _category,
         );
         return true;
       },
@@ -132,7 +146,9 @@ class _StoreEditScreenState extends ConsumerState<StoreEditScreen> {
 
     return StoreFormPage(
       title: 'Edit Profil',
-      subtitle: 'Informasi toko yang dilihat pembeli',
+      subtitle: _kopdes
+          ? 'Informasi Kopdes yang dilihat warga'
+          : 'Informasi toko yang dilihat pembeli',
       dirty: _dirty,
       saving: _saving,
       onSave: _original != null && _dirty ? _save : null,
@@ -149,40 +165,49 @@ class _StoreEditScreenState extends ConsumerState<StoreEditScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const FieldLabel('Nama usaha', required: true),
+                FieldLabel(
+                  _kopdes ? 'Nama Kopdes' : 'Nama usaha',
+                  required: true,
+                ),
                 TextField(
                   controller: _name,
                   onChanged: (_) => setState(() {}),
                   textCapitalization: TextCapitalization.words,
                   inputFormatters: [LengthLimitingTextInputFormatter(100)],
                   decoration: productInputDecoration(
-                    hint: 'Contoh: Warung Nasi Mami Yose',
+                    hint: _kopdes
+                        ? 'Contoh: Kopdes Merah Putih Lamteh'
+                        : 'Contoh: Warung Nasi Mami Yose',
                     error: errors['name'],
                   ),
                 ),
+                // Kopdes tidak punya kategori usaha.
+                if (!_kopdes) ...[
+                  const SizedBox(height: AppSpacing.lg),
+                  const FieldLabel('Kategori usaha', required: true),
+                  Wrap(
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.xs,
+                    children: [
+                      for (final e in umkmCategories.entries)
+                        ChoiceChip(
+                          label: Text(e.value),
+                          selected: _category == e.key,
+                          materialTapTargetSize: MaterialTapTargetSize.padded,
+                          onSelected: (_) => setState(() => _category = e.key),
+                        ),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: AppSpacing.lg),
-                const FieldLabel('Kategori usaha', required: true),
-                Wrap(
-                  spacing: AppSpacing.sm,
-                  runSpacing: AppSpacing.xs,
-                  children: [
-                    for (final e in umkmCategories.entries)
-                      ChoiceChip(
-                        label: Text(e.value),
-                        selected: _category == e.key,
-                        materialTapTargetSize: MaterialTapTargetSize.padded,
-                        onSelected: (_) => setState(() => _category = e.key),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                const FieldLabel('Tentang toko'),
+                FieldLabel(_kopdes ? 'Tentang Kopdes' : 'Tentang toko'),
                 TextField(
                   controller: _description,
                   onChanged: (_) => setState(() {}),
                   minLines: 3,
                   maxLines: 6,
-                  maxLength: 300,
+                  // Batas backend: 300 untuk UMKM, 500 untuk Kopdes.
+                  maxLength: _kopdes ? 500 : 300,
                   textCapitalization: TextCapitalization.sentences,
                   decoration: productInputDecoration(
                     hint: 'Apa yang Anda jual dan apa keunggulannya?',
@@ -190,7 +215,10 @@ class _StoreEditScreenState extends ConsumerState<StoreEditScreen> {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.md),
-                const FieldLabel('Alamat toko', required: true),
+                FieldLabel(
+                  _kopdes ? 'Alamat Kopdes' : 'Alamat toko',
+                  required: true,
+                ),
                 TextField(
                   controller: _address,
                   onChanged: (_) => setState(() {}),
@@ -204,13 +232,14 @@ class _StoreEditScreenState extends ConsumerState<StoreEditScreen> {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.sm),
-                Text(
-                  'Titik lokasi di peta diatur oleh Admin Kopdes.',
-                  style: AppTypography.captionSmall.copyWith(
-                    fontSize: 12.5,
-                    color: AppColors.muted,
+                if (!_kopdes)
+                  Text(
+                    'Titik lokasi di peta diatur oleh Admin Kopdes.',
+                    style: AppTypography.captionSmall.copyWith(
+                      fontSize: 12.5,
+                      color: AppColors.muted,
+                    ),
                   ),
-                ),
               ],
             ),
           ),

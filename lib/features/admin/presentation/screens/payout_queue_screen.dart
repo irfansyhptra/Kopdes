@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/network/error_message.dart';
 import '../../../../core/theme/theme.dart';
@@ -8,6 +9,7 @@ import '../../../../shared/widgets/apple_ui.dart';
 import '../../../umkm/data/payout_repository.dart';
 import '../../../umkm/presentation/screens/payout_history_screen.dart'
     show PayoutCard;
+import '../../../umkm/presentation/widgets/seller_page_ui.dart';
 import '../../../umkm/presentation/widgets/store_page_ui.dart';
 
 /// Antrean pencairan mitra UMKM untuk pengurus Kopdes.
@@ -15,6 +17,28 @@ import '../../../umkm/presentation/widgets/store_page_ui.dart';
 /// Transfer dilakukan di luar aplikasi (mobile banking koperasi); di sini
 /// pengurus mencatat hasilnya. "Sudah ditransfer" meminta nomor referensi
 /// supaya penjual bisa mencocokkannya dengan mutasi rekeningnya.
+/// Antrean pencairan sebagai halaman sendiri, dibuka dari tab Koperasi.
+class PayoutQueuePage extends StatelessWidget {
+  const PayoutQueuePage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.surfaceSoft,
+      body: Column(
+        children: [
+          SellerSubpageHeader(
+            title: 'Pencairan Mitra',
+            subtitle: 'Transfer saldo penjualan mitra UMKM',
+            onBack: () => context.pop(),
+          ),
+          const Expanded(child: PayoutQueueScreen()),
+        ],
+      ),
+    );
+  }
+}
+
 class PayoutQueueScreen extends ConsumerStatefulWidget {
   const PayoutQueueScreen({super.key});
 

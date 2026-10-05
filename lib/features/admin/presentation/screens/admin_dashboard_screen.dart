@@ -1,22 +1,31 @@
 import 'package:flutter/material.dart';
-import 'payout_queue_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
+import '../../../../core/network/error_message.dart';
 import '../../../../core/theme/theme.dart';
 import '../../../../shared/widgets/app_glass_chrome.dart';
-import '../../../../shared/widgets/apple_ui.dart';
-import '../../../auth/presentation/providers/auth_provider.dart';
-import '../../../product/presentation/providers/product_provider.dart';
-import '../../../product/presentation/screens/admin/admin_product_list_screen.dart';
-import '../providers/admin_providers.dart';
-import '../widgets/admin_ui.dart';
-import 'mitra_management_screen.dart';
-import 'umkm_product_takedown_screen.dart';
-import 'order_management_screen.dart';
+import '../../../chat/data/chat_models.dart';
+import '../../../chat/presentation/providers/chat_providers.dart';
+import '../../../chat/presentation/screens/conversation_list_screen.dart';
+import '../../../notification/presentation/providers/notification_provider.dart';
+import '../../../umkm/data/store_scope.dart';
+import '../../../umkm/presentation/controllers/store_controller.dart';
+import '../../../umkm/presentation/screens/product_screen.dart';
+import '../../../umkm/presentation/screens/store_profile_screen.dart';
+import '../../../umkm/presentation/widgets/seller_dashboard_sections.dart';
+import '../../../umkm/presentation/widgets/seller_header.dart';
+import '../../../umkm/presentation/widgets/store_page_ui.dart';
+import '../../data/kopdes_console.dart';
 import 'courier_management_screen.dart';
-import 'admin_profile_screen.dart';
+import 'order_management_screen.dart';
 
-// Multi-tab Dashboard Admin Kopdes dengan Bottom Navigation Bar.
+/// Konsol pengurus Kopdes — kerangka yang sama dengan konsol penjual UMKM.
+///
+/// Dasbor, Produk, Pesanan, Pesan, dan Koperasi. Halaman Produk dan tab
+/// Koperasi adalah halaman milik penjual yang sama persis; [storeScopeProvider]
+/// memilih alamat API Kopdes untuk akun pengurus. Menu khas pengurus (mitra,
+/// pencairan, pegawai, kurir) dikumpulkan di tab Koperasi.
 class AdminDashboardScreen extends ConsumerStatefulWidget {
   final int initialIndex;
 
@@ -28,17 +37,9 @@ class AdminDashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
-  late int _currentIndex;
+  late int _currentIndex = widget.initialIndex;
 
-  @override
-  void initState() {
-    super.initState();
-    _currentIndex = widget.initialIndex;
-  }
-
-  void _onTabSelected(int index) {
-    setState(() => _currentIndex = index);
-  }
+  void _onTabSelected(int index) => setState(() => _currentIndex = index);
 
   @override
   Widget build(BuildContext context) {
@@ -47,31 +48,25 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
       body: IndexedStack(
         index: _currentIndex,
         children: [
-          _AdminOverviewTab(onNavigateTab: _onTabSelected),
-          const AdminProductListScreen(showBackButton: false),
-          const _MitraAndUmkmTab(),
+          _KopdesOverviewTab(onNavigateTab: _onTabSelected),
+          const ProductScreen(),
           const _OrdersAndCouriersTab(),
-          const AdminProfileScreen(),
+          const ConversationListScreen(channel: ChatChannel.general),
+          const StoreProfileScreen(),
         ],
       ),
-      // Bilahnya mengambang, jadi isi boleh lewat di belakangnya.
       extendBody: true,
       bottomNavigationBar: AppGlassNavBar(
         items: const [
           GlassNavItem(
-            label: 'Ringkasan',
-            icon: Icons.dashboard_outlined,
-            activeIcon: Icons.dashboard_rounded,
-          ),
-          GlassNavItem(
-            label: 'Barang',
-            icon: Icons.inventory_2_outlined,
-            activeIcon: Icons.inventory_2_rounded,
-          ),
-          GlassNavItem(
-            label: 'Mitra',
+            label: 'Dasbor',
             icon: Icons.storefront_outlined,
             activeIcon: Icons.storefront_rounded,
+          ),
+          GlassNavItem(
+            label: 'Produk',
+            icon: Icons.inventory_2_outlined,
+            activeIcon: Icons.inventory_2_rounded,
           ),
           GlassNavItem(
             label: 'Pesanan',
@@ -79,9 +74,14 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
             activeIcon: Icons.receipt_long_rounded,
           ),
           GlassNavItem(
-            label: 'Profil',
-            icon: Icons.person_outline_rounded,
-            activeIcon: Icons.person_rounded,
+            label: 'Pesan',
+            icon: Icons.chat_bubble_outline_rounded,
+            activeIcon: Icons.chat_bubble_rounded,
+          ),
+          GlassNavItem(
+            label: 'Koperasi',
+            icon: Icons.account_balance_outlined,
+            activeIcon: Icons.account_balance_rounded,
           ),
         ],
         activeIndex: _currentIndex,
@@ -92,330 +92,226 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
 }
 
 // ─────────────────────────────────────────────────────────
-// TAB 0: RINGKASAN (OVERVIEW DASHBOARD)
+// TAB 0: DASBOR
 // ─────────────────────────────────────────────────────────
-class _AdminOverviewTab extends ConsumerWidget {
+class _KopdesOverviewTab extends ConsumerWidget {
   final ValueChanged<int> onNavigateTab;
 
-  const _AdminOverviewTab({required this.onNavigateTab});
+  const _KopdesOverviewTab({required this.onNavigateTab});
+
+  /// Lebar isi maksimum, sama dengan dasbor penjual.
+  static const double _maxContentWidth = 560;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(authProvider).user;
-    final productsAsync = ref.watch(adminProductsProvider);
-    final mitraAsync = ref.watch(mitraListProvider);
-    final ordersAsync = ref.watch(adminOrdersProvider);
+    final chatCount = ref
+        .watch(conversationsProvider)
+        .maybeWhen(
+          data: (items) => items.fold<int>(0, (t, c) => t + c.unreadCount),
+          orElse: () => 0,
+        );
+    final unread = ref.watch(unreadNotificationCountProvider);
+    final profile = ref.watch(storeProfileProvider).valueOrNull;
+    final dashboard = ref.watch(kopdesDashboardProvider);
+    final newProduct = ref.watch(storeScopeProvider).newProductRoute;
+
+    Future<void> refresh() async {
+      ref.invalidate(kopdesDashboardProvider);
+      ref.invalidate(storeProfileProvider);
+      try {
+        await ref.read(kopdesDashboardProvider.future);
+      } catch (_) {}
+    }
 
     return Scaffold(
       backgroundColor: AppColors.surfaceSoft,
       body: Column(
         children: [
-          GlassPageHeader(
-            title: 'Dashboard Kopdes',
-            subtitle: 'Selamat bekerja, ${user?.name ?? 'Admin Kopdes'}',
-            actions: [
-              GlassIconButton(
-                icon: Icons.forum_outlined,
-                label: 'Percakapan Admin',
-                onDark: true,
-                onTap: () => context.push('/admin/chat'),
-              ),
-              GlassIconButton(
-                icon: Icons.notifications_none_rounded,
-                label: 'Notifikasi',
-                onDark: true,
-                onTap: () => context.push('/notifications'),
-              ),
-            ],
+          SellerHeader(
+            storeName: profile?.businessName ?? 'Kopdes',
+            statusLabel: switch (profile?.isOpen) {
+              true => 'Kopdes buka · melayani pesanan',
+              false => 'Kopdes sedang tutup',
+              null => 'Jam buka belum diatur',
+            },
+            isVerified: profile?.isVerified ?? false,
+            newOrderCount: dashboard.valueOrNull?.stats.newOrdersCount ?? 0,
+            chatCount: chatCount,
+            notificationCount: unread,
+            onOrdersTap: () => onNavigateTab(2),
+            onChatTap: () => onNavigateTab(3),
+            onNotificationTap: () => context.push('/notifications'),
+            onSearchTap: () => onNavigateTab(1),
+            onAddProductTap: () => context.push(newProduct),
           ),
           Expanded(
             child: RefreshIndicator(
               color: AppColors.primary,
-              onRefresh: () async {
-                ref.invalidate(adminProductsProvider);
-                ref.invalidate(mitraListProvider);
-                ref.invalidate(adminOrdersProvider);
-              },
-              child: AppleContentBoundary(
-                child: ListView(
-                  physics: const AlwaysScrollableScrollPhysics(
-                    parent: BouncingScrollPhysics(),
-                  ),
-                  padding: const EdgeInsets.fromLTRB(
-                    0,
-                    AppSpacing.base,
-                    0,
-                    112,
-                  ),
-                  children: [
-                    AppleSection(
-                      title: 'Statistik Sistem',
-                      child: AppleResponsiveGrid(
-                        minimumItemWidth: 128,
-                        maxColumns: 4,
-                        itemExtentBuilder: (context, _) {
-                          final scale =
-                              MediaQuery.textScalerOf(context).scale(14) / 14;
-                          return 128 + 64 * (scale.clamp(1.0, 2.0) - 1);
-                        },
-                        children: [
-                          AdminStatCard(
-                            title: 'Barang Ritel',
-                            value: productsAsync.when(
-                              data: (list) => '${list.length}',
-                              loading: () => '...',
-                              error: (_, __) => '-',
-                            ),
-                            subtitle: productsAsync.when(
-                              data: (list) =>
-                                  '${list.where((p) => p.isActive).length} Aktif',
-                              loading: () => '',
-                              error: (_, __) => '',
-                            ),
-                            icon: Icons.inventory_2_outlined,
-                            color: AppColors.primary,
-                            onTap: () => onNavigateTab(1),
-                          ),
-                          AdminStatCard(
-                            title: 'Mitra UMKM',
-                            value: mitraAsync.when(
-                              data: (list) => '${list.length}',
-                              loading: () => '...',
-                              error: (_, __) => '-',
-                            ),
-                            subtitle: mitraAsync.when(
-                              data: (list) =>
-                                  '${list.where((m) => m.status == 'PENDING_VERIFICATION').length} Menunggu',
-                              loading: () => '',
-                              error: (_, __) => '',
-                            ),
-                            icon: Icons.storefront_outlined,
-                            color: AppColors.success,
-                            onTap: () => onNavigateTab(2),
-                          ),
-                          AdminStatCard(
-                            title: 'Pesanan Masuk',
-                            value: ordersAsync.when(
-                              data: (list) => '${list.length}',
-                              loading: () => '...',
-                              error: (_, __) => '-',
-                            ),
-                            subtitle: ordersAsync.when(
-                              data: (list) =>
-                                  '${list.where((o) => o.status == 'PENDING' || o.status == 'PAID').length} Perlu Proses',
-                              loading: () => '',
-                              error: (_, __) => '',
-                            ),
-                            icon: Icons.receipt_long_outlined,
-                            color: AppColors.warning,
-                            onTap: () => onNavigateTab(3),
-                          ),
-                          AdminStatCard(
-                            title: 'Omzet Koperasi',
-                            value: ordersAsync.when(
-                              data: (list) {
-                                final total = list.fold<num>(
-                                  0,
-                                  (sum, item) => sum + item.totalAmount,
-                                );
-                                return rupiah(total);
-                              },
-                              loading: () => '...',
-                              error: (_, __) => 'Rp 0',
-                            ),
-                            subtitle: 'Total akumulasi pesanan',
-                            icon: Icons.account_balance_wallet_outlined,
-                            color: AppColors.primaryActive,
-                            onTap: () => onNavigateTab(3),
-                          ),
-                        ],
+              onRefresh: refresh,
+              child: LayoutBuilder(
+                builder: (context, c) {
+                  final side = c.maxWidth > _maxContentWidth
+                      ? (c.maxWidth - _maxContentWidth) / 2
+                      : 0.0;
+                  return ListView(
+                    physics: const AlwaysScrollableScrollPhysics(
+                      parent: BouncingScrollPhysics(),
+                    ),
+                    padding: EdgeInsets.fromLTRB(
+                      AppSpacing.base + side,
+                      AppSpacing.md,
+                      AppSpacing.base + side,
+                      112,
+                    ),
+                    children: [
+                      // Hanya kartu angka yang bergantung pada dasbor;
+                      // aksi cepat tetap bisa dipakai saat API lambat.
+                      dashboard.when(
+                        skipLoadingOnRefresh: true,
+                        loading: () => const SectionSkeleton(height: 168),
+                        error: (e, _) => SectionError(
+                          message:
+                              'Ringkasan penjualan belum termuat. '
+                              '${networkErrorMessage(e)}',
+                          onRetry: () =>
+                              ref.invalidate(kopdesDashboardProvider),
+                        ),
+                        data: (d) => SalesSummaryCard(stats: d.stats),
                       ),
-                    ),
-                    mitraAsync.maybeWhen(
-                      data: (mitras) {
-                        final pendingCount = mitras
-                            .where((m) => m.status == 'PENDING_VERIFICATION')
-                            .length;
-                        if (pendingCount == 0) {
-                          return const SizedBox(height: AppSpacing.base);
-                        }
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(
-                            vertical: AppSpacing.base,
+                      const SizedBox(height: AppSpacing.md),
+                      QuickActionsRow(
+                        actions: [
+                          SellerQuickAction(
+                            icon: Icons.add_business_outlined,
+                            label: 'Tambah Produk',
+                            onTap: () => context.push(newProduct),
                           ),
-                          child: _ModerationNotice(
-                            count: pendingCount,
+                          SellerQuickAction(
+                            icon: Icons.receipt_long_outlined,
+                            label: 'Pesanan',
                             onTap: () => onNavigateTab(2),
                           ),
-                        );
-                      },
-                      orElse: () => const SizedBox(height: AppSpacing.base),
-                    ),
-                    AppleSection(
-                      title: 'Akses Pintas Pengelolaan',
-                      child: AppleResponsiveGrid(
-                        minimumItemWidth: 128,
-                        maxColumns: 4,
-                        itemExtentBuilder: (context, _) {
-                          final scale =
-                              MediaQuery.textScalerOf(context).scale(14) / 14;
-                          return 124 + 72 * (scale.clamp(1.0, 2.0) - 1);
-                        },
-                        children: [
-                          _QuickShortcutCard(
-                            icon: Icons.inventory_2_outlined,
-                            title: 'Kelola Barang Ritel',
-                            subtitle: 'Tambah & edit stok produk',
-                            color: AppColors.primary,
-                            onTap: () => onNavigateTab(1),
-                          ),
-                          _QuickShortcutCard(
+                          SellerQuickAction(
                             icon: Icons.verified_user_outlined,
-                            title: 'Pengelolaan Mitra',
-                            subtitle: 'Verifikasi & kelola UMKM',
-                            color: AppColors.success,
-                            onTap: () => onNavigateTab(2),
+                            label: 'Mitra',
+                            onTap: () => context
+                                .push('/admin/mitra')
+                                .then(
+                                  (_) =>
+                                      ref.invalidate(kopdesDashboardProvider),
+                                ),
                           ),
-                          _QuickShortcutCard(
-                            icon: Icons.receipt_long_outlined,
-                            title: 'Pesanan Masuk',
-                            subtitle: 'Ubah status order',
-                            color: AppColors.warning,
-                            onTap: () => onNavigateTab(3),
-                          ),
-                          _QuickShortcutCard(
-                            icon: Icons.local_shipping_outlined,
-                            title: 'Penugasan Kurir',
-                            subtitle: 'Atur pengantaran barang',
-                            color: AppColors.primaryActive,
-                            onTap: () => onNavigateTab(3),
+                          SellerQuickAction(
+                            icon: Icons.account_balance_wallet_outlined,
+                            label: 'Keuangan',
+                            onTap: () => context.push('/pegawai/keuangan'),
                           ),
                         ],
                       ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ModerationNotice extends StatelessWidget {
-  final int count;
-  final VoidCallback onTap;
-
-  const _ModerationNotice({required this.count, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return AdminCard(
-      onTap: onTap,
-      margin: EdgeInsets.zero,
-      padding: const EdgeInsets.all(AppSpacing.md),
-      borderColor: AppColors.warning,
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: AppColors.warning.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(AppRadius.sm),
-            ),
-            child: const Icon(
-              Icons.hourglass_top_rounded,
-              color: AppColors.warning,
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Verifikasi Mitra UMKM',
-                  style: AppTypography.bodyMedium.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.ink,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '$count pendaftaran baru menunggu peninjauan.',
-                  style: AppTypography.captionSmall,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          const Icon(Icons.chevron_right_rounded, color: AppColors.mutedSoft),
-        ],
-      ),
-    );
-  }
-}
-
-class _QuickShortcutCard extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _QuickShortcutCard({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return AdminCard(
-      onTap: onTap,
-      margin: EdgeInsets.zero,
-      padding: const EdgeInsets.all(AppSpacing.md),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(AppRadius.sm),
-            ),
-            child: Icon(icon, color: color, size: 19),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Flexible(
-            child: Text(
-              title,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: AppTypography.bodyMedium.copyWith(
-                fontWeight: FontWeight.w700,
-                color: AppColors.ink,
-              ),
-            ),
-          ),
-          const SizedBox(height: 2),
-          Flexible(
-            child: Text(
-              subtitle,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: AppTypography.captionSmall.copyWith(
-                color: AppColors.muted,
-                fontSize: 11,
+                      const SizedBox(height: AppSpacing.md),
+                      ...dashboard.maybeWhen(
+                        skipLoadingOnRefresh: true,
+                        data: (d) => [
+                          AttentionSection(
+                            onSeeAll: () => onNavigateTab(2),
+                            items: [
+                              AttentionItem(
+                                icon: Icons.receipt_long_outlined,
+                                tint: AppColors.primary,
+                                title: 'Pesanan baru',
+                                urgentMessage: 'Menunggu diproses',
+                                calmMessage: 'Tidak ada pesanan yang menunggu',
+                                count: d.stats.newOrdersCount,
+                                onTap: () => onNavigateTab(2),
+                              ),
+                              AttentionItem(
+                                icon: Icons.warning_amber_rounded,
+                                tint: AppColors.warning,
+                                title: 'Stok menipis',
+                                urgentMessage: 'Segera tambah stok barang',
+                                calmMessage: 'Stok barang aman',
+                                count: d.stats.lowStockCount,
+                                onTap: () => onNavigateTab(1),
+                              ),
+                              AttentionItem(
+                                icon: Icons.hourglass_top_rounded,
+                                tint: AppColors.success,
+                                title: 'Pendaftaran mitra',
+                                urgentMessage: 'Menunggu verifikasi Anda',
+                                calmMessage: 'Tidak ada pendaftaran baru',
+                                count: d.pendingMitra,
+                                onTap: () => context
+                                    .push('/admin/mitra')
+                                    .then(
+                                      (_) => ref.invalidate(
+                                        kopdesDashboardProvider,
+                                      ),
+                                    ),
+                              ),
+                              AttentionItem(
+                                icon: Icons.payments_outlined,
+                                tint: const Color(0xFF2F6FDB),
+                                title: 'Pencairan mitra',
+                                urgentMessage: 'Menunggu ditransfer',
+                                calmMessage: 'Tidak ada permintaan pencairan',
+                                count: d.pendingPayouts,
+                                onTap: () => context
+                                    .push('/admin/payouts')
+                                    .then(
+                                      (_) => ref.invalidate(
+                                        kopdesDashboardProvider,
+                                      ),
+                                    ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          StoreSummaryGrid(
+                            cells: [
+                              StoreSummaryCell(
+                                icon: Icons.inventory_2_outlined,
+                                tint: AppColors.success,
+                                label: 'Produk Aktif',
+                                value: '${d.stats.totalProducts}',
+                              ),
+                              StoreSummaryCell(
+                                icon: Icons.shopping_bag_outlined,
+                                tint: AppColors.primary,
+                                label: 'Terjual',
+                                value: '${d.stats.productsSold}',
+                              ),
+                              StoreSummaryCell(
+                                icon: Icons.star_outline_rounded,
+                                tint: AppColors.warning,
+                                label: 'Rating Kopdes',
+                                value: d.stats.storeRating > 0
+                                    ? d.stats.storeRating
+                                          .toStringAsFixed(1)
+                                          .replaceAll('.', ',')
+                                    : '—',
+                                note: d.stats.storeRating > 0
+                                    ? null
+                                    : 'Belum ada ulasan',
+                              ),
+                              StoreSummaryCell(
+                                icon: Icons.receipt_outlined,
+                                tint: AppColors.primary,
+                                label: 'Total Pesanan',
+                                value: '${d.stats.totalOrders}',
+                              ),
+                            ],
+                          ),
+                        ],
+                        orElse: () => const [],
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      StoreTipsRow(
+                        actionLabel: 'Lengkapi Profil',
+                        onTap: () => onNavigateTab(4),
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
           ),
@@ -426,76 +322,7 @@ class _QuickShortcutCard extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────
-// TAB 2: MITRA & MODERASI TAB
-// ─────────────────────────────────────────────────────────
-class _MitraAndUmkmTab extends StatelessWidget {
-  const _MitraAndUmkmTab();
-
-  @override
-  Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 3,
-      child: Scaffold(
-        backgroundColor: AppColors.canvas,
-        appBar: AppBar(
-          backgroundColor: AppColors.canvas,
-          elevation: 0,
-          title: Text(
-            'Mitra & Moderasi UMKM',
-            style: AppTypography.titleMedium.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          bottom: TabBar(
-            labelColor: AppColors.primary,
-            unselectedLabelColor: AppColors.muted,
-            indicatorColor: AppColors.primary,
-            labelStyle: AppTypography.buttonSm.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
-            isScrollable: true,
-            tabAlignment: TabAlignment.start,
-            tabs: const [
-              Tab(text: 'Verifikasi Mitra'),
-              Tab(text: 'Moderasi Produk'),
-              Tab(text: 'Pencairan'),
-            ],
-          ),
-        ),
-        body: const TabBarView(
-          children: [
-            MitraManagementScreenContent(),
-            UmkmProductTakedownScreenContent(),
-            PayoutQueueScreen(),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// Sub-content wrapper for Mitra Management inside Dashboard Shell
-class MitraManagementScreenContent extends StatelessWidget {
-  const MitraManagementScreenContent({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const MitraManagementScreen();
-  }
-}
-
-// Sub-content wrapper for UMKM Product Takedown inside Dashboard Shell
-class UmkmProductTakedownScreenContent extends StatelessWidget {
-  const UmkmProductTakedownScreenContent({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const UmkmProductTakedownScreen();
-  }
-}
-
-// ─────────────────────────────────────────────────────────
-// TAB 3: PESANAN & KURIR TAB
+// TAB 2: PESANAN & PENGANTARAN
 // ─────────────────────────────────────────────────────────
 class _OrdersAndCouriersTab extends StatelessWidget {
   const _OrdersAndCouriersTab();
@@ -509,8 +336,9 @@ class _OrdersAndCouriersTab extends StatelessWidget {
         appBar: AppBar(
           backgroundColor: AppColors.canvas,
           elevation: 0,
+          automaticallyImplyLeading: false,
           title: Text(
-            'Pesanan & Kurir Koperasi',
+            'Pesanan & Pengantaran',
             style: AppTypography.titleMedium.copyWith(
               fontWeight: FontWeight.w700,
             ),

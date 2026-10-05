@@ -9,7 +9,9 @@ import '../../../../core/theme/theme.dart';
 import '../../../../shared/widgets/app_glass_chrome.dart';
 import '../../../../shared/widgets/apple_ui.dart';
 import '../../data/models/store_model.dart';
+import '../../../admin/data/kopdes_console.dart';
 import '../../data/payout_repository.dart';
+import '../../data/store_scope.dart';
 import '../controllers/store_controller.dart';
 import '../widgets/seller_page_ui.dart';
 import '../widgets/store_page_ui.dart';
@@ -35,24 +37,30 @@ class StoreProfileScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final scope = ref.watch(storeScopeProvider);
+    final kopdes = scope.isKopdes;
     return Scaffold(
       backgroundColor: AppColors.surfaceSoft,
       body: SellerPageChrome(
-        title: 'Toko Anda',
-        subtitle: 'Profil, pencairan, dan pengaturan usaha',
+        title: kopdes ? 'Koperasi Anda' : 'Toko Anda',
+        subtitle: kopdes
+            ? 'Profil, keuangan, dan pengelolaan Kopdes'
+            : 'Profil, pencairan, dan pengaturan usaha',
         actions: [
           GlassIconButton(
             icon: Icons.edit_outlined,
-            label: 'Edit profil toko',
+            label: kopdes ? 'Edit profil Kopdes' : 'Edit profil toko',
             onDark: true,
-            onTap: () => context.push(StoreRoutes.edit),
+            onTap: () => context.push('${scope.store}/edit'),
           ),
         ],
         body: RefreshIndicator(
           color: AppColors.primary,
           onRefresh: () async {
             ref.invalidate(storeProfileProvider);
-            ref.invalidate(payoutSummaryProvider);
+            ref.invalidate(
+              kopdes ? kopdesDashboardProvider : payoutSummaryProvider,
+            );
             // Galat ditampilkan section-nya sendiri; di sini cukup menunggu.
             try {
               await ref.read(storeProfileProvider.future);
@@ -70,14 +78,18 @@ class StoreProfileScreen extends ConsumerWidget {
                   // Bilah bawah mengambang di atas isi.
                   math.max(112.0, MediaQuery.paddingOf(context).bottom + 24),
                 ),
-                children: const [
-                  _IdentitySection(),
-                  SizedBox(height: AppSpacing.md),
-                  _BalanceSection(),
-                  SizedBox(height: AppSpacing.xl),
-                  _ProfileSection(),
-                  SizedBox(height: AppSpacing.xl),
-                  _ManageSection(),
+                children: [
+                  const _IdentitySection(),
+                  const SizedBox(height: AppSpacing.md),
+                  // Kopdes tidak menarik saldo seperti mitra: yang ia
+                  // perlukan di sini adalah omzet dan laporan keuangannya.
+                  kopdes
+                      ? const _KopdesFinanceSection()
+                      : const _BalanceSection(),
+                  const SizedBox(height: AppSpacing.xl),
+                  const _ProfileSection(),
+                  const SizedBox(height: AppSpacing.xl),
+                  const _ManageSection(),
                 ],
               );
             },
@@ -106,18 +118,22 @@ class _IdentitySection extends ConsumerWidget {
             message: 'Profil toko belum termuat. ${networkErrorMessage(e)}',
             onRetry: () => ref.invalidate(storeProfileProvider),
           ),
-          data: (store) => _IdentityCard(store: store),
+          data: (store) => _IdentityCard(
+            store: store,
+            kopdes: ref.watch(storeScopeProvider).isKopdes,
+          ),
         );
   }
 }
 
 class _IdentityCard extends StatelessWidget {
   final StoreModel store;
-  const _IdentityCard({required this.store});
+  final bool kopdes;
+  const _IdentityCard({required this.store, this.kopdes = false});
 
   @override
   Widget build(BuildContext context) {
-    final verification = verificationPill(store.status);
+    final verification = verificationPill(store.status, kopdes: kopdes);
     final operational = switch (store.isOpen) {
       true => const StatusPill(
         icon: Icons.circle,
@@ -202,8 +218,11 @@ class _IdentityCard extends StatelessWidget {
             alignment: Alignment.centerRight,
             child: store.isVerified
                 ? TextButton.icon(
-                    onPressed: () =>
-                        context.push(StoreRoutes.publicStore(store.id)),
+                    onPressed: () => context.push(
+                      kopdes
+                          ? '/koperasi/${store.id}'
+                          : StoreRoutes.publicStore(store.id),
+                    ),
                     iconAlignment: IconAlignment.end,
                     icon: const Icon(Icons.chevron_right_rounded),
                     style: TextButton.styleFrom(
@@ -215,7 +234,9 @@ class _IdentityCard extends StatelessWidget {
                 // Toko yang belum terverifikasi tidak tampil untuk pembeli:
                 // tombolnya akan membuka halaman "tidak ditemukan".
                 : Text(
-                    'Toko tampil untuk pembeli setelah diverifikasi.',
+                    kopdes
+                        ? 'Kopdes tampil untuk warga setelah diverifikasi pengelola sistem.'
+                        : 'Toko tampil untuk pembeli setelah diverifikasi.',
                     textAlign: TextAlign.right,
                     style: AppTypography.captionSmall.copyWith(
                       fontSize: 12.5,
@@ -230,32 +251,33 @@ class _IdentityCard extends StatelessWidget {
 }
 
 /// Badge verifikasi dari `UMKMStatus` — "terverifikasi" hanya untuk ACTIVE.
-StatusPill verificationPill(String status) => switch (status) {
-  'ACTIVE' => const StatusPill(
-    icon: Icons.verified_rounded,
-    label: 'Toko terverifikasi',
-    tint: AppColors.success,
-    text: AppColors.successText,
-  ),
-  'REJECTED' => const StatusPill(
-    icon: Icons.cancel_outlined,
-    label: 'Verifikasi ditolak',
-    tint: AppColors.error,
-    text: AppColors.errorText,
-  ),
-  'SUSPENDED' => const StatusPill(
-    icon: Icons.block_rounded,
-    label: 'Toko ditangguhkan',
-    tint: AppColors.error,
-    text: AppColors.errorText,
-  ),
-  _ => const StatusPill(
-    icon: Icons.hourglass_top_rounded,
-    label: 'Menunggu verifikasi',
-    tint: AppColors.warning,
-    text: AppColors.warningText,
-  ),
-};
+StatusPill verificationPill(String status, {bool kopdes = false}) =>
+    switch (status) {
+      'ACTIVE' => StatusPill(
+        icon: Icons.verified_rounded,
+        label: kopdes ? 'Kopdes terverifikasi' : 'Toko terverifikasi',
+        tint: AppColors.success,
+        text: AppColors.successText,
+      ),
+      'REJECTED' => const StatusPill(
+        icon: Icons.cancel_outlined,
+        label: 'Verifikasi ditolak',
+        tint: AppColors.error,
+        text: AppColors.errorText,
+      ),
+      'SUSPENDED' => const StatusPill(
+        icon: Icons.block_rounded,
+        label: 'Toko ditangguhkan',
+        tint: AppColors.error,
+        text: AppColors.errorText,
+      ),
+      _ => const StatusPill(
+        icon: Icons.hourglass_top_rounded,
+        label: 'Menunggu verifikasi',
+        tint: AppColors.warning,
+        text: AppColors.warningText,
+      ),
+    };
 
 class _StoreLogo extends StatelessWidget {
   final String? photoUrl;
@@ -607,6 +629,101 @@ class _BlockerNote extends StatelessWidget {
   }
 }
 
+/// Keuangan Kopdes: omzet barang Kopdes sendiri dan pintu ke laporan.
+class _KopdesFinanceSection extends ConsumerWidget {
+  const _KopdesFinanceSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return ref
+        .watch(kopdesDashboardProvider)
+        .when(
+          skipLoadingOnRefresh: true,
+          loading: () => const SectionSkeleton(height: 168),
+          error: (e, _) => SectionError(
+            message: 'Keuangan belum termuat. ${networkErrorMessage(e)}',
+            onRetry: () => ref.invalidate(kopdesDashboardProvider),
+          ),
+          data: (d) => StoreSurface(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const IconTile(
+                      Icons.account_balance_wallet_rounded,
+                      tint: AppColors.primary,
+                      size: 48,
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Omzet bulan ini',
+                            style: AppTypography.captionSmall.copyWith(
+                              fontSize: 12.5,
+                              color: AppColors.muted,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              formatRupiah(d.stats.monthlyEarnings),
+                              style: AppTypography.titleLarge.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.ink,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Hari ini ${formatRupiah(d.stats.todayEarnings)} · '
+                            '${d.stats.todayOrders} transaksi',
+                            style: AppTypography.captionSmall.copyWith(
+                              fontSize: 12.5,
+                              color: AppColors.body,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Text(
+                  'Hanya penjualan barang Kopdes. Penjualan barang mitra '
+                  'masuk ke saldo masing-masing mitra.',
+                  style: AppTypography.captionSmall.copyWith(
+                    fontSize: 12.5,
+                    color: AppColors.muted,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    onPressed: () => context.push('/pegawai/keuangan'),
+                    iconAlignment: IconAlignment.end,
+                    icon: const Icon(Icons.chevron_right_rounded, size: 20),
+                    style: TextButton.styleFrom(
+                      minimumSize: const Size(44, 44),
+                      foregroundColor: AppColors.primaryText,
+                    ),
+                    label: const Text('Laporan keuangan'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+  }
+}
+
 // ─────────────────────────────────────────────────────────────
 // 3. Profil usaha
 // ─────────────────────────────────────────────────────────────
@@ -616,11 +733,17 @@ class _ProfileSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final scope = ref.watch(storeScopeProvider);
+    final kopdes = scope.isKopdes;
+    final edit = '${scope.store}/edit';
+    final settings = '${scope.store}/settings';
     final header = StoreSectionHeader(
-      'Profil usaha',
-      subtitle: 'Informasi yang dilihat pembeli.',
+      kopdes ? 'Profil Kopdes' : 'Profil usaha',
+      subtitle: kopdes
+          ? 'Informasi yang dilihat warga.'
+          : 'Informasi yang dilihat pembeli.',
       action: TextButton.icon(
-        onPressed: () => context.push(StoreRoutes.edit),
+        onPressed: () => context.push(edit),
         icon: const Icon(Icons.edit_outlined, size: 18),
         style: TextButton.styleFrom(
           minimumSize: const Size(44, 44),
@@ -650,28 +773,28 @@ class _ProfileSection extends ConsumerWidget {
               rows: [
                 StoreRow(
                   icon: Icons.description_outlined,
-                  title: 'Tentang toko',
+                  title: kopdes ? 'Tentang Kopdes' : 'Tentang toko',
                   value: store.description.trim().isEmpty
                       ? empty
                       : store.description.trim(),
                   placeholder: store.description.trim().isEmpty,
-                  onTap: () => context.push(StoreRoutes.edit),
+                  onTap: () => context.push(edit),
                 ),
                 StoreRow(
                   icon: Icons.location_on_outlined,
-                  title: 'Alamat toko',
+                  title: kopdes ? 'Alamat Kopdes' : 'Alamat toko',
                   value: store.address.trim().isEmpty
                       ? empty
                       : store.address.trim(),
                   placeholder: store.address.trim().isEmpty,
-                  onTap: () => context.push(StoreRoutes.edit),
+                  onTap: () => context.push(edit),
                 ),
                 StoreRow(
                   icon: Icons.phone_outlined,
                   title: 'Kontak & jam buka',
                   value: contact ?? empty,
                   placeholder: contact == null,
-                  onTap: () => context.push(StoreRoutes.settings),
+                  onTap: () => context.push(settings),
                 ),
               ],
             );
@@ -714,8 +837,115 @@ class _ManageSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final kopdes = ref.watch(storeScopeProvider).isKopdes;
+    final tiles = kopdes
+        ? _kopdesTiles(context, ref)
+        : _umkmTiles(context, ref);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        StoreSectionHeader(
+          kopdes ? 'Kelola Kopdes' : 'Kelola toko',
+          subtitle: kopdes
+              ? 'Mitra, pegawai, pengantaran, dan pengaturan.'
+              : 'Atur dan kelola toko Anda.',
+        ),
+        _ManageGrid(tiles: tiles),
+      ],
+    );
+  }
+
+  /// Menu pengurus. Tiap tujuan adalah layar admin yang sudah ada — tab
+  /// ini hanya mengumpulkannya di satu tempat seperti tab Toko milik mitra.
+  List<Widget> _kopdesTiles(BuildContext context, WidgetRef ref) {
+    final d = ref.watch(kopdesDashboardProvider).valueOrNull;
+    final store = ref.read(storeScopeProvider).store;
+    return [
+      _ManageTile(
+        icon: Icons.verified_user_outlined,
+        tint: AppColors.success,
+        title: 'Mitra UMKM',
+        subtitle: (d?.pendingMitra ?? 0) > 0
+            ? '${d!.pendingMitra} pendaftaran menunggu verifikasi'
+            : 'Verifikasi dan kelola mitra',
+        onTap: () => context
+            .push('/admin/mitra')
+            .then((_) => ref.invalidate(kopdesDashboardProvider)),
+      ),
+      _ManageTile(
+        icon: Icons.payments_outlined,
+        tint: AppColors.primary,
+        title: 'Pencairan mitra',
+        subtitle: (d?.pendingPayouts ?? 0) > 0
+            ? '${d!.pendingPayouts} permintaan menunggu transfer'
+            : 'Transfer saldo penjualan mitra',
+        onTap: () => context
+            .push('/admin/payouts')
+            .then((_) => ref.invalidate(kopdesDashboardProvider)),
+      ),
+      _ManageTile(
+        icon: Icons.gpp_maybe_outlined,
+        tint: AppColors.warning,
+        title: 'Moderasi produk UMKM',
+        subtitle: 'Turunkan produk mitra yang melanggar',
+        onTap: () => context.push('/admin/umkm-products'),
+      ),
+      _ManageTile(
+        icon: Icons.local_shipping_outlined,
+        tint: const Color(0xFF2F6FDB),
+        title: 'Pengantaran',
+        subtitle: 'Tugaskan kurir dan pantau pengiriman',
+        onTap: () => context.push('/admin/couriers'),
+      ),
+      _ManageTile(
+        icon: Icons.badge_outlined,
+        tint: AppColors.primary,
+        title: 'Pegawai & kurir',
+        subtitle: 'Buat akun dan atur wewenang',
+        onTap: () => context.push('/admin/staff'),
+      ),
+      _ManageTile(
+        icon: Icons.category_outlined,
+        tint: AppColors.success,
+        title: 'Kategori barang',
+        subtitle: 'Kelompok barang di katalog',
+        onTap: () => context.push('/admin/categories'),
+      ),
+      _ManageTile(
+        icon: Icons.map_outlined,
+        tint: AppColors.warning,
+        title: 'Lokasi mitra',
+        subtitle: 'Titik peta toko UMKM',
+        onTap: () => context.push('/admin/umkm-locations'),
+      ),
+      _ManageTile(
+        icon: Icons.auto_awesome_outlined,
+        tint: const Color(0xFF2F6FDB),
+        title: 'Asisten AI',
+        subtitle: 'Tanya stok, penjualan, dan tren',
+        onTap: () => context.push('/pegawai/ai'),
+      ),
+      _ManageTile(
+        icon: Icons.settings_outlined,
+        tint: const Color(0xFF2F6FDB),
+        title: 'Pengaturan Kopdes',
+        subtitle: 'Kontak dan jam buka',
+        onTap: () => context.push('$store/settings'),
+      ),
+      _ManageTile(
+        icon: Icons.shield_outlined,
+        tint: AppColors.success,
+        title: 'Keamanan akun',
+        subtitle: 'Kata sandi dan keluar',
+        onTap: () => context.push('$store/security'),
+      ),
+    ];
+  }
+
+  List<Widget> _umkmTiles(BuildContext context, WidgetRef ref) {
     final bank = ref.watch(payoutSummaryProvider).valueOrNull?.bankAccount;
-    final tiles = [
+    return [
       _ManageTile(
         icon: Icons.account_balance_outlined,
         tint: AppColors.primary,
@@ -747,50 +977,54 @@ class _ManageSection extends ConsumerWidget {
         onTap: () => context.push(StoreRoutes.security),
       ),
     ];
+  }
+}
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const StoreSectionHeader(
-          'Kelola toko',
-          subtitle: 'Atur dan kelola toko Anda.',
-        ),
-        LayoutBuilder(
-          builder: (context, c) {
-            // Dua kolom selama satu kolom masih selebar ±170dp pada skala
-            // teks saat ini; selebihnya satu kolom, bukan teks yang mengecil.
-            final scale = MediaQuery.textScalerOf(context).scale(1);
-            final twoColumns = (c.maxWidth - AppSpacing.md) / 2 >= 170 * scale;
-            if (!twoColumns) {
-              return Column(
-                children: [
-                  for (var i = 0; i < tiles.length; i++) ...[
-                    if (i > 0) const SizedBox(height: AppSpacing.sm),
-                    tiles[i],
-                  ],
-                ],
-              );
-            }
-            return Column(
-              children: [
-                for (var i = 0; i < tiles.length; i += 2) ...[
-                  if (i > 0) const SizedBox(height: AppSpacing.md),
-                  IntrinsicHeight(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Expanded(child: tiles[i]),
-                        const SizedBox(width: AppSpacing.md),
-                        Expanded(child: tiles[i + 1]),
-                      ],
-                    ),
-                  ),
-                ],
+/// Petak menu dua kolom; satu kolom bila teks diperbesar.
+class _ManageGrid extends StatelessWidget {
+  final List<Widget> tiles;
+  const _ManageGrid({required this.tiles});
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, c) {
+        // Dua kolom selama satu kolom masih selebar ±170dp pada skala
+        // teks saat ini; selebihnya satu kolom, bukan teks yang mengecil.
+        final scale = MediaQuery.textScalerOf(context).scale(1);
+        final twoColumns = (c.maxWidth - AppSpacing.md) / 2 >= 170 * scale;
+        if (!twoColumns) {
+          return Column(
+            children: [
+              for (var i = 0; i < tiles.length; i++) ...[
+                if (i > 0) const SizedBox(height: AppSpacing.sm),
+                tiles[i],
               ],
-            );
-          },
-        ),
-      ],
+            ],
+          );
+        }
+        return Column(
+          children: [
+            for (var i = 0; i < tiles.length; i += 2) ...[
+              if (i > 0) const SizedBox(height: AppSpacing.md),
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(child: tiles[i]),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: i + 1 < tiles.length
+                          ? tiles[i + 1]
+                          : const SizedBox.shrink(),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        );
+      },
     );
   }
 }

@@ -6,6 +6,7 @@ import '../../../../core/network/error_message.dart';
 import '../../../../core/theme/theme.dart';
 import '../../../../shared/widgets/apple_feedback.dart';
 import '../../data/models/store_model.dart';
+import '../../data/store_scope.dart';
 import '../controllers/store_controller.dart';
 import '../widgets/product_form_ui.dart';
 import '../widgets/store_form_page.dart';
@@ -29,6 +30,11 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
   StoreModel? _original;
   bool _saving = false;
   bool _touched = false;
+
+  bool get _kopdes => ref.read(storeScopeProvider).isKopdes;
+
+  String? _phoneError() =>
+      StoreProfileRules.phone(_phone.text, landline: _kopdes);
 
   /// Jam bawaan saat sebuah hari dinyalakan.
   static const _defaultDay = DayHours('08:00', '17:00');
@@ -91,7 +97,7 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
 
   Future<void> _save() async {
     setState(() => _touched = true);
-    final phoneError = StoreProfileRules.phone(_phone.text);
+    final phoneError = _phoneError();
     if (phoneError != null || _saving) return;
     setState(() => _saving = true);
     final ok = await runWithFeedback(
@@ -116,10 +122,10 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(storeProfileProvider);
-    final phoneError = _touched ? StoreProfileRules.phone(_phone.text) : null;
+    final phoneError = _touched ? _phoneError() : null;
 
     return StoreFormPage(
-      title: 'Pengaturan Toko',
+      title: _kopdes ? 'Pengaturan Kopdes' : 'Pengaturan Toko',
       subtitle: 'Kontak dan jam buka',
       dirty: _dirty,
       saving: _saving,

@@ -13,6 +13,7 @@ import '../../../../shared/widgets/apple_ui.dart';
 import '../../data/models/product_category_model.dart';
 import '../../data/models/seller_product_page.dart';
 import '../../domain/product_rules.dart';
+import '../../data/store_scope.dart';
 import '../controllers/product_controller.dart';
 import '../controllers/product_form_controller.dart';
 import '../widgets/product_form_ui.dart';
@@ -38,6 +39,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   final _description = TextEditingController();
   final _price = TextEditingController();
   final _stock = TextEditingController();
+  final _minStock = TextEditingController();
   final _scroll = ScrollController();
 
   AutoDisposeStateNotifierProvider<ProductFormNotifier, ProductFormState>
@@ -57,6 +59,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     _description.dispose();
     _price.dispose();
     _stock.dispose();
+    _minStock.dispose();
     _scroll.dispose();
     super.dispose();
   }
@@ -75,6 +78,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       d.price.isEmpty ? '' : formatThousands(int.tryParse(d.price) ?? 0),
     );
     set(_stock, d.stock);
+    set(_minStock, d.minStock);
   }
 
   void _toTop() {
@@ -726,7 +730,33 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                 error: errors['stock'],
               ),
             ),
-          if (threshold != null) ...[
+          // Barang Kopdes punya batas menipisnya sendiri; UMKM memakai satu
+          // batas untuk seluruh toko (keterangan di bawahnya).
+          if (ref.watch(storeScopeProvider).isKopdes) ...[
+            const SizedBox(height: AppSpacing.lg),
+            const FieldLabel('Batas stok menipis'),
+            TextField(
+              controller: _minStock,
+              keyboardType: TextInputType.number,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(7),
+              ],
+              onChanged: _form.setMinStock,
+              decoration: productInputDecoration(
+                hint: '5',
+                error: errors['minStock'],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              'Stok sama atau di bawah angka ini ditandai "Menipis". Kosong = 5.',
+              style: AppTypography.captionSmall.copyWith(
+                fontSize: 12.5,
+                color: AppColors.muted,
+              ),
+            ),
+          ] else if (threshold != null) ...[
             const SizedBox(height: AppSpacing.sm),
             Text(
               'Stok $threshold atau kurang ditandai "Menipis" di daftar '

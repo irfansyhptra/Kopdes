@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/theme/theme.dart';
 import '../../../../shared/components/error_state_widget.dart';
 import '../../../../shared/widgets/product_image_loader.dart';
+import '../../data/store_scope.dart';
 import '../controllers/product_controller.dart';
 import '../../data/models/product_model.dart';
 import '../../../../core/network/error_message.dart';
@@ -127,8 +128,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                       icon: Icons.edit_outlined,
                       semanticLabel: 'Edit produk',
                       size: 40,
-                      onTap: () =>
-                          context.push('/umkm/products/edit/${product.id}'),
+                      onTap: () => context.push(
+                        ref.read(storeScopeProvider).editRoute(product.id),
+                      ),
                     ),
                   ),
                 ],
@@ -343,7 +345,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                           Expanded(
                             child: ElevatedButton.icon(
                               onPressed: () => context.push(
-                                '/umkm/products/edit/${product.id}',
+                                ref
+                                    .read(storeScopeProvider)
+                                    .editRoute(product.id),
                               ),
                               icon: const Icon(
                                 Icons.edit_outlined,
@@ -393,7 +397,11 @@ class _ReviewSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final target = ReviewTarget.umkm(productId);
+    // Ulasan barang Kopdes dicatat lewat productId, barang UMKM lewat
+    // umkmProductId.
+    final target = ref.watch(storeScopeProvider).isKopdes
+        ? ReviewTarget.kopdes(productId)
+        : ReviewTarget.umkm(productId);
     final async = ref.watch(productReviewsProvider(target));
 
     return Column(

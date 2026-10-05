@@ -14,6 +14,9 @@ class ProductModel {
   final bool isActive;
   final double rating;
 
+  /// Batas stok menipis per produk — hanya barang Kopdes yang memilikinya.
+  final int? minStock;
+
   const ProductModel({
     required this.id,
     required this.name,
@@ -26,6 +29,7 @@ class ProductModel {
     this.isApproved = false,
     this.isActive = true,
     this.rating = 0.0,
+    this.minStock,
   });
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
@@ -51,6 +55,7 @@ class ProductModel {
       images: parsedImages,
       isApproved: json['isApproved'] as bool? ?? false,
       isActive: json['isActive'] as bool? ?? true,
+      minStock: (json['minStock'] as num?)?.toInt(),
       rating: json['rating'] is num
           ? (json['rating'] as num).toDouble()
           : double.tryParse(json['rating'].toString()) ?? 0.0,
@@ -69,6 +74,7 @@ class ProductModel {
     isApproved: isApproved,
     isActive: isActive ?? this.isActive,
     rating: rating,
+    minStock: minStock,
   );
 
   Map<String, dynamic> toJson() {

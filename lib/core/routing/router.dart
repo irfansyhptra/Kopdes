@@ -59,6 +59,10 @@ import '../../features/admin/presentation/screens/umkm_product_takedown_screen.d
 import '../../features/admin/presentation/screens/order_management_screen.dart';
 import '../../features/admin/presentation/screens/courier_management_screen.dart';
 import '../../features/admin/presentation/screens/admin_profile_screen.dart';
+import '../../features/admin/data/kopdes_console.dart';
+import '../../features/admin/presentation/screens/payout_queue_screen.dart';
+import '../../features/admin/presentation/screens/staff_accounts_screen.dart';
+import '../../features/umkm/presentation/screens/umkm_apply_screen.dart';
 import '../../features/chat/presentation/screens/conversation_list_screen.dart';
 import '../../features/chat/presentation/screens/chat_detail_screen.dart';
 import '../../features/chat/presentation/screens/chat_hub_screen.dart';
@@ -549,6 +553,71 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/admin/profile',
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const AdminProfileScreen(),
+      ),
+      // ── Konsol Kopdes: halaman penjual yang sama, cakupan Kopdes ──
+      GoRoute(
+        path: '/admin/kopdes/products/new',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const ProductFormScreen(),
+      ),
+      GoRoute(
+        path: '/admin/kopdes/products/edit/:id',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) =>
+            ProductFormScreen(productId: state.pathParameters['id'] ?? ''),
+      ),
+      GoRoute(
+        path: '/admin/kopdes/products/detail/:id',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => seller_view.ProductDetailScreen(
+          productId: state.pathParameters['id'] ?? '',
+        ),
+      ),
+      GoRoute(
+        path: '/admin/kopdes/store/edit',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const StoreEditScreen(),
+      ),
+      GoRoute(
+        path: '/admin/kopdes/store/settings',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const StoreSettingsScreen(),
+      ),
+      GoRoute(
+        path: '/admin/kopdes/store/security',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const AccountSecurityScreen(),
+      ),
+      GoRoute(
+        path: '/admin/staff',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const StaffAccountsScreen(),
+      ),
+      GoRoute(
+        path: '/admin/staff/new',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const StaffFormScreen(),
+      ),
+      GoRoute(
+        path: '/admin/staff/edit',
+        parentNavigatorKey: rootNavigatorKey,
+        // Tanpa akun yang dibawa (mis. tautan langsung), kembali ke daftar.
+        redirect: (context, state) =>
+            state.extra is StaffAccount ? null : '/admin/staff',
+        builder: (context, state) =>
+            StaffFormScreen(existing: state.extra as StaffAccount),
+      ),
+      GoRoute(
+        path: '/admin/payouts',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const PayoutQueuePage(),
+      ),
+      // Bukan di bawah `/umkm`: awalan itu khusus akun penjual, sedangkan
+      // yang mendaftar masih akun pembeli.
+      GoRoute(
+        path: '/daftar-mitra',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const UmkmApplyScreen(),
       ),
       GoRoute(
         path: '/chat',

@@ -667,6 +667,12 @@ class _AccountSection extends StatelessWidget {
           label: 'Keanggotaan Koperasi',
           onTap: () => context.push('/membership/register'),
         ),
+        _MenuRow(
+          icon: Icons.storefront_rounded,
+          tint: AppColors.primary,
+          label: 'Daftar Mitra UMKM',
+          onTap: () => context.push('/daftar-mitra'),
+        ),
       ],
     );
   }

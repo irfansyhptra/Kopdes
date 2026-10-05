@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../data/services/seller_service.dart';
+import '../../data/store_scope.dart';
 import '../../data/services/product_service.dart';
 import '../../data/services/inventory_service.dart';
 import '../../data/services/order_service.dart';
@@ -20,15 +21,24 @@ final sellerServiceProvider = Provider<SellerService>((ref) {
 });
 
 final storeServiceProvider = Provider<StoreService>((ref) {
-  return StoreService(dio: ref.watch(dioProvider));
+  return StoreService(
+    dio: ref.watch(dioProvider),
+    scope: ref.watch(storeScopeProvider),
+  );
 });
 
 final productServiceProvider = Provider<ProductService>((ref) {
-  return ProductService(dio: ref.watch(dioProvider));
+  return ProductService(
+    dio: ref.watch(dioProvider),
+    scope: ref.watch(storeScopeProvider),
+  );
 });
 
 final inventoryServiceProvider = Provider<InventoryService>((ref) {
-  return InventoryService(dio: ref.watch(dioProvider));
+  return InventoryService(
+    dio: ref.watch(dioProvider),
+    scope: ref.watch(storeScopeProvider),
+  );
 });
 
 final orderServiceProvider = Provider<OrderService>((ref) {

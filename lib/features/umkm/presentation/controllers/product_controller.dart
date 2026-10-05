@@ -81,8 +81,10 @@ class SellerProductListState {
     this.isLoadingMore = false,
   });
 
+  /// Batas produk itu sendiri bila ada (barang Kopdes), selain itu batas
+  /// toko dari server (UMKM).
   StockLevel levelOf(ProductModel p) =>
-      StockLevel.of(p.stock, lowStockThreshold);
+      StockLevel.of(p.stock, p.minStock ?? lowStockThreshold);
 
   SellerProductListState copyWith({
     List<ProductModel>? items,

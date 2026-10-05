@@ -20,6 +20,7 @@ abstract class ProductRepository {
     required double price,
     required int stock,
     required String categoryId,
+    int? minStock,
     List<dynamic>? images,
   });
   Future<ProductModel> updateProduct({
@@ -29,6 +30,7 @@ abstract class ProductRepository {
     double? price,
     int? stock,
     String? categoryId,
+    int? minStock,
     bool? isActive,
     List<dynamic>? newImages,
   });

@@ -46,6 +46,7 @@ class ProductRepositoryImpl implements ProductRepository {
     required double price,
     required int stock,
     required String categoryId,
+    int? minStock,
     List<dynamic>? images,
   }) => service.createProduct(
     name: name,
@@ -53,6 +54,7 @@ class ProductRepositoryImpl implements ProductRepository {
     price: price,
     stock: stock,
     categoryId: categoryId,
+    minStock: minStock,
     images: images,
   );
 
@@ -64,6 +66,7 @@ class ProductRepositoryImpl implements ProductRepository {
     double? price,
     int? stock,
     String? categoryId,
+    int? minStock,
     bool? isActive,
     List<dynamic>? newImages,
   }) => service.updateProduct(
@@ -73,6 +76,7 @@ class ProductRepositoryImpl implements ProductRepository {
     price: price,
     stock: stock,
     categoryId: categoryId,
+    minStock: minStock,
     isActive: isActive,
     newImages: newImages,
   );

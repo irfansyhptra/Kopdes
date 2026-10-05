@@ -120,6 +120,9 @@ class ProductFormData {
   /// Hanya angka, tanpa pemisah ribuan.
   final String price;
   final String stock;
+
+  /// Batas stok menipis (hanya Kopdes); kosong = bawaan server (5).
+  final String minStock;
   final List<FormPhoto> photos;
 
   const ProductFormData({
@@ -128,6 +131,7 @@ class ProductFormData {
     this.description = '',
     this.price = '',
     this.stock = '',
+    this.minStock = '',
     this.photos = const [],
   });
 
@@ -137,6 +141,7 @@ class ProductFormData {
     String? description,
     String? price,
     String? stock,
+    String? minStock,
     List<FormPhoto>? photos,
   }) => ProductFormData(
     name: name ?? this.name,
@@ -144,6 +149,7 @@ class ProductFormData {
     description: description ?? this.description,
     price: price ?? this.price,
     stock: stock ?? this.stock,
+    minStock: minStock ?? this.minStock,
     photos: photos ?? this.photos,
   );
 
@@ -161,6 +167,7 @@ class ProductFormData {
     } else if (step == 1) {
       put('price', ProductRules.price(price));
       if (!stockLocked) put('stock', ProductRules.stock(stock));
+      if (minStock.isNotEmpty) put('minStock', ProductRules.stock(minStock));
     }
     return e;
   }
@@ -173,6 +180,7 @@ class ProductFormData {
       other.description == description &&
       other.price == price &&
       other.stock == stock &&
+      other.minStock == minStock &&
       listEquals(other.photos, photos);
 
   @override
@@ -182,6 +190,7 @@ class ProductFormData {
     description,
     price,
     stock,
+    minStock,
     Object.hashAll(photos),
   );
 }
@@ -336,6 +345,7 @@ class ProductFormNotifier extends StateNotifier<ProductFormState> {
         description: p.description,
         price: p.price.toStringAsFixed(0),
         stock: '${p.stock}',
+        minStock: p.minStock == null ? '' : '${p.minStock}',
         photos: [for (final i in p.images) FormPhoto.remote(i.url)],
       );
       if (!mounted) return;
@@ -365,6 +375,7 @@ class ProductFormNotifier extends StateNotifier<ProductFormState> {
       description: d.description,
       price: d.price,
       stock: d.stock,
+      minStock: d.minStock,
       photos: [for (final p in d.photos) FormPhoto.local(p)],
     );
     state = state.copyWith(
@@ -389,6 +400,8 @@ class ProductFormNotifier extends StateNotifier<ProductFormState> {
   void setDescription(String v) => _edit(state.data.copyWith(description: v));
   void setPrice(String digits) => _edit(state.data.copyWith(price: digits));
   void setStock(String digits) => _edit(state.data.copyWith(stock: digits));
+  void setMinStock(String digits) =>
+      _edit(state.data.copyWith(minStock: digits));
 
   int get photoSlotsLeft => ProductRules.maxPhotos - state.data.photos.length;
 
@@ -471,6 +484,7 @@ class ProductFormNotifier extends StateNotifier<ProductFormState> {
           description: d.description,
           price: d.price,
           stock: d.stock,
+          minStock: d.minStock,
           photos: [
             for (final p in d.photos)
               if (p.path != null) p.path!,
@@ -537,6 +551,7 @@ class ProductFormNotifier extends StateNotifier<ProductFormState> {
           price: price,
           stock: int.parse(d.stock),
           categoryId: d.categoryId!,
+          minStock: int.tryParse(d.minStock),
         );
         id = created.id;
         if (mounted) state = state.copyWith(createdId: id);
@@ -549,6 +564,7 @@ class ProductFormNotifier extends StateNotifier<ProductFormState> {
           description: description,
           price: price,
           categoryId: d.categoryId,
+          minStock: int.tryParse(d.minStock),
         );
         id = existing;
       }

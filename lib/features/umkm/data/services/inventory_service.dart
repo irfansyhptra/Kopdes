@@ -1,8 +1,11 @@
 import 'package:dio/dio.dart';
 
+import '../store_scope.dart';
+
 class InventoryService {
   final Dio dio;
-  InventoryService({required this.dio});
+  final StoreScope scope;
+  InventoryService({required this.dio, this.scope = StoreScope.umkm});
 
   /// Menyesuaikan stok lewat buku besar inventaris.
   ///
@@ -23,9 +26,9 @@ class InventoryService {
   }) async {
     if (delta == 0) throw ArgumentError.value(delta, 'delta', 'tidak boleh 0');
     final response = await dio.post(
-      '/seller/inventory/adjust',
+      scope.adjust,
       data: {
-        'umkmProductId': id,
+        scope.adjustKey: id,
         'type': delta > 0 ? 'IN' : 'OUT',
         'quantity': delta.abs(),
         'reason': reason,

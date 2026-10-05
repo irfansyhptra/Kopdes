@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/store_model.dart';
+import '../../../admin/data/kopdes_console.dart';
+import '../../data/store_scope.dart';
 import 'providers.dart';
 import 'seller_dashboard_controller.dart';
 
@@ -29,5 +31,11 @@ Future<void> saveStoreProfile(
         operatingHours: operatingHours,
       );
   ref.invalidate(storeProfileProvider);
-  ref.read(sellerDashboardControllerProvider.notifier).refresh();
+  // Dasbor milik pihak lain tidak disentuh: membaca pengendali dasbor
+  // penjual dari akun Kopdes akan memanggil `/seller/dashboard` dan ditolak.
+  if (ref.read(storeScopeProvider).isKopdes) {
+    ref.invalidate(kopdesDashboardProvider);
+  } else {
+    ref.read(sellerDashboardControllerProvider.notifier).refresh();
+  }
 }

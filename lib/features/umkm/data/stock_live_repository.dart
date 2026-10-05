@@ -1,6 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'store_scope.dart';
+
 import '../../../core/network/dio_client.dart';
 
 /// Arah pergerakan stok, sejalan dengan `InventoryTransactionType` di server.
@@ -85,8 +87,9 @@ class StockFeedChunk {
 
 class StockLiveRepository {
   final Dio dio;
+  final StoreScope scope;
 
-  const StockLiveRepository(this.dio);
+  const StockLiveRepository(this.dio, {this.scope = StoreScope.umkm});
 
   /// Mengambil pergerakan setelah [since].
   ///
@@ -96,7 +99,7 @@ class StockLiveRepository {
   /// satu baris atau menampilkannya dua kali.
   Future<StockFeedChunk> fetch({String? since, int limit = 50}) async {
     final response = await dio.get<dynamic>(
-      '/seller/inventory/live',
+      scope.live,
       queryParameters: {if (since != null) 'since': since, 'limit': limit},
     );
 
@@ -115,5 +118,8 @@ class StockLiveRepository {
 }
 
 final stockLiveRepositoryProvider = Provider<StockLiveRepository>((ref) {
-  return StockLiveRepository(ref.watch(dioProvider));
+  return StockLiveRepository(
+    ref.watch(dioProvider),
+    scope: ref.watch(storeScopeProvider),
+  );
 });

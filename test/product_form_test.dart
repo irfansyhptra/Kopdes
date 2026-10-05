@@ -51,8 +51,10 @@ class _FakeRepo implements ProductRepository {
     required int stock,
     required String categoryId,
     List<dynamic>? images,
+    int? minStock,
   }) async {
     creates.add({
+      'minStock': minStock,
       'name': name,
       'description': description,
       'price': price,
@@ -83,8 +85,15 @@ class _FakeRepo implements ProductRepository {
     String? categoryId,
     bool? isActive,
     List<dynamic>? newImages,
+    int? minStock,
   }) async {
-    updates.add({'id': id, 'name': name, 'stock': stock, 'price': price});
+    updates.add({
+      'id': id,
+      'name': name,
+      'stock': stock,
+      'price': price,
+      'minStock': minStock,
+    });
     return existing ??
         ProductModel(
           id: id,

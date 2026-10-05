@@ -115,6 +115,24 @@ class StoreModel {
     };
   }
 
+  /// Profil Kopdes (`/admin/kopdes/profile`) dalam bentuk profil toko, supaya
+  /// tab, form edit, dan pengaturan jam buka dipakai bersama. Kopdes tidak
+  /// melewati verifikasi mitra: "ACTIVE" berarti sudah diverifikasi
+  /// pengelola sistem.
+  factory StoreModel.fromKopdesJson(Map<String, dynamic> json) {
+    return StoreModel(
+      id: json['id'] as String? ?? '',
+      businessName: json['name'] as String? ?? 'Kopdes',
+      description: json['description'] as String? ?? '',
+      address: json['address'] as String? ?? '',
+      phone: json['phone'] as String? ?? '',
+      status: json['isVerified'] == true ? 'ACTIVE' : 'PENDING_VERIFICATION',
+      photoUrl: json['logoUrl'] as String?,
+      operatingHours: _hours(json['operatingHours']),
+      isOpen: json['isOpen'] as bool?,
+    );
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,

@@ -13,6 +13,7 @@ class ProductDraft {
   final String description;
   final String price;
   final String stock;
+  final String minStock;
 
   /// Path absolut foto — salinan milik draf, bukan berkas sementara pemilih
   /// gambar yang bisa dibersihkan sistem kapan saja.
@@ -25,6 +26,7 @@ class ProductDraft {
     required this.description,
     required this.price,
     required this.stock,
+    this.minStock = '',
     required this.photos,
     required this.savedAt,
   });
@@ -36,6 +38,7 @@ class ProductDraft {
     'description': description,
     'price': price,
     'stock': stock,
+    'minStock': minStock,
     'photos': photos,
     'savedAt': savedAt.toIso8601String(),
   };
@@ -46,6 +49,7 @@ class ProductDraft {
     description: j['description'] as String? ?? '',
     price: j['price'] as String? ?? '',
     stock: j['stock'] as String? ?? '',
+    minStock: j['minStock'] as String? ?? '',
     photos: (j['photos'] as List? ?? const []).whereType<String>().toList(),
     savedAt: DateTime.tryParse('${j['savedAt']}') ?? DateTime.now(),
   );
@@ -89,6 +93,7 @@ class ProductDraftStore {
         description: draft.description,
         price: draft.price,
         stock: draft.stock,
+        minStock: draft.minStock,
         photos: alive,
         savedAt: draft.savedAt,
       );
@@ -130,6 +135,7 @@ class ProductDraftStore {
       description: draft.description,
       price: draft.price,
       stock: draft.stock,
+      minStock: draft.minStock,
       photos: kept,
       savedAt: draft.savedAt,
     );
