@@ -39,6 +39,14 @@ String networkErrorMessage(Object error) {
     404 => 'Layanan tidak ditemukan. Coba perbarui aplikasi.',
     409 => fromServer ?? 'Email atau nomor telepon itu sudah terdaftar.',
     429 => 'Terlalu banyak percobaan. Tunggu sebentar lalu coba lagi.',
+    // 503 dipakai backend dengan sengaja dan selalu membawa kalimat yang
+    // menyebut langkah berikutnya — mis. pengiriman email OTP sedang mati,
+    // yang hanya bisa diselesaikan dengan menghubungi pengurus Kopdes.
+    // Menelannya menjadi "Server sedang bermasalah" menyuruh pendaftar
+    // menunggu sesuatu yang tidak akan berubah sendiri.
+    503 => fromServer ?? 'Layanan sedang tidak tersedia. Coba lagi nanti.',
+    // 500/502/504 tidak begitu: isinya "Internal server error" atau halaman
+    // HTML dari proksi, yang tidak memberi tahu apa pun.
     >= 500 => 'Server sedang bermasalah. Coba lagi beberapa saat lagi.',
     _ => fromServer ?? _generic,
   };

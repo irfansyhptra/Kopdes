@@ -63,9 +63,46 @@ void main() {
     });
 
     test('5xx tidak menyalahkan penggunanya', () {
-      final message = networkErrorMessage(_response(503, null));
+      final message = networkErrorMessage(_response(500, null));
       expect(message, contains('Server'));
       expect(message, isNot(contains('kata sandi')));
+    });
+
+    test('503 menyampaikan alasan server, bukan "Server bermasalah"', () {
+      // Pendaftaran gagal karena kode OTP tidak bisa dikirim: seluruh server
+      // sehat, dan satu-satunya langkah yang menolong ada di kalimat server.
+      // Menelannya menjadi kalimat umum menyuruh pendaftar menunggu sesuatu
+      // yang tidak akan berubah sendiri.
+      final message = networkErrorMessage(
+        _response(503, {
+          'statusCode': 503,
+          'message':
+              'Kode verifikasi tidak bisa dikirim ke email Anda. Pengiriman '
+              'email sedang tidak tersedia — coba lagi beberapa menit lagi, '
+              'atau hubungi pengurus Kopdes desa Anda untuk didaftarkan.',
+        }),
+      );
+      expect(message, contains('hubungi pengurus Kopdes'));
+      expect(message, isNot(contains('Server sedang bermasalah')));
+    });
+
+    test('503 tanpa kalimat server tetap jujur tentang layanannya', () {
+      expect(
+        networkErrorMessage(_response(503, null)),
+        contains('tidak tersedia'),
+      );
+    });
+
+    test('500 tetap umum: isinya hanya "Internal server error"', () {
+      expect(
+        networkErrorMessage(
+          _response(500, {
+            'statusCode': 500,
+            'message': 'Internal server error',
+          }),
+        ),
+        contains('Server sedang bermasalah'),
+      );
     });
 
     test('tanpa respons: yang gagal sambungannya', () {
