@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/theme.dart';
 import '../../../../shared/widgets/apple_ui.dart';
-import '../../../../shared/widgets/product_image_loader.dart';
+import '../../../../shared/widgets/store_card_banner.dart';
 import '../../domain/koperasi.dart';
 import 'koperasi_card.dart' show MetaLine;
 
@@ -28,22 +28,12 @@ class MitraCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Stack(
-            children: [
-              SizedBox(
-                height: 80,
-                width: double.infinity,
-                child: ProductImageLoader(
-                  imageUrl: mitra.photoUrl ?? '',
-                  placeholderIconSize: 24,
-                ),
-              ),
-              Positioned(
-                top: AppSpacing.sm,
-                left: AppSpacing.sm,
-                child: AppleBadge(label: mitra.category.label),
-              ),
-            ],
+          StoreCardBanner(
+            height: 80,
+            bannerUrl: mitra.bannerUrl ?? '',
+            logoUrl: mitra.photoUrl ?? '',
+            name: mitra.businessName,
+            topLeft: AppleBadge(label: mitra.category.label),
           ),
           Padding(
             padding: const EdgeInsets.all(AppSpacing.md),

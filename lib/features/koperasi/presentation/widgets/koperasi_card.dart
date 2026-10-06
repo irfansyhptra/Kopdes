@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/theme.dart';
 import '../../../../shared/widgets/apple_ui.dart';
-import '../../../../shared/widgets/product_image_loader.dart';
+import '../../../../shared/widgets/store_card_banner.dart';
 import '../../domain/koperasi.dart';
 
 /// Metadata satu baris: rating · jarak · status buka.
@@ -105,13 +105,11 @@ class KoperasiCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(
+            StoreCardBanner(
               height: 84,
-              width: double.infinity,
-              child: ProductImageLoader(
-                imageUrl: koperasi.imageUrl ?? '',
-                placeholderIconSize: 26,
-              ),
+              bannerUrl: koperasi.imageUrl ?? '',
+              logoUrl: koperasi.logoUrl ?? '',
+              name: koperasi.name,
             ),
             Padding(
               padding: const EdgeInsets.all(AppSpacing.md),

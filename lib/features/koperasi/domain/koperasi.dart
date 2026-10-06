@@ -133,7 +133,13 @@ class Mitra {
   final String description;
   final String address;
   final String? phone;
+
+  /// Logo atau foto toko.
   final String? photoUrl;
+
+  /// Sampul lebar halaman toko. Backend sudah mengirimnya sejak lama; model
+  /// ini yang membuangnya, sehingga sampul mitra tidak pernah bisa tampil.
+  final String? bannerUrl;
   final MitraCategory category;
   final double? latitude;
   final double? longitude;
@@ -157,6 +163,7 @@ class Mitra {
     required this.category,
     this.phone,
     this.photoUrl,
+    this.bannerUrl,
     this.latitude,
     this.longitude,
     this.distanceMeters,
@@ -174,6 +181,7 @@ class Mitra {
     address: json['address'] as String? ?? '',
     phone: json['phone'] as String?,
     photoUrl: json['photoUrl'] as String?,
+    bannerUrl: json['bannerUrl'] as String?,
     category: MitraCategory.fromWire(json['category'] as String?),
     latitude: (json['latitude'] as num?)?.toDouble(),
     longitude: (json['longitude'] as num?)?.toDouble(),

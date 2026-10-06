@@ -107,8 +107,13 @@ class _StoreBanner extends StatelessWidget {
           children: [
             ColoredBox(
               color: AppColors.surfaceStrong,
+              // Sampul dulu, logo sebagai cadangan. Memaksa logo persegi
+              // mengisi kepala 240px memotongnya jadi potongan tengah yang
+              // tidak mengenalkan toko apa pun.
               child: ProductImageLoader(
-                imageUrl: mitra.photoUrl ?? '',
+                imageUrl: mitra.bannerUrl?.isNotEmpty == true
+                    ? mitra.bannerUrl!
+                    : mitra.photoUrl ?? '',
                 placeholderIconSize: 44,
               ),
             ),
@@ -160,6 +165,21 @@ class _Identity extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(AppleRadii.control),
+                  child: SizedBox(
+                    width: 52,
+                    height: 52,
+                    child: ColoredBox(
+                      color: AppColors.surfaceSoft,
+                      child: ProductImageLoader(
+                        imageUrl: mitra.photoUrl ?? '',
+                        placeholderIconSize: 22,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: Text(
                     mitra.businessName,
