@@ -1,4 +1,4 @@
-import '../entities/auth_session.dart';
+import '../entities/registration_challenge.dart';
 import '../repositories/auth_repository.dart';
 
 class RegisterUseCase {
@@ -6,7 +6,7 @@ class RegisterUseCase {
 
   RegisterUseCase(this.repository);
 
-  Future<AuthSession> call({
+  Future<RegistrationChallenge> call({
     required String name,
     required String email,
     required String phone,

@@ -1,11 +1,11 @@
 {
-    "name": "kopdes",
-    "short_name": "kopdes",
-    "start_url": ".",
+    "name": "KOMIT — Koperasi Merah Putih Mitra",
+    "short_name": "KOMIT",
+    "start_url": "/",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#FFFFFF",
+    "theme_color": "#D7192D",
+    "description": "Layanan digital Koperasi Merah Putih untuk warga dan usaha desa.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

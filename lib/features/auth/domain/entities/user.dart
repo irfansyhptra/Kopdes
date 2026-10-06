@@ -38,6 +38,7 @@ class User {
   final String name;
   final String email;
   final String phone;
+  final String? avatarUrl;
   final String
   role; // SUPER_ADMIN, ADMIN_KOPDES, PEGAWAI_KOPDES, CUSTOMER, UMKM, COURIER
 
@@ -55,6 +56,7 @@ class User {
     required this.name,
     required this.email,
     required this.phone,
+    this.avatarUrl,
     required this.role,
     this.kopdesId,
     this.kopdesName,
@@ -85,6 +87,7 @@ class User {
           name == other.name &&
           email == other.email &&
           phone == other.phone &&
+          avatarUrl == other.avatarUrl &&
           role == other.role &&
           kopdesId == other.kopdesId &&
           kopdesName == other.kopdesName &&
@@ -105,6 +108,7 @@ class User {
     name,
     email,
     phone,
+    avatarUrl,
     role,
     kopdesId,
     kopdesName,

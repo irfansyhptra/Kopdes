@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -6,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:kopdes/core/theme/theme.dart';
 import 'package:kopdes/features/product/domain/entities/product_draft.dart';
 import 'package:kopdes/features/product/presentation/providers/product_provider.dart';
+import 'package:kopdes/shared/widgets/platform_image.dart';
 
 class AdminProductFormScreen extends ConsumerStatefulWidget {
   final String? productId;
@@ -508,8 +508,8 @@ class _AdminProductFormScreenState
                                     ),
                                   ),
                                   clipBehavior: Clip.antiAlias,
-                                  child: Image.file(
-                                    File(image.path),
+                                  child: platformImage(
+                                    image.path,
                                     fit: BoxFit.cover,
                                   ),
                                 ),

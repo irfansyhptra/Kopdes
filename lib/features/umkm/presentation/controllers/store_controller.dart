@@ -39,3 +39,26 @@ Future<void> saveStoreProfile(
     ref.read(sellerDashboardControllerProvider.notifier).refresh();
   }
 }
+
+Future<void> saveStoreMedia(
+  WidgetRef ref, {
+  List<int>? logoBytes,
+  String? logoName,
+  List<int>? bannerBytes,
+  String? bannerName,
+}) async {
+  await ref
+      .read(sellerRepositoryProvider)
+      .updateStoreMedia(
+        logoBytes: logoBytes,
+        logoName: logoName,
+        bannerBytes: bannerBytes,
+        bannerName: bannerName,
+      );
+  ref.invalidate(storeProfileProvider);
+  if (ref.read(storeScopeProvider).isKopdes) {
+    ref.invalidate(kopdesDashboardProvider);
+  } else {
+    ref.read(sellerDashboardControllerProvider.notifier).refresh();
+  }
+}

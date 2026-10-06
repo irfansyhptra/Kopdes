@@ -48,6 +48,12 @@ class StoreProfileScreen extends ConsumerWidget {
             : 'Profil, pencairan, dan pengaturan usaha',
         actions: [
           GlassIconButton(
+            icon: Icons.account_circle_outlined,
+            label: 'Edit foto profil akun',
+            onDark: true,
+            onTap: () => context.push('/profile/edit'),
+          ),
+          GlassIconButton(
             icon: Icons.edit_outlined,
             label: kopdes ? 'Edit profil Kopdes' : 'Edit profil toko',
             onDark: true,
@@ -159,6 +165,20 @@ class _IdentityCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (store.bannerUrl?.isNotEmpty == true) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              child: AspectRatio(
+                aspectRatio: 16 / 6,
+                child: Image.network(
+                  store.bannerUrl!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

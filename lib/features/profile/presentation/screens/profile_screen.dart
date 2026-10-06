@@ -141,7 +141,7 @@ class _Header extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              _Avatar(name: user?.name),
+              _Avatar(name: user?.name, avatarUrl: user?.avatarUrl),
               const SizedBox(width: AppSpacing.base),
               Expanded(
                 child: Column(
@@ -217,11 +217,11 @@ class _HeaderIcon extends StatelessWidget {
 
 class _Avatar extends StatelessWidget {
   final String? name;
+  final String? avatarUrl;
 
-  const _Avatar({required this.name});
+  const _Avatar({required this.name, required this.avatarUrl});
 
-  /// Dua huruf pertama dari nama. Tidak ada unggahan foto profil di backend,
-  /// jadi tidak ada gambar yang bisa ditampilkan.
+  /// Dua huruf pertama menjadi fallback saat akun belum memasang foto.
   String get _initials {
     final parts = (name ?? '').trim().split(RegExp(r'\s+'))
       ..removeWhere((w) => w.isEmpty);
@@ -240,16 +240,27 @@ class _Avatar extends StatelessWidget {
         border: Border.all(color: AppColors.onPrimary, width: 3),
       ),
       alignment: Alignment.center,
-      child: Text(
-        _initials,
-        style: AppTypography.titleMedium.copyWith(
-          fontSize: 28,
-          fontWeight: FontWeight.w700,
-          color: AppColors.onPrimary,
-        ),
-      ),
+      clipBehavior: Clip.antiAlias,
+      child: avatarUrl != null && avatarUrl!.isNotEmpty
+          ? Image.network(
+              avatarUrl!,
+              width: 84,
+              height: 84,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => _initialsText(),
+            )
+          : _initialsText(),
     );
   }
+
+  Widget _initialsText() => Text(
+    _initials,
+    style: AppTypography.titleMedium.copyWith(
+      fontSize: 28,
+      fontWeight: FontWeight.w700,
+      color: AppColors.onPrimary,
+    ),
+  );
 }
 
 /// Lencana peran akun.

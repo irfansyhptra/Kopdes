@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -21,6 +20,7 @@ import '../../features/onboarding/presentation/providers/onboarding_provider.dar
 import '../../features/onboarding/presentation/screens/permission_screen.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/register_screen.dart';
+import '../../features/auth/presentation/screens/verify_email_screen.dart';
 import '../../features/auth/presentation/screens/forgot_password_screen.dart';
 import '../../features/auth/presentation/screens/session_expired_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
@@ -172,6 +172,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isAuthRoute =
           currentLoc == '/login' ||
           currentLoc == '/register' ||
+          currentLoc == '/verify-email' ||
           currentLoc == '/forgot-password';
 
       final isSessionExpired = currentLoc == '/session-expired';
@@ -353,7 +354,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           target: (
             topUp: false,
             id: state.pathParameters['id'] ?? '',
-            method: state.uri.queryParameters['method'] ?? 'QRIS',
+            method: state.uri.queryParameters['method'] ?? 'MIDTRANS',
           ),
         ),
       ),
@@ -420,6 +421,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/register',
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const RegisterScreen(),
+      ),
+      GoRoute(
+        path: '/verify-email',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) =>
+            VerifyEmailScreen(email: state.uri.queryParameters['email'] ?? ''),
       ),
       GoRoute(
         path: '/forgot-password',

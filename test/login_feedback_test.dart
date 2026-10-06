@@ -9,6 +9,7 @@ import 'package:kopdes/core/network/health_provider.dart';
 import 'package:kopdes/features/auth/data/datasources/auth_local_data_source.dart';
 import 'package:kopdes/features/auth/data/models/login_response.dart';
 import 'package:kopdes/features/auth/domain/entities/auth_session.dart';
+import 'package:kopdes/features/auth/domain/entities/registration_challenge.dart';
 import 'package:kopdes/features/auth/domain/entities/user.dart';
 import 'package:kopdes/features/auth/domain/repositories/auth_repository.dart';
 import 'package:kopdes/features/auth/presentation/providers/auth_provider.dart';
@@ -46,12 +47,25 @@ class _FakeAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<AuthSession> register({
+  Future<RegistrationChallenge> register({
     required String name,
     required String email,
     required String phone,
     required String password,
-  }) => login(email: email, password: password);
+  }) async =>
+      RegistrationChallenge(email: email, expiresIn: 600, resendAfter: 60);
+
+  @override
+  Future<AuthSession> verifyEmail({
+    required String email,
+    required String code,
+  }) => login(email: email, password: code);
+
+  @override
+  Future<RegistrationChallenge> resendVerification({
+    required String email,
+  }) async =>
+      RegistrationChallenge(email: email, expiresIn: 600, resendAfter: 60);
 
   @override
   Future<bool> checkStatus() async => false;
@@ -65,6 +79,11 @@ class _FakeAuthRepository implements AuthRepository {
   @override
   Future<User> updateProfile({required String name, required String phone}) =>
       throw UnimplementedError();
+  @override
+  Future<User> updateAvatar({
+    required List<int> bytes,
+    required String filename,
+  }) => throw UnimplementedError();
 }
 
 class _FakeLocalDataSource implements AuthLocalDataSource {

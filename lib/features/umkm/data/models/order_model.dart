@@ -83,6 +83,13 @@ class OrderModel {
   final DateTime createdAt;
   final CourierInfo? courier;
 
+  /// `PICKUP` atau `DELIVERY`. Menentukan tombol yang ditawarkan ke penjual:
+  /// UMKM tidak memerintah kurir, ia hanya menyatakan barang siap diantar.
+  final String fulfillment;
+
+  /// Status pengantaran bila pesanan sudah masuk kolam tugas kurir Kopdes.
+  final String? deliveryStatus;
+
   const OrderModel({
     required this.id,
     required this.customerId,
@@ -94,7 +101,9 @@ class OrderModel {
     required this.deliveryAddress,
     required this.items,
     required this.createdAt,
+    this.fulfillment = 'DELIVERY',
     this.courier,
+    this.deliveryStatus,
   });
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
@@ -108,8 +117,13 @@ class OrderModel {
 
     return OrderModel(
       id: json['id'] as String,
-      customerId: json['customerId'] as String,
-      customer: CustomerInfo.fromJson(json['customer'] as Map<String, dynamic>),
+      customerId: json['customerId'] as String? ?? '',
+      // Respons sebagian — mis. setelah ubah status — tidak selalu memuat
+      // pembeli dan alamat. Dulu cast ini melempar, jadi penjual melihat
+      // "gagal" padahal statusnya sudah tersimpan di server.
+      customer: CustomerInfo.fromJson(
+        json['customer'] as Map<String, dynamic>? ?? const <String, dynamic>{},
+      ),
       totalAmount: json['totalAmount'] is num
           ? (json['totalAmount'] as num).toDouble()
           : double.tryParse(json['totalAmount'].toString()) ?? 0.0,
@@ -117,13 +131,16 @@ class OrderModel {
       paymentMethod: json['paymentMethod'] as String? ?? 'COD',
       paymentStatus: json['paymentStatus'] as String? ?? 'PENDING',
       deliveryAddress: AddressInfo.fromJson(
-        json['deliveryAddress'] as Map<String, dynamic>,
+        json['deliveryAddress'] as Map<String, dynamic>? ??
+            const <String, dynamic>{},
       ),
       items: parsedItems,
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'] as String)
           : DateTime.now(),
+      fulfillment: json['fulfillment'] as String? ?? 'DELIVERY',
       courier: courier == null ? null : CourierInfo.fromJson(courier),
+      deliveryStatus: delivery?['status'] as String?,
     );
   }
 }

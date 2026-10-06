@@ -1,6 +1,9 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/theme/theme.dart';
 import '../../../../shared/widgets/apple_feedback.dart';
@@ -40,6 +43,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   late final _phone = TextEditingController(text: _user?.phone ?? '');
   bool _saving = false;
   bool _touched = false;
+  Uint8List? _avatarBytes;
+  String? _avatarName;
 
   @override
   void dispose() {
@@ -50,7 +55,31 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
   bool get _dirty =>
       _name.text.trim() != (_user?.name ?? '') ||
-      _phone.text.trim() != (_user?.phone ?? '');
+      _phone.text.trim() != (_user?.phone ?? '') ||
+      _hasAvatar;
+
+  bool get _hasAvatar => _avatarBytes != null;
+
+  Future<void> _pickAvatar() async {
+    final file = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1600,
+      imageQuality: 88,
+    );
+    if (file == null || !mounted) return;
+    final bytes = await file.readAsBytes();
+    if (!mounted) return;
+    if (bytes.length > 4 * 1024 * 1024) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ukuran foto maksimal 4 MB.')),
+      );
+      return;
+    }
+    setState(() {
+      _avatarBytes = bytes;
+      _avatarName = file.name;
+    });
+  }
 
   Future<void> _save() async {
     setState(() => _touched = true);
@@ -70,6 +99,16 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               name: _name.text.trim(),
               phone: _phone.text.replaceAll(RegExp(r'[\s-]'), ''),
             );
+        if (_avatarBytes != null && _avatarName != null) {
+          final uploaded = await ref
+              .read(authProvider.notifier)
+              .updateAvatar(bytes: _avatarBytes!, filename: _avatarName!);
+          if (!uploaded) {
+            throw Exception(
+              ref.read(authProvider).errorMessage ?? 'Foto gagal diunggah.',
+            );
+          }
+        }
         // Notifier menyimpan galatnya alih-alih melempar.
         final error = ref.read(authProvider).errorMessage;
         if (error != null) throw Exception(error);
@@ -94,6 +133,59 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       saving: _saving,
       onSave: _dirty ? _save : null,
       children: [
+        StoreSurface(
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 38,
+                backgroundColor: AppColors.primarySoft,
+                backgroundImage: _avatarBytes != null
+                    ? MemoryImage(_avatarBytes!)
+                    : ((_user?.avatarUrl?.isNotEmpty ?? false)
+                              ? NetworkImage(_user!.avatarUrl!)
+                              : null)
+                          as ImageProvider<Object>?,
+                child:
+                    _avatarBytes == null &&
+                        !(_user?.avatarUrl?.isNotEmpty ?? false)
+                    ? const Icon(
+                        Icons.person_rounded,
+                        color: AppColors.primary,
+                        size: 34,
+                      )
+                    : null,
+              ),
+              const SizedBox(width: AppSpacing.base),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Foto profil',
+                      style: AppTypography.bodyMedium.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      'JPG, PNG, atau WebP · maksimal 4 MB',
+                      style: AppTypography.captionSmall.copyWith(
+                        color: AppColors.muted,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    OutlinedButton.icon(
+                      onPressed: _saving ? null : _pickAvatar,
+                      icon: const Icon(Icons.photo_library_outlined, size: 18),
+                      label: const Text('Pilih Foto'),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.base),
         StoreSurface(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,

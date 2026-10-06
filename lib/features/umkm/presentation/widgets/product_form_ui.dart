@@ -1,11 +1,10 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../core/theme/theme.dart';
 import '../../../../shared/widgets/apple_feedback.dart';
 import '../../../../shared/widgets/apple_ui.dart';
+import '../../../../shared/widgets/platform_image.dart';
 import '../controllers/product_form_controller.dart';
 
 /// Lebar maksimal form di tablet: baris isian selebar 1000dp sulit dibaca
@@ -477,8 +476,8 @@ class _PhotoTile extends StatelessWidget {
             cacheWidth: cache,
             errorBuilder: (_, __, ___) => const _BrokenImage(),
           )
-        : Image.file(
-            File(photo.path!),
+        : platformImage(
+            photo.path!,
             fit: BoxFit.cover,
             cacheWidth: cache,
             errorBuilder: (_, __, ___) => const _BrokenImage(),

@@ -6,6 +6,7 @@ class UserModel {
   final String name;
   final String email;
   final String phone;
+  final String? avatarUrl;
   final String role;
   final String? kopdesId;
   final String? kopdesName;
@@ -17,6 +18,7 @@ class UserModel {
     required this.name,
     required this.email,
     required this.phone,
+    this.avatarUrl,
     required this.role,
     this.kopdesId,
     this.kopdesName,
@@ -33,6 +35,7 @@ class UserModel {
       name: json['name'] as String? ?? '',
       email: json['email'] as String? ?? '',
       phone: json['phone'] as String? ?? '',
+      avatarUrl: json['avatarUrl'] as String?,
       role: json['role'] as String? ?? 'CUSTOMER',
       kopdesId: json['kopdesId'] as String? ?? kopdes?['id'] as String?,
       kopdesName: kopdes?['name'] as String? ?? json['kopdesName'] as String?,
@@ -50,6 +53,7 @@ class UserModel {
       'name': name,
       'email': email,
       'phone': phone,
+      'avatarUrl': avatarUrl,
       'role': role,
       'kopdesId': kopdesId,
       'kopdesName': kopdesName,
@@ -64,6 +68,7 @@ class UserModel {
       name: name,
       email: email,
       phone: phone,
+      avatarUrl: avatarUrl,
       role: role,
       kopdesId: kopdesId,
       kopdesName: kopdesName,

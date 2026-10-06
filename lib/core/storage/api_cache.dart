@@ -2,10 +2,9 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:isar/isar.dart';
 
-import 'isar_service.dart';
-import 'models/cached_response.dart';
+import 'cache_store.dart';
+import 'cache_store_contract.dart';
 
 /// Kunci cache terpusat. Disimpan di satu tempat supaya invalidasi bisa
 /// memakai prefix (mis. buang semua daftar produk tanpa menyentuh detail).
@@ -78,18 +77,18 @@ class CacheTtl {
 }
 
 final apiCacheProvider = Provider<ApiCache>(
-  (ref) => ApiCache(ref.watch(isarProvider)),
+  (ref) => ApiCache(createCacheStore()),
 );
 
-/// Cache respons API di atas Isar.
+/// Cache respons API dengan backend Isar di native dan localStorage di web.
 class ApiCache {
-  final Isar _isar;
+  final CacheStoreBackend _store;
 
-  const ApiCache(this._isar);
+  const ApiCache(this._store);
 
   /// Mengembalikan entri cache beserta umurnya, atau null bila tidak ada.
   Future<CachedEntry?> read(String key) async {
-    final row = await _isar.cachedResponses.where().keyEqualTo(key).findFirst();
+    final row = await _store.read(key);
     if (row == null) return null;
     try {
       return CachedEntry(
@@ -107,24 +106,16 @@ class ApiCache {
   }
 
   Future<void> write(String key, Object? data) async {
-    final row = CachedResponse()
-      ..key = key
-      ..payload = jsonEncode(data)
-      ..cachedAt = DateTime.now();
-    await _isar.writeTxn(() => _isar.cachedResponses.put(row));
+    await _store.write(key, jsonEncode(data), DateTime.now());
   }
 
   Future<void> invalidate(String key) async {
-    await _isar.writeTxn(
-      () => _isar.cachedResponses.where().keyEqualTo(key).deleteAll(),
-    );
+    await _store.invalidate(key);
   }
 
   /// Buang semua entri yang kuncinya diawali [prefix].
   Future<void> invalidatePrefix(String prefix) async {
-    await _isar.writeTxn(
-      () => _isar.cachedResponses.filter().keyStartsWith(prefix).deleteAll(),
-    );
+    await _store.invalidatePrefix(prefix);
   }
 }
 

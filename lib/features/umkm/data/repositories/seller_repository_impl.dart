@@ -35,4 +35,17 @@ class SellerRepositoryImpl implements SellerRepository {
     category: category,
     operatingHours: operatingHours,
   );
+
+  @override
+  Future<StoreModel> updateStoreMedia({
+    List<int>? logoBytes,
+    String? logoName,
+    List<int>? bannerBytes,
+    String? bannerName,
+  }) => storeService.updateStoreMedia(
+    logoBytes: logoBytes,
+    logoName: logoName,
+    bannerBytes: bannerBytes,
+    bannerName: bannerName,
+  );
 }

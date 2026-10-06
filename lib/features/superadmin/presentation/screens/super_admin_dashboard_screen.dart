@@ -30,6 +30,11 @@ class SuperAdminDashboardScreen extends ConsumerWidget {
         ),
         actions: [
           IconButton(
+            icon: const Icon(Icons.account_circle_outlined),
+            tooltip: 'Edit Profil',
+            onPressed: () => context.push('/profile/edit'),
+          ),
+          IconButton(
             icon: const Icon(Icons.logout_rounded, color: AppColors.ink),
             tooltip: 'Keluar',
             onPressed: () => _confirmLogout(context, ref),

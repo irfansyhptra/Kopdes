@@ -12,6 +12,7 @@ import '../../data/datasources/auth_local_data_source.dart';
 import '../../data/datasources/auth_remote_data_source.dart';
 import '../../data/repositories/auth_repository_impl.dart';
 import '../../../../core/network/dio_client.dart';
+import '../../domain/entities/registration_challenge.dart';
 
 enum AuthStatus {
   initial,
@@ -87,6 +88,7 @@ final StateNotifierProvider<AuthStateNotifier, AuthState> authProvider =
         logoutUseCase: ref.watch(logoutUseCaseProvider),
         checkAuthStatusUseCase: ref.watch(checkAuthStatusUseCaseProvider),
         updateProfileUseCase: ref.watch(updateProfileUseCaseProvider),
+        authRepository: ref.watch(authRepositoryProvider),
         localDataSource: ref.watch(authLocalDataSourceProvider),
       );
     });
@@ -98,6 +100,7 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
   final CheckAuthStatusUseCase _checkAuthStatusUseCase;
   final UpdateProfileUseCase _updateProfileUseCase;
   final AuthLocalDataSource _localDataSource;
+  final AuthRepository _authRepository;
 
   AuthStateNotifier({
     required LoginUseCase loginUseCase,
@@ -106,18 +109,22 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
     required CheckAuthStatusUseCase checkAuthStatusUseCase,
     required UpdateProfileUseCase updateProfileUseCase,
     required AuthLocalDataSource localDataSource,
+    required AuthRepository authRepository,
   }) : _loginUseCase = loginUseCase,
        _registerUseCase = registerUseCase,
        _logoutUseCase = logoutUseCase,
        _checkAuthStatusUseCase = checkAuthStatusUseCase,
        _updateProfileUseCase = updateProfileUseCase,
        _localDataSource = localDataSource,
+       _authRepository = authRepository,
        super(AuthState.initial());
 
   Future<void> checkAuthStatus() async {
     state = state.copyWith(status: AuthStatus.loading);
     try {
-      final isLoggedIn = await _checkAuthStatusUseCase();
+      final isLoggedIn = await _checkAuthStatusUseCase().timeout(
+        const Duration(seconds: 6),
+      );
       if (isLoggedIn) {
         final cachedUserModel = await _localDataSource.getUserCached();
         if (cachedUserModel != null) {
@@ -150,7 +157,7 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  Future<void> register({
+  Future<RegistrationChallenge?> register({
     required String name,
     required String email,
     required String phone,
@@ -158,18 +165,56 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
   }) async {
     state = state.copyWith(status: AuthStatus.loading);
     try {
-      final session = await _registerUseCase(
+      final challenge = await _registerUseCase(
         name: name,
         email: email,
         phone: phone,
         password: password,
       );
-      state = AuthState(status: AuthStatus.authenticated, user: session.user);
+      state = const AuthState(status: AuthStatus.unauthenticated);
+      return challenge;
     } catch (e) {
       state = AuthState(
         status: AuthStatus.unauthenticated,
         errorMessage: networkErrorMessage(e),
       );
+      return null;
+    }
+  }
+
+  Future<bool> verifyEmail({
+    required String email,
+    required String code,
+  }) async {
+    state = const AuthState(status: AuthStatus.loading);
+    try {
+      final session = await _authRepository.verifyEmail(
+        email: email,
+        code: code,
+      );
+      state = AuthState(status: AuthStatus.authenticated, user: session.user);
+      return true;
+    } catch (e) {
+      state = AuthState(
+        status: AuthStatus.unauthenticated,
+        errorMessage: networkErrorMessage(e),
+      );
+      return false;
+    }
+  }
+
+  Future<RegistrationChallenge?> resendVerification(String email) async {
+    state = const AuthState(status: AuthStatus.unauthenticated);
+    try {
+      final challenge = await _authRepository.resendVerification(email: email);
+      state = const AuthState(status: AuthStatus.unauthenticated);
+      return challenge;
+    } catch (e) {
+      state = AuthState(
+        status: AuthStatus.unauthenticated,
+        errorMessage: networkErrorMessage(e),
+      );
+      return null;
     }
   }
 
@@ -200,6 +245,29 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
         status: AuthStatus.authenticated, // keep authenticated
         errorMessage: networkErrorMessage(e),
       );
+    }
+  }
+
+  Future<bool> updateAvatar({
+    required List<int> bytes,
+    required String filename,
+  }) async {
+    if (state.user == null) return false;
+    state = AuthState(status: AuthStatus.loading, user: state.user);
+    try {
+      final updatedUser = await _authRepository.updateAvatar(
+        bytes: bytes,
+        filename: filename,
+      );
+      state = AuthState(status: AuthStatus.authenticated, user: updatedUser);
+      return true;
+    } catch (e) {
+      state = AuthState(
+        status: AuthStatus.authenticated,
+        user: state.user,
+        errorMessage: networkErrorMessage(e),
+      );
+      return false;
     }
   }
 

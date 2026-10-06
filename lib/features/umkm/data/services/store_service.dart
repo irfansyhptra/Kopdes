@@ -44,4 +44,32 @@ class StoreService {
     final responseMap = response.data as Map<String, dynamic>;
     return _decode(responseMap['data'] as Map<String, dynamic>);
   }
+
+  Future<StoreModel> updateStoreMedia({
+    List<int>? logoBytes,
+    String? logoName,
+    List<int>? bannerBytes,
+    String? bannerName,
+  }) async {
+    final form = FormData();
+    if (logoBytes != null && logoName != null) {
+      form.files.add(
+        MapEntry(
+          'logo',
+          MultipartFile.fromBytes(logoBytes, filename: logoName),
+        ),
+      );
+    }
+    if (bannerBytes != null && bannerName != null) {
+      form.files.add(
+        MapEntry(
+          'banner',
+          MultipartFile.fromBytes(bannerBytes, filename: bannerName),
+        ),
+      );
+    }
+    final response = await dio.put('$_path/media', data: form);
+    final responseMap = response.data as Map<String, dynamic>;
+    return _decode(responseMap['data'] as Map<String, dynamic>);
+  }
 }

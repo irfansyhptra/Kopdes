@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/theme/theme.dart';
 import '../../../../shared/widgets/apple_ui.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
@@ -25,6 +26,9 @@ class AdminProfileScreen extends ConsumerWidget {
               child: CircleAvatar(
                 radius: 44,
                 backgroundColor: AppColors.primarySoft,
+                foregroundImage: user?.avatarUrl?.isNotEmpty == true
+                    ? NetworkImage(user!.avatarUrl!)
+                    : null,
                 child: Text(
                   (user?.name.isNotEmpty ?? false)
                       ? user!.name[0].toUpperCase()
@@ -72,6 +76,12 @@ class AdminProfileScreen extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: AppSpacing.base),
+            FilledButton.icon(
+              icon: const Icon(Icons.edit_outlined),
+              label: const Text('Edit Profil dan Foto'),
+              onPressed: () => context.push('/profile/edit'),
+            ),
+            const SizedBox(height: AppSpacing.sm),
             OutlinedButton.icon(
               icon: const Icon(Icons.logout_rounded, color: AppColors.error),
               label: Text(

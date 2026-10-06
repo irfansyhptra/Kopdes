@@ -41,6 +41,8 @@ class OrderCard extends StatelessWidget {
     }
   }
 
+  bool get _pickup => order.fulfillment.toUpperCase() == 'PICKUP';
+
   String _getStatusLabel(String status) {
     switch (status.toUpperCase()) {
       case 'PENDING':
@@ -50,7 +52,7 @@ class OrderCard extends StatelessWidget {
       case 'PROCESSING':
         return 'Diproses';
       case 'READY_FOR_DELIVERY':
-        return 'Siap Dikirim';
+        return _pickup ? 'Siap Diambil' : 'Butuh Pengantaran';
       case 'OUT_FOR_DELIVERY':
         return 'Dalam Pengiriman';
       case 'DELIVERED':
@@ -181,27 +183,31 @@ class OrderCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              const Icon(
-                Icons.location_on_outlined,
-                size: 16,
-                color: AppColors.muted,
-              ),
-              const SizedBox(width: AppSpacing.xs),
-              Expanded(
-                child: Text(
-                  '${order.deliveryAddress.street}, ${order.deliveryAddress.city}',
-                  style: AppTypography.captionSmall.copyWith(
-                    color: AppColors.muted,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+          // Pesanan ambil-sendiri tidak punya alamat antar; tanpa penjaga ini
+          // barisnya terbaca ", " saja.
+          if (order.deliveryAddress.street.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                const Icon(
+                  Icons.location_on_outlined,
+                  size: 16,
+                  color: AppColors.muted,
                 ),
-              ),
-            ],
-          ),
+                const SizedBox(width: AppSpacing.xs),
+                Expanded(
+                  child: Text(
+                    '${order.deliveryAddress.street}, ${order.deliveryAddress.city}',
+                    style: AppTypography.captionSmall.copyWith(
+                      color: AppColors.muted,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: AppSpacing.md),
 
           // Order items summary
@@ -334,6 +340,31 @@ class OrderCard extends StatelessWidget {
               },
             ),
           ],
+          if (order.status.toUpperCase() == 'READY_FOR_DELIVERY' &&
+              !_pickup) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Row(
+              children: [
+                const Icon(
+                  Icons.hourglass_empty_rounded,
+                  size: 15,
+                  color: AppColors.muted,
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                Expanded(
+                  child: Text(
+                    order.courier == null
+                        ? 'Menunggu kurir Kopdes mengambil barang. Kurir yang '
+                              'memilih tugas ini, bukan toko.'
+                        : 'Diambil kurir ${order.courier!.name}.',
+                    style: AppTypography.captionSmall.copyWith(
+                      color: AppColors.muted,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
           if (onUpdateStatus != null) ...[
             if (order.status.toUpperCase() == 'PENDING' ||
                 order.status.toUpperCase() == 'PAID') ...[
@@ -376,7 +407,7 @@ class OrderCard extends StatelessWidget {
                     ),
                   ),
                   child: Text(
-                    'Tandai siap dikirim',
+                    _pickup ? 'Tandai siap diambil' : 'Ajukan pengantaran',
                     style: AppTypography.buttonSm.copyWith(
                       color: AppColors.onPrimary,
                       fontWeight: FontWeight.w700,

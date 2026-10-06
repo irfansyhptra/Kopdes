@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'dart:async';
-import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,7 +7,6 @@ import 'package:dio/dio.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../../core/theme/theme.dart';
 import '../controllers/typewriter_stream.dart';
-import '../../../../localization/app_localizations.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 
 class AIAssistantScreen extends ConsumerStatefulWidget {
@@ -229,7 +227,7 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen>
           e.response?.statusCode == 503) {
         errorMessage =
             'Maaf, layanan AI sedang mengalami gangguan. Silakan coba kembali beberapa saat lagi.';
-      } else if (e.error is SocketException) {
+      } else if (e.type == DioExceptionType.connectionError) {
         errorMessage =
             'Koneksi internet terputus. Harap periksa jaringan Anda.';
       }

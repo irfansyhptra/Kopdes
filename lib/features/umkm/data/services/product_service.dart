@@ -1,7 +1,6 @@
-import 'dart:io';
-
 import 'package:dio/dio.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../../../core/platform/platform_file.dart';
 import '../models/product_model.dart';
 import '../store_scope.dart';
 import '../models/product_category_model.dart';
@@ -139,13 +138,11 @@ class ProductService {
   /// produk gagal tersimpan seluruhnya. Foto pertama yang masuk ke produk
   /// tanpa foto menjadi foto utama, jadi urutan unggah = urutan tampil.
   Future<void> addProductImage(String id, String path) async {
-    final name = path.split(Platform.pathSeparator).last;
+    final file = await readPlatformFile(path);
     await dio.put(
       '${scope.write}/$id',
       data: FormData.fromMap({
-        // Nama berkas berekstensi: Dio menebak Content-Type darinya, dan
-        // backend hanya menerima image/jpeg, png, webp.
-        'images': await MultipartFile.fromFile(path, filename: name),
+        'images': MultipartFile.fromBytes(file.bytes, filename: file.filename),
       }),
     );
   }

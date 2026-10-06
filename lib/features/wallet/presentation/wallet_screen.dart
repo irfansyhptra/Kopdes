@@ -277,7 +277,7 @@ class TopUpSheet extends ConsumerStatefulWidget {
 
 class _TopUpSheetState extends ConsumerState<TopUpSheet> {
   final _amount = TextEditingController();
-  OnlineMethod _method = OnlineMethod.qris;
+  OnlineMethod _method = OnlineMethod.snap;
   bool _touched = false;
   bool _sending = false;
 

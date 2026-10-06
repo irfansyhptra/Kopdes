@@ -16,7 +16,7 @@ import '../data/payment_repository.dart';
 
 /// Rute pembayaran.
 abstract final class PayRoutes {
-  static String order(String orderId, {String method = 'QRIS'}) =>
+  static String order(String orderId, {String method = 'MIDTRANS'}) =>
       '/pay/order/$orderId?method=$method';
   static String topUp(String topUpId) => '/pay/topup/$topUpId';
 }
@@ -58,13 +58,6 @@ class PaymentSession extends StateNotifier<AsyncValue<PaymentInstructions>> {
     }
   }
 
-  /// Ganti metode (pesanan saja) — server membuat tagihan baru.
-  Future<void> changeMethod(OnlineMethod m) async {
-    _target = (topUp: false, id: _target.id, method: m.wire);
-    _timer?.cancel();
-    await start();
-  }
-
   void _schedule() {
     _timer?.cancel();
     if (state.valueOrNull?.status != PayStatus.pending) return;
@@ -94,6 +87,7 @@ class PaymentSession extends StateNotifier<AsyncValue<PaymentInstructions>> {
           billKey: next.billKey ?? prev?.billKey,
           billerCode: next.billerCode ?? prev?.billerCode,
           expiresAt: next.expiresAt ?? prev?.expiresAt,
+          snapRedirectUrl: next.snapRedirectUrl ?? prev?.snapRedirectUrl,
         ),
       );
       if (next.status != PayStatus.pending) _timer?.cancel();
@@ -124,42 +118,6 @@ final paymentSessionProvider = StateNotifierProvider.autoDispose
 class PaymentScreen extends ConsumerWidget {
   final PayTarget target;
   const PaymentScreen({super.key, required this.target});
-
-  Future<void> _pickMethod(BuildContext context, WidgetRef ref) async {
-    final m = await showModalBottomSheet<OnlineMethod>(
-      context: context,
-      useSafeArea: true,
-      isScrollControlled: true,
-      backgroundColor: AppColors.canvas,
-      builder: (sheet) => SafeArea(
-        child: ListView(
-          shrinkWrap: true,
-          children: [
-            const Padding(
-              padding: EdgeInsets.all(AppSpacing.base),
-              child: Text(
-                'Pilih Metode Pembayaran',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-              ),
-            ),
-            for (final m in OnlineMethod.values)
-              ListTile(
-                minTileHeight: 56,
-                title: Text(m.label),
-                subtitle: Text(m.hint),
-                trailing: m.wire == target.method
-                    ? const Icon(Icons.check_rounded)
-                    : null,
-                onTap: () => Navigator.pop(sheet, m),
-              ),
-          ],
-        ),
-      ),
-    );
-    if (m != null) {
-      await ref.read(paymentSessionProvider(target).notifier).changeMethod(m);
-    }
-  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -224,9 +182,6 @@ class PaymentScreen extends ConsumerWidget {
                       PayStatus.pending => _Instructions(
                         pay: p,
                         onCheck: session.check,
-                        onChangeMethod: target.topUp
-                            ? null
-                            : () => _pickMethod(context, ref),
                       ),
                       PayStatus.paid => _Done(
                         topUp: target.topUp,
@@ -354,13 +309,8 @@ class _CountdownState extends State<_Countdown> {
 class _Instructions extends StatelessWidget {
   final PaymentInstructions pay;
   final VoidCallback onCheck;
-  final VoidCallback? onChangeMethod;
 
-  const _Instructions({
-    required this.pay,
-    required this.onCheck,
-    required this.onChangeMethod,
-  });
+  const _Instructions({required this.pay, required this.onCheck});
 
   Future<void> _copy(BuildContext context, String v, String what) async {
     await Clipboard.setData(ClipboardData(text: v));
@@ -406,6 +356,44 @@ class _Instructions extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = pay;
     final children = <Widget>[];
+
+    if (p.snapRedirectUrl != null) {
+      children.addAll([
+        Text(
+          'Pilih metode pembayaran di Midtrans Snap',
+          style: AppTypography.titleMedium.copyWith(
+            fontWeight: FontWeight.w700,
+            color: AppColors.ink,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        Text(
+          'Mode sandbox aktif. Anda dapat mencoba QRIS, transfer bank, '
+          'dompet digital, kartu, atau metode uji lain yang tersedia.',
+          style: AppTypography.bodyMedium.copyWith(color: AppColors.body),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        FilledButton.icon(
+          onPressed: () async {
+            final opened = await launchUrl(
+              Uri.parse(p.snapRedirectUrl!),
+              mode: LaunchMode.externalApplication,
+            );
+            if (!opened && context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Halaman Midtrans belum dapat dibuka.'),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            }
+          },
+          icon: const Icon(Icons.open_in_new_rounded),
+          style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(50)),
+          label: const Text('Buka Midtrans Snap'),
+        ),
+      ]);
+    }
 
     if (p.qrCodeUrl != null) {
       children.addAll([
@@ -520,12 +508,6 @@ class _Instructions extends StatelessWidget {
           ),
           label: const Text('Cek Status Pembayaran'),
         ),
-        if (onChangeMethod != null)
-          TextButton(
-            onPressed: onChangeMethod,
-            style: TextButton.styleFrom(minimumSize: const Size(44, 48)),
-            child: const Text('Ganti Metode Pembayaran'),
-          ),
       ],
     );
   }

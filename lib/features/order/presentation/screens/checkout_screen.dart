@@ -21,7 +21,7 @@ class CheckoutScreen extends ConsumerStatefulWidget {
 }
 
 class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
-  String _paymentMethod = 'QRIS';
+  String _paymentMethod = 'MIDTRANS';
 
   /// DELIVERY atau PICKUP (`FulfillmentMethod`).
   String _fulfillment = 'DELIVERY';
@@ -35,8 +35,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       MediaQuery.textScalerOf(context).scale(1) > 1.3 ||
       MediaQuery.sizeOf(context).width < 340;
 
-  /// QRIS → langsung ke tagihan; COD & saldo sudah selesai di server.
-  String _afterCheckout(String orderId) => _paymentMethod == 'QRIS'
+  /// Pembayaran online dilanjutkan ke Midtrans Snap; COD & saldo selesai di server.
+  String _afterCheckout(String orderId) => _paymentMethod == 'MIDTRANS'
       ? PayRoutes.order(orderId)
       : '/order-success/$orderId';
 
@@ -138,7 +138,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             'Saldo KOMIT' => 'WALLET',
             // COD hanya untuk pesanan yang diantar.
             'COD' when !_isPickup => 'COD',
-            _ => 'QRIS',
+            _ => 'MIDTRANS',
           };
         });
       }
@@ -557,8 +557,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
               onSelectionChanged: (v) => setState(() {
                 _fulfillment = v.first;
                 // COD hanya untuk pesanan yang diantar (aturan backend).
-                if (_isPickup && _paymentMethod == 'COD')
-                  _paymentMethod = 'QRIS';
+                if (_isPickup && _paymentMethod == 'COD') {
+                  _paymentMethod = 'MIDTRANS';
+                }
               }),
             ),
             const SizedBox(height: AppSpacing.xs),
@@ -715,12 +716,12 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                 ),
               ),
               subtitle: Text(
-                'QRIS, GoPay, ShopeePay, atau Virtual Account — dibayar setelah pesanan dibuat',
+                'Midtrans Snap Sandbox — pilih QRIS, transfer bank, dompet digital, kartu, atau metode uji lain',
                 style: AppTypography.captionSmall.copyWith(
                   color: AppColors.muted,
                 ),
               ),
-              value: 'QRIS',
+              value: 'MIDTRANS',
               groupValue: _paymentMethod,
               activeColor: AppColors.primary,
               onChanged: (val) {
@@ -769,11 +770,11 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                     ? 'Saldo ${formatRupiah(balance.round())} — langsung lunas'
                     : 'Saldo ${formatRupiah(balance.round())} tidak cukup. Isi ulang '
                           'di Profil > Saldo.';
-                // Saldo turun di bawah total setelah dipilih: kembali QRIS.
+                // Saldo turun di bawah total setelah dipilih: kembali ke Snap.
                 if (!enough && _paymentMethod == 'WALLET') {
                   WidgetsBinding.instance.addPostFrameCallback(
                     (_) => mounted
-                        ? setState(() => _paymentMethod = 'QRIS')
+                        ? setState(() => _paymentMethod = 'MIDTRANS')
                         : null,
                   );
                 }

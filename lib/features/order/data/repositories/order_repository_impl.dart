@@ -5,8 +5,7 @@ import '../../../product/domain/entities/product.dart';
 import '../../domain/repositories/order_repository.dart';
 import '../datasources/order_remote_data_source.dart';
 import '../datasources/order_local_data_source.dart';
-import '../../../../core/storage/models/cart_cache.dart';
-import '../../../../core/storage/models/order_cache.dart';
+import '../../../../core/storage/cache_records.dart';
 import '../models/order_model.dart';
 
 class OrderRepositoryImpl implements OrderRepository {
@@ -27,13 +26,14 @@ class OrderRepositoryImpl implements OrderRepository {
       final cartModel = await remoteDataSource.getCart();
       // Cache locally
       final cacheItems = cartModel.items.map((item) {
-        return CartItemCache()
-          ..productId = item.productId
-          ..umkmProductId = item.umkmProductId
-          ..name = item.name
-          ..price = item.price
-          ..quantity = item.quantity
-          ..imageUrl = item.imageUrl;
+        return CachedCartItem(
+          productId: item.productId,
+          umkmProductId: item.umkmProductId,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+          imageUrl: item.imageUrl,
+        );
       }).toList();
       await localDataSource.saveDraftCart(_currentUserId, cacheItems);
       return cartModel.toEntity();
@@ -97,13 +97,14 @@ class OrderRepositoryImpl implements OrderRepository {
     );
     // Update local cache
     final cacheItems = cartModel.items.map((item) {
-      return CartItemCache()
-        ..productId = item.productId
-        ..umkmProductId = item.umkmProductId
-        ..name = item.name
-        ..price = item.price
-        ..quantity = item.quantity
-        ..imageUrl = item.imageUrl;
+      return CachedCartItem(
+        productId: item.productId,
+        umkmProductId: item.umkmProductId,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        imageUrl: item.imageUrl,
+      );
     }).toList();
     await localDataSource.saveDraftCart(_currentUserId, cacheItems);
     return cartModel.toEntity();
@@ -121,13 +122,14 @@ class OrderRepositoryImpl implements OrderRepository {
       quantity: quantity,
     );
     final cacheItems = cartModel.items.map((item) {
-      return CartItemCache()
-        ..productId = item.productId
-        ..umkmProductId = item.umkmProductId
-        ..name = item.name
-        ..price = item.price
-        ..quantity = item.quantity
-        ..imageUrl = item.imageUrl;
+      return CachedCartItem(
+        productId: item.productId,
+        umkmProductId: item.umkmProductId,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        imageUrl: item.imageUrl,
+      );
     }).toList();
     await localDataSource.saveDraftCart(_currentUserId, cacheItems);
     return cartModel.toEntity();
@@ -143,13 +145,14 @@ class OrderRepositoryImpl implements OrderRepository {
       umkmProductId: umkmProductId,
     );
     final cacheItems = cartModel.items.map((item) {
-      return CartItemCache()
-        ..productId = item.productId
-        ..umkmProductId = item.umkmProductId
-        ..name = item.name
-        ..price = item.price
-        ..quantity = item.quantity
-        ..imageUrl = item.imageUrl;
+      return CachedCartItem(
+        productId: item.productId,
+        umkmProductId: item.umkmProductId,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        imageUrl: item.imageUrl,
+      );
     }).toList();
     await localDataSource.saveDraftCart(_currentUserId, cacheItems);
     return cartModel.toEntity();
@@ -298,26 +301,28 @@ class OrderRepositoryImpl implements OrderRepository {
     }
   }
 
-  OrderCache _mapToOrderCache(OrderModel o) {
+  CachedOrder _mapToOrderCache(OrderModel o) {
     final items = o.items.map((i) {
-      return OrderItemCache()
-        ..productId = i.productId ?? i.umkmProductId ?? ''
-        ..productName = i.name
-        ..quantity = i.quantity
-        ..price = i.price;
+      return CachedOrderItem(
+        productId: i.productId ?? i.umkmProductId ?? '',
+        productName: i.name,
+        quantity: i.quantity,
+        price: i.price,
+      );
     }).toList();
 
-    return OrderCache()
-      ..orderId = o.id
-      ..customerId = o.customerId
-      ..totalAmount = o.totalAmount
-      ..status = o.status
-      ..paymentMethod = o.paymentMethod
-      ..createdAt = o.createdAt
-      ..items = items;
+    return CachedOrder(
+      orderId: o.id,
+      customerId: o.customerId,
+      totalAmount: o.totalAmount,
+      status: o.status,
+      paymentMethod: o.paymentMethod,
+      createdAt: o.createdAt,
+      items: items,
+    );
   }
 
-  Order _mapFromOrderCache(OrderCache c) {
+  Order _mapFromOrderCache(CachedOrder c) {
     final items = c.items.map((i) {
       return OrderItem(
         id: '',

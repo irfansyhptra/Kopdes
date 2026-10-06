@@ -33,7 +33,7 @@ Future<void> _pump(
   await tester.pump();
 }
 
-OrderModel _order() => OrderModel(
+OrderModel _order({String status = 'READY_FOR_DELIVERY'}) => OrderModel(
   id: 'order-1234567890',
   customerId: 'customer-1',
   customer: const CustomerInfo(
@@ -43,7 +43,7 @@ OrderModel _order() => OrderModel(
     phone: '081234567890',
   ),
   totalAmount: 1250000,
-  status: 'READY_FOR_DELIVERY',
+  status: status,
   paymentMethod: 'TRANSFER',
   paymentStatus: 'PAID',
   deliveryAddress: const AddressInfo(
@@ -148,8 +148,28 @@ void main() {
       );
 
       expect(tester.takeException(), isNull);
+      expect(find.text('Butuh Pengantaran'), findsOneWidget);
       expect(find.text('Chat Pembeli'), findsOneWidget);
       expect(find.text('Chat Kurir'), findsOneWidget);
+    });
+
+    testWidgets('pesanan diproses dapat mengajukan pengantaran', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        SingleChildScrollView(
+          padding: const EdgeInsets.all(AppSpacing.base),
+          child: OrderCard(
+            order: _order(status: 'PROCESSING'),
+            onUpdateStatus: (_) {},
+            onTap: () {},
+          ),
+        ),
+      );
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('Ajukan pengantaran'), findsOneWidget);
     });
   });
 }

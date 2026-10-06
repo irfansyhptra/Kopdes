@@ -102,7 +102,7 @@ class OrderModel extends Order {
           ? (json['totalAmount'] as num).toDouble()
           : double.tryParse(json['totalAmount'].toString()) ?? 0.0,
       status: json['status'] as String? ?? 'PENDING',
-      paymentMethod: json['paymentMethod'] as String? ?? 'QRIS',
+      paymentMethod: json['paymentMethod'] as String? ?? 'MIDTRANS',
       paymentStatus: json['paymentStatus'] as String? ?? 'PENDING',
       deliveryAddressId: json['deliveryAddressId'] as String? ?? '',
       deliveryAddress: json['deliveryAddress'] != null

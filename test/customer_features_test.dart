@@ -88,9 +88,10 @@ class _FakeWallet extends WalletRepository {
 }
 
 PaymentInstructions _pending({
-  OnlineMethod m = OnlineMethod.qris,
-  String? qr = 'https://example.test/qr.png',
+  OnlineMethod m = OnlineMethod.snap,
+  String? qr,
   String? va,
+  String? snap = 'https://app.sandbox.midtrans.com/snap/v3/redirection/test',
 }) => PaymentInstructions(
   status: PayStatus.pending,
   amount: 65000,
@@ -99,6 +100,7 @@ PaymentInstructions _pending({
   vaNumber: va,
   bank: va == null ? null : 'bca',
   expiresAt: DateTime.now().add(const Duration(minutes: 3)),
+  snapRedirectUrl: snap,
 );
 
 Future<void> _pump(
@@ -183,22 +185,27 @@ void main() {
   });
 
   group('pembayaran', () {
-    testWidgets('QRIS: kode QR, cek status, lalu lunas otomatis', (t) async {
+    testWidgets('Snap: buka pembayaran, cek status, lalu lunas otomatis', (
+      t,
+    ) async {
       final repo = _FakePay(_pending());
       await _pump(
         t,
-        const PaymentScreen(target: (topUp: false, id: 'o1', method: 'QRIS')),
+        const PaymentScreen(
+          target: (topUp: false, id: 'o1', method: 'MIDTRANS'),
+        ),
         overrides: [paymentRepositoryProvider.overrideWithValue(repo)],
       );
       expect(find.text('Rp65.000'), findsOneWidget);
       expect(find.text('Menunggu pembayaran'), findsOneWidget);
+      expect(find.text('Buka Midtrans Snap'), findsOneWidget);
       expect(find.text('Cek Status Pembayaran'), findsOneWidget);
-      expect(find.text('Ganti Metode Pembayaran'), findsOneWidget);
+      expect(find.text('Ganti Metode Pembayaran'), findsNothing);
 
       repo.next = PaymentInstructions(
         status: PayStatus.paid,
         amount: 65000,
-        method: OnlineMethod.qris,
+        method: OnlineMethod.snap,
       );
       await t.pump(PaymentSession.interval);
       await t.pump();
@@ -215,7 +222,12 @@ void main() {
         overrides: [
           paymentRepositoryProvider.overrideWithValue(
             _FakePay(
-              _pending(m: OnlineMethod.bcaVa, qr: null, va: '8077000123'),
+              _pending(
+                m: OnlineMethod.bcaVa,
+                qr: null,
+                va: '8077000123',
+                snap: null,
+              ),
             ),
           ),
         ],
@@ -228,14 +240,16 @@ void main() {
     testWidgets('kedaluwarsa: tawarkan bayar ulang', (t) async {
       await _pump(
         t,
-        const PaymentScreen(target: (topUp: false, id: 'o1', method: 'QRIS')),
+        const PaymentScreen(
+          target: (topUp: false, id: 'o1', method: 'MIDTRANS'),
+        ),
         overrides: [
           paymentRepositoryProvider.overrideWithValue(
             _FakePay(
               PaymentInstructions(
                 status: PayStatus.expired,
                 amount: 65000,
-                method: OnlineMethod.qris,
+                method: OnlineMethod.snap,
               ),
             ),
           ),
@@ -265,7 +279,7 @@ void main() {
       await t.enterText(find.byType(TextField), '5000');
       await t.pump();
       expect(find.text('Minimal Rp10.000.'), findsOneWidget);
-      expect(find.text('GoPay'), findsOneWidget);
+      expect(find.text('Midtrans Snap'), findsOneWidget);
     });
   });
 

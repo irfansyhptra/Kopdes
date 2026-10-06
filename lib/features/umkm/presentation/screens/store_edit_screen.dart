@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/network/error_message.dart';
 import '../../../../core/theme/theme.dart';
@@ -69,6 +70,10 @@ class _StoreEditScreenState extends ConsumerState<StoreEditScreen> {
   StoreModel? _original;
   bool _saving = false;
   bool _touched = false;
+  Uint8List? _logoBytes;
+  String? _logoName;
+  Uint8List? _bannerBytes;
+  String? _bannerName;
 
   bool get _kopdes => ref.read(storeScopeProvider).isKopdes;
 
@@ -102,7 +107,35 @@ class _StoreEditScreenState extends ConsumerState<StoreEditScreen> {
     return _name.text.trim() != o.businessName ||
         _description.text.trim() != o.description ||
         _address.text.trim() != o.address ||
-        (!_kopdes && _category != o.category);
+        (!_kopdes && _category != o.category) ||
+        _logoBytes != null ||
+        _bannerBytes != null;
+  }
+
+  Future<void> _pickMedia({required bool banner}) async {
+    final file = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      maxWidth: banner ? 2200 : 1400,
+      imageQuality: 88,
+    );
+    if (file == null || !mounted) return;
+    final bytes = await file.readAsBytes();
+    if (!mounted) return;
+    if (bytes.length > 4 * 1024 * 1024) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ukuran gambar maksimal 4 MB.')),
+      );
+      return;
+    }
+    setState(() {
+      if (banner) {
+        _bannerBytes = bytes;
+        _bannerName = file.name;
+      } else {
+        _logoBytes = bytes;
+        _logoName = file.name;
+      }
+    });
   }
 
   Map<String, String> get _errors => {
@@ -129,6 +162,15 @@ class _StoreEditScreenState extends ConsumerState<StoreEditScreen> {
           address: _address.text.trim(),
           category: _kopdes ? null : _category,
         );
+        if (_logoBytes != null || _bannerBytes != null) {
+          await saveStoreMedia(
+            ref,
+            logoBytes: _logoBytes,
+            logoName: _logoName,
+            bannerBytes: _bannerBytes,
+            bannerName: _bannerName,
+          );
+        }
         return true;
       },
       successTitle: 'Profil Tersimpan',
@@ -160,7 +202,84 @@ class _StoreEditScreenState extends ConsumerState<StoreEditScreen> {
                   onRetry: () => ref.invalidate(storeProfileProvider),
                 )
               : const SectionSkeleton(height: 420)
-        else
+        else ...[
+          StoreSurface(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Identitas Visual',
+                  style: AppTypography.titleMedium.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Row(
+                  children: [
+                    ClipOval(
+                      child: SizedBox(
+                        width: 76,
+                        height: 76,
+                        child: _mediaImage(
+                          _logoBytes,
+                          _original!.photoUrl,
+                          Icons.storefront_rounded,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.base),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _kopdes ? 'Logo Kopdes' : 'Logo atau foto toko',
+                            style: AppTypography.bodyMedium.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          Text(
+                            'JPG, PNG, atau WebP · maksimal 4 MB',
+                            style: AppTypography.captionSmall.copyWith(
+                              color: AppColors.muted,
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.xs),
+                          OutlinedButton(
+                            onPressed: _saving
+                                ? null
+                                : () => _pickMedia(banner: false),
+                            child: const Text('Pilih Logo'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.base),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  child: AspectRatio(
+                    aspectRatio: 16 / 6,
+                    child: _mediaImage(
+                      _bannerBytes,
+                      _original!.bannerUrl,
+                      Icons.image_outlined,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                OutlinedButton.icon(
+                  onPressed: _saving ? null : () => _pickMedia(banner: true),
+                  icon: const Icon(Icons.photo_library_outlined, size: 18),
+                  label: Text(
+                    _kopdes ? 'Pilih Banner Kopdes' : 'Pilih Banner Toko',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.base),
           StoreSurface(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -243,7 +362,25 @@ class _StoreEditScreenState extends ConsumerState<StoreEditScreen> {
               ],
             ),
           ),
+        ],
       ],
     );
   }
+
+  Widget _mediaImage(Uint8List? bytes, String? url, IconData fallback) {
+    if (bytes != null) return Image.memory(bytes, fit: BoxFit.cover);
+    if (url != null && url.isNotEmpty) {
+      return Image.network(
+        url,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => _mediaFallback(fallback),
+      );
+    }
+    return _mediaFallback(fallback);
+  }
+
+  Widget _mediaFallback(IconData icon) => ColoredBox(
+    color: AppColors.primarySoft,
+    child: Center(child: Icon(icon, color: AppColors.primary, size: 30)),
+  );
 }

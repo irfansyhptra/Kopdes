@@ -48,8 +48,8 @@ class CourierTasksScreen extends ConsumerWidget {
                 async: available,
                 emptyTitle: 'Belum ada tugas yang bisa diambil',
                 emptyBody:
-                    'Tugas muncul di sini setelah toko menandai pesanan siap '
-                    'dikirim. Tarik layar ke bawah untuk memeriksa lagi.',
+                    'Tugas muncul di sini setelah UMKM mengajukan kebutuhan '
+                    'pengantaran. Tarik layar ke bawah untuk memeriksa lagi.',
                 onRefresh: () => ref.invalidate(availableTasksProvider),
                 actionFor: (task) => _ClaimButton(task: task),
               ),

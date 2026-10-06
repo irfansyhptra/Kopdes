@@ -44,13 +44,15 @@ class HealthNotifier extends StateNotifier<HealthState> {
   /// Versi sebelumnya mencoba 3× dengan timeout 10 detik ditambah jeda 1 detik
   /// — total sampai ~32 detik menahan splash sebelum tombol coba-lagi muncul.
   /// Percobaan berulang di sini tidak menambah apa pun: kalau backend belum
-  /// siap dalam 10 detik, mencoba lagi 1 detik kemudian hampir pasti gagal
-  /// juga. Pemulihan sudah ditangani tombol "coba lagi" di splash, yang
-  /// mengembalikan kendali ke pengguna alih-alih membuatnya menunggu.
+  /// siap dalam 10 detik, aplikasi tetap masuk dalam mode terdegradasi dan
+  /// layar tujuan menampilkan keadaan gagal pada datanya sendiri.
   Future<bool> checkServerHealth() async {
     state = HealthState.checking;
     try {
-      final response = await _dio.get<dynamic>('/health');
+      // Liveness hanya memastikan fungsi API dapat menjawab. Readiness boleh
+      // gagal karena layanan tambahan sedang terganggu dan tidak boleh
+      // mengunci seluruh aplikasi di splash.
+      final response = await _dio.get<dynamic>('/health/live');
       final healthy = response.statusCode == 200;
       state = healthy ? HealthState.healthy : HealthState.unhealthy;
       return healthy;

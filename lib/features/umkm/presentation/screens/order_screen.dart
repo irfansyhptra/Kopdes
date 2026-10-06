@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/theme.dart';
 import '../../../../shared/components/order_card.dart';
-import '../../../../shared/components/loading_widget.dart';
 import '../../../../shared/components/error_state_widget.dart';
 import '../../../../shared/components/empty_state_widget.dart';
 import '../../../../shared/widgets/app_glass_chrome.dart';
@@ -24,7 +23,6 @@ class OrderScreen extends ConsumerStatefulWidget {
 class _OrderScreenState extends ConsumerState<OrderScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  bool _isUpdating = false;
   final Set<String> _openingChats = {};
 
   @override
@@ -39,36 +37,31 @@ class _OrderScreenState extends ConsumerState<OrderScreen>
     super.dispose();
   }
 
-  Future<void> _handleUpdateStatus(String orderId, String status) async {
-    setState(() {
-      _isUpdating = true;
-    });
+  Future<void> _handleUpdateStatus(OrderModel order, String status) async {
+    final pickup = order.fulfillment.toUpperCase() == 'PICKUP';
+    // Penjual mitra tidak memerintah kurir. "Siap diantar" hanya menitipkan
+    // pesanan ke kolam tugas kurir Kopdes, dan kabar suksesnya harus
+    // mengatakan itu — bukan "kurir sudah ditugaskan".
+    final sukses = status == 'READY_FOR_DELIVERY'
+        ? (pickup
+              ? 'Pembeli bisa mengambil pesanannya sekarang.'
+              : 'Pesanan masuk daftar tugas kurir Kopdes. Kurir yang '
+                    'mengambilnya akan menghubungi Anda.')
+        : 'Siapkan barangnya, lalu tandai siap bila sudah selesai.';
 
-    final success = await ref
-        .read(orderControllerProvider.notifier)
-        .updateOrderStatus(orderId, status);
-
-    if (mounted) {
-      setState(() {
-        _isUpdating = false;
-      });
-
-      if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Status pesanan berhasil diperbarui ke: $status'),
-            backgroundColor: AppColors.success,
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Gagal memperbarui status pesanan'),
-            backgroundColor: AppColors.error,
-          ),
-        );
-      }
-    }
+    await runWithFeedback(
+      context,
+      waiting: 'Memperbarui status pesanan…',
+      action: () => ref
+          .read(orderControllerProvider.notifier)
+          .updateOrderStatus(order.id, status),
+      successTitle: status == 'READY_FOR_DELIVERY'
+          ? (pickup ? 'Siap diambil' : 'Pengantaran diajukan')
+          : 'Pesanan diproses',
+      successMessage: sukses,
+      failureTitle: 'Status pesanan belum berubah',
+      failureMessage: 'Periksa koneksi, lalu coba lagi.',
+    );
   }
 
   Future<void> _openOrderChat(OrderModel order, ChatChannel channel) async {
@@ -189,7 +182,7 @@ class _OrderScreenState extends ConsumerState<OrderScreen>
                 tabs: const [
                   Tab(text: 'Baru'),
                   Tab(text: 'Diproses'),
-                  Tab(text: 'Siap Kirim'),
+                  Tab(text: 'Butuh Kurir'),
                   Tab(text: 'Riwayat'),
                 ],
               ),
@@ -246,7 +239,7 @@ class _OrderScreenState extends ConsumerState<OrderScreen>
                                         ChatChannel.delivery,
                                       ),
                                 onUpdateStatus: (newStatus) =>
-                                    _handleUpdateStatus(order.id, newStatus),
+                                    _handleUpdateStatus(order, newStatus),
                                 onTap: () => _showOrderDetailsSheet(order),
                               ),
                             );
@@ -260,10 +253,6 @@ class _OrderScreenState extends ConsumerState<OrderScreen>
             ),
           ),
         ),
-        if (_isUpdating)
-          const SellerLoadingScrim(
-            child: LoadingWidget(message: 'Memperbarui status pesanan...'),
-          ),
       ],
     );
   }
@@ -285,8 +274,8 @@ class _OrderScreenState extends ConsumerState<OrderScreen>
         icon = Icons.outdoor_grill_outlined;
         break;
       case 2:
-        title = 'Tidak Ada Pesanan Siap Kirim';
-        desc = 'Belum ada pesanan yang siap dipickup oleh kurir.';
+        title = 'Belum Ada Permintaan Pengantaran';
+        desc = 'Pesanan yang diajukan akan terlihat oleh kurir KOPDES.';
         icon = Icons.local_shipping_outlined;
         break;
       case 3:

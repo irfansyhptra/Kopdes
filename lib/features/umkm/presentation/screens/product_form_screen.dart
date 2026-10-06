@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
@@ -10,6 +8,7 @@ import '../../../../core/network/error_message.dart';
 import '../../../../core/theme/theme.dart';
 import '../../../../shared/widgets/apple_feedback.dart';
 import '../../../../shared/widgets/apple_ui.dart';
+import '../../../../shared/widgets/platform_image.dart';
 import '../../data/models/product_category_model.dart';
 import '../../data/models/seller_product_page.dart';
 import '../../domain/product_rules.dart';
@@ -823,8 +822,8 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                               )
                             : primary.isRemote
                             ? Image.network(primary.url!, fit: BoxFit.cover)
-                            : Image.file(
-                                File(primary.path!),
+                            : platformImage(
+                                primary.path!,
                                 fit: BoxFit.cover,
                                 errorBuilder: (_, __, ___) => const Icon(
                                   Icons.broken_image_outlined,

@@ -5,6 +5,7 @@ import '../datasources/auth_local_data_source.dart';
 import '../datasources/auth_remote_data_source.dart';
 import '../models/login_request.dart';
 import '../models/register_request.dart';
+import '../../domain/entities/registration_challenge.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   final AuthRemoteDataSource remoteDataSource;
@@ -36,13 +37,13 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<AuthSession> register({
+  Future<RegistrationChallenge> register({
     required String name,
     required String email,
     required String phone,
     required String password,
   }) async {
-    final response = await remoteDataSource.register(
+    return remoteDataSource.register(
       RegisterRequest(
         name: name,
         email: email,
@@ -50,16 +51,29 @@ class AuthRepositoryImpl implements AuthRepository {
         password: password,
       ),
     );
+  }
 
-    // Persist session locally
+  @override
+  Future<AuthSession> verifyEmail({
+    required String email,
+    required String code,
+  }) async {
+    final response = await remoteDataSource.verifyEmail(
+      email: email,
+      code: code,
+    );
     await localDataSource.saveTokens(
       accessToken: response.accessToken,
       refreshToken: response.refreshToken,
     );
     await localDataSource.saveUserRole(response.user.role);
     await localDataSource.saveUserCached(response.user);
-
     return response.toEntity();
+  }
+
+  @override
+  Future<RegistrationChallenge> resendVerification({required String email}) {
+    return remoteDataSource.resendVerification(email);
   }
 
   @override
@@ -101,6 +115,19 @@ class AuthRepositoryImpl implements AuthRepository {
     final updatedModel = await remoteDataSource.updateProfile(
       name: name,
       phone: phone,
+    );
+    await localDataSource.saveUserCached(updatedModel);
+    return updatedModel.toEntity();
+  }
+
+  @override
+  Future<User> updateAvatar({
+    required List<int> bytes,
+    required String filename,
+  }) async {
+    final updatedModel = await remoteDataSource.updateAvatar(
+      bytes: bytes,
+      filename: filename,
     );
     await localDataSource.saveUserCached(updatedModel);
     return updatedModel.toEntity();

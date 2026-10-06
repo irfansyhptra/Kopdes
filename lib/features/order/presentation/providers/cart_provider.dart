@@ -7,14 +7,13 @@ import '../../data/datasources/order_remote_data_source.dart';
 import '../../data/datasources/order_local_data_source.dart';
 import '../../data/repositories/order_repository_impl.dart';
 import '../../../../core/network/dio_client.dart';
-import '../../../../core/storage/isar_service.dart';
 import '../../../notification/domain/entities/notification_item.dart';
 import '../../../notification/presentation/providers/notification_provider.dart';
 
 final orderRepositoryProvider = Provider<OrderRepository>((ref) {
   return OrderRepositoryImpl(
     remoteDataSource: OrderRemoteDataSourceImpl(dio: ref.watch(dioProvider)),
-    localDataSource: OrderLocalDataSourceImpl(isar: ref.watch(isarProvider)),
+    localDataSource: OrderLocalDataSourceImpl(),
   );
 });
 

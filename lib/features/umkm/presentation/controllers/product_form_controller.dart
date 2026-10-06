@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -93,7 +91,7 @@ class ImagePickerPhotoPicker implements ProductPhotoPicker {
     final ok = <String>[];
     var tooLarge = 0;
     for (final f in files.take(max)) {
-      if (await File(f.path).length() > ProductRules.maxPhotoBytes) {
+      if (await f.length() > ProductRules.maxPhotoBytes) {
         tooLarge++;
       } else {
         ok.add(f.path);

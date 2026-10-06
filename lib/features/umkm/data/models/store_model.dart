@@ -55,6 +55,7 @@ class StoreModel {
   final String? rejectionReason;
   final String category;
   final String? photoUrl;
+  final String? bannerUrl;
 
   /// null = jam buka belum pernah diisi; hari bernilai null = tutup.
   final Map<String, DayHours?>? operatingHours;
@@ -73,6 +74,7 @@ class StoreModel {
     this.rejectionReason,
     this.category = 'LAINNYA',
     this.photoUrl,
+    this.bannerUrl,
     this.operatingHours,
     this.isOpen,
     this.kopdesName,
@@ -98,6 +100,7 @@ class StoreModel {
       rejectionReason: json['rejectionReason'] as String?,
       category: json['category'] as String? ?? 'LAINNYA',
       photoUrl: json['photoUrl'] as String?,
+      bannerUrl: json['bannerUrl'] as String?,
       operatingHours: _hours(json['operatingHours']),
       isOpen: json['isOpen'] as bool?,
       kopdesName: (json['kopdes'] as Map<String, dynamic>?)?['name'] as String?,
@@ -128,6 +131,7 @@ class StoreModel {
       phone: json['phone'] as String? ?? '',
       status: json['isVerified'] == true ? 'ACTIVE' : 'PENDING_VERIFICATION',
       photoUrl: json['logoUrl'] as String?,
+      bannerUrl: json['imageUrl'] as String?,
       operatingHours: _hours(json['operatingHours']),
       isOpen: json['isOpen'] as bool?,
     );
@@ -141,6 +145,8 @@ class StoreModel {
       'address': address,
       'phone': phone,
       'status': status,
+      'photoUrl': photoUrl,
+      'bannerUrl': bannerUrl,
     };
   }
 }

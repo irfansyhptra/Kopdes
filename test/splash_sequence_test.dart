@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:kopdes/features/splash/presentation/screens/splash_loading_state.dart';
@@ -8,6 +10,7 @@ SplashSequenceManager _manager({
   Future<void> Function()? loadVillageData,
   Future<void> Function()? checkSession,
   Duration minimum = Duration.zero,
+  Duration operationTimeout = const Duration(seconds: 1),
 }) {
   return SplashSequenceManager(
     checkHealth: checkHealth ?? () async => true,
@@ -16,6 +19,7 @@ SplashSequenceManager _manager({
     warmupAI: () async {},
     prepareServices: () async {},
     minimumDisplayDuration: minimum,
+    operationTimeout: operationTimeout,
   );
 }
 
@@ -74,10 +78,7 @@ void main() {
       );
     });
 
-    // Kalau health gagal duluan, dua future lain sudah terlanjur berjalan dan
-    // bisa ikut gagal. Tanpa penanganan, error mereka jadi unhandled dan
-    // mematikan zone-nya. Test ini gagal kalau itu terjadi.
-    test('kegagalan health tidak meninggalkan error tak tertangani', () async {
+    test('kegagalan health tidak menahan pengguna di splash', () async {
       final manager = _manager(
         checkHealth: () async {
           await _delayed(20);
@@ -97,19 +98,19 @@ void main() {
       // Beri waktu future yang tersisa selesai dengan error.
       await _delayed(150);
 
-      expect(manager.state, SplashLoadingState.unreachable);
-      expect(manager.finished, isFalse, reason: 'tidak boleh navigasi');
+      expect(manager.state, SplashLoadingState.ready);
+      expect(manager.finished, isTrue);
     });
 
-    test('gagal memuat kategori juga berakhir di unreachable', () async {
+    test('gagal memuat kategori tetap melanjutkan aplikasi', () async {
       final manager = _manager(
         loadVillageData: () async => throw Exception('kategori gagal'),
       );
 
       await manager.start();
 
-      expect(manager.state, SplashLoadingState.unreachable);
-      expect(manager.finished, isFalse);
+      expect(manager.state, SplashLoadingState.ready);
+      expect(manager.finished, isTrue);
     });
 
     // Lantai durasi visual adalah keputusan desain — pastikan paralelisasi
@@ -125,22 +126,18 @@ void main() {
       expect(sw.elapsedMilliseconds, greaterThanOrEqualTo(380));
     });
 
-    test('start() bisa dipanggil ulang untuk tombol coba lagi', () async {
-      var attempt = 0;
+    test('future yang tidak selesai diputus oleh timeout', () async {
       final manager = _manager(
-        checkHealth: () async {
-          attempt++;
-          return attempt > 1; // gagal sekali, lalu berhasil
-        },
+        checkHealth: () => Completer<bool>().future,
+        loadVillageData: () => Completer<void>().future,
+        checkSession: () => Completer<void>().future,
+        operationTimeout: const Duration(milliseconds: 40),
       );
-
-      await manager.start();
-      expect(manager.state, SplashLoadingState.unreachable);
 
       await manager.start();
       await manager.done;
       expect(manager.finished, isTrue);
-      expect(attempt, 2);
+      expect(manager.state, SplashLoadingState.ready);
     });
   });
 }

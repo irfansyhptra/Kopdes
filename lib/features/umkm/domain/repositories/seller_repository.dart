@@ -15,4 +15,10 @@ abstract class SellerRepository {
     String? category,
     Map<String, DayHours?>? operatingHours,
   });
+  Future<StoreModel> updateStoreMedia({
+    List<int>? logoBytes,
+    String? logoName,
+    List<int>? bannerBytes,
+    String? bannerName,
+  });
 }

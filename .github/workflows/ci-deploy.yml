@@ -1,0 +1,129 @@
+name: Flutter CI and Deploy
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FLUTTER_VERSION: 3.35.7
+  API_BASE_URL: ${{ secrets.API_BASE_URL }}
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze --no-fatal-infos --no-fatal-warnings
+      - run: flutter test
+      - run: flutter build web --release --dart-define=API_BASE_URL=${API_BASE_URL}
+
+  release-apk:
+    if: github.event_name != 'pull_request'
+    needs: validate
+    runs-on: ubuntu-latest
+    outputs:
+      apk_url: ${{ steps.blob.outputs.url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Restore release signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+        run: |
+          mkdir -p android/keystore
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > android/keystore/komit-release.jks
+          {
+            echo 'storeFile=keystore/komit-release.jks'
+            echo "storePassword=$STORE_PASSWORD"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "keyPassword=$KEY_PASSWORD"
+          } > android/key.properties
+      - name: Build signed KOMIT APK
+        run: >-
+          flutter build apk --release
+          --build-name=1.0.0 --build-number=1
+          --dart-define=API_BASE_URL=${API_BASE_URL}
+      - run: cp build/app/outputs/flutter-apk/app-release.apk KOMIT-v1.0.0.apk
+      - run: sha256sum KOMIT-v1.0.0.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: KOMIT-v1.0.0
+          path: KOMIT-v1.0.0.apk
+          if-no-files-found: error
+      - run: npm install --global vercel@latest
+      - id: blob
+        name: Upload APK to Vercel Blob
+        env:
+          BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
+        run: |
+          url=$(vercel blob put KOMIT-v1.0.0.apk --pathname releases/KOMIT-v1.0.0.apk --allow-overwrite --access public --no-color | tail -n 1)
+          curl --fail --location --head "$url"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+  preview:
+    needs: validate
+    runs-on: ubuntu-latest
+    outputs:
+      url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: npm install --global vercel@latest
+      - run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+      - run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
+      - id: deploy
+        run: |
+          url=$(vercel deploy --prebuilt --archive=tgz --token=${{ secrets.VERCEL_TOKEN }})
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+      - name: Verify preview and deep link
+        run: |
+          curl --fail --location --retry 5 --retry-all-errors "${{ steps.deploy.outputs.url }}/"
+          curl --fail --location --retry 5 --retry-all-errors "${{ steps.deploy.outputs.url }}/home"
+
+  production:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: [preview, release-apk]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: npm install --global vercel@latest
+      - run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+      - run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+      - id: deploy
+        run: |
+          url=$(vercel deploy --prebuilt --prod --archive=tgz --token=${{ secrets.VERCEL_TOKEN }})
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+      - name: Verify production and deep link
+        run: |
+          curl --fail --location --retry 5 --retry-all-errors "${{ steps.deploy.outputs.url }}/"
+          curl --fail --location --retry 5 --retry-all-errors "${{ steps.deploy.outputs.url }}/home"

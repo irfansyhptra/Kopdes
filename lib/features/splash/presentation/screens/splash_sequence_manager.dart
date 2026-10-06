@@ -17,6 +17,7 @@ class SplashSequenceManager extends ChangeNotifier {
     required this.warmupAI,
     required this.prepareServices,
     this.minimumDisplayDuration = const Duration(milliseconds: 3400),
+    this.operationTimeout = const Duration(seconds: 8),
   });
 
   final Future<bool> Function() checkHealth;
@@ -28,6 +29,11 @@ class SplashSequenceManager extends ChangeNotifier {
   /// Splash will not finish before this, even if [initialize]
   /// resolves instantly -- this guarantees the full animation plays.
   final Duration minimumDisplayDuration;
+
+  /// Batas tegas untuk setiap dependency bootstrap. Splash adalah presentasi,
+  /// bukan health gate: jaringan atau layanan tambahan yang mati tidak boleh
+  /// mengunci pengguna di layar pembuka.
+  final Duration operationTimeout;
 
   SplashLoadingState _state = SplashLoadingState.connectingKoperasi;
   SplashLoadingState get state => _state;
@@ -62,20 +68,16 @@ class SplashSequenceManager extends ChangeNotifier {
     // Urutan pesan di layar tidak berubah sedikit pun: tiap `await` di bawah
     // langsung kembali kalau future-nya sudah selesai duluan.
     //
-    // `.ignore()` wajib di sini. Kalau health gagal, kita melempar sebelum
-    // sempat meng-await dua future lainnya; tanpa penanda ini error mereka
-    // dianggap tidak tertangani dan mematikan zone. `ignore()` hanya menandai
-    // error sebagai sudah ditangani — `await` di bawah tetap menerimanya.
-    final healthFuture = checkHealth()..ignore();
-    final villageFuture = loadVillageData()..ignore();
-    final sessionFuture = checkSession()..ignore();
+    // Setiap operasi dibungkus timeout dan penanganan error sendiri. Karena
+    // future dimulai sebelum await pertama, ketiganya tetap paralel sekaligus
+    // tidak dapat meninggalkan error tak tertangani.
+    final healthFuture = _bestEffort(checkHealth, 'health');
+    final villageFuture = _bestEffort(loadVillageData, 'kategori');
+    final sessionFuture = _bestEffort(checkSession, 'sesi');
 
     try {
       // 1. Menghubungkan Koperasi...
-      final isHealthy = await healthFuture;
-      if (!isHealthy) {
-        throw Exception("Backend is unhealthy or connection failed");
-      }
+      await healthFuture;
 
       // 2. Memuat Data Desa...
       _state = SplashLoadingState.loadingVillageData;
@@ -90,12 +92,12 @@ class SplashSequenceManager extends ChangeNotifier {
       // 4. Menghubungkan AI Assistant...
       _state = SplashLoadingState.connectingAiAssistant;
       notifyListeners();
-      await warmupAI();
+      await _bestEffort(warmupAI, 'AI');
 
       // 5. Menyiapkan Layanan...
       _state = SplashLoadingState.preparingServices;
       notifyListeners();
-      await prepareServices();
+      await _bestEffort(prepareServices, 'layanan');
 
       // 6. Selamat Datang di KOPDES
       _state = SplashLoadingState.ready;
@@ -108,10 +110,22 @@ class SplashSequenceManager extends ChangeNotifier {
       }
       _complete();
     } catch (error, stack) {
-      if (kDebugMode) debugPrint("Bootstrap error: $error\n$stack");
-      _state = SplashLoadingState.unreachable;
-      notifyListeners();
-      // Do not call _complete() to prevent navigation.
+      // Pertahanan terakhir. Semua operasi eksternal di atas sudah dibuat
+      // best-effort, jadi kegagalan tak terduga pun tetap harus melepas splash.
+      if (kDebugMode) debugPrint('Bootstrap internal error: $error\n$stack');
+      _complete();
+    }
+  }
+
+  Future<T?> _bestEffort<T>(
+    Future<T> Function() operation,
+    String label,
+  ) async {
+    try {
+      return await operation().timeout(operationTimeout);
+    } catch (error) {
+      if (kDebugMode) debugPrint('Bootstrap $label dilewati: $error');
+      return null;
     }
   }
 

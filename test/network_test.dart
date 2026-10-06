@@ -227,8 +227,8 @@ void _healthTests() {
       expect(notifier.state, HealthState.unhealthy);
     });
 
-    // Inti P7: versi lama mencoba 3× (10 detik + jeda 1 detik tiap kali),
-    // menahan splash sampai ~32 detik. Pemulihan kini lewat tombol coba-lagi.
+    // Inti P7: versi lama mencoba 3× (10 detik + jeda 1 detik tiap kali).
+    // Splash sekarang melanjutkan aplikasi dalam mode terdegradasi.
     test('gagal hanya sekali percobaan, tidak mengulang sendiri', () async {
       final adapter = _StubAdapter(fail: true);
       final notifier = _health(adapter);

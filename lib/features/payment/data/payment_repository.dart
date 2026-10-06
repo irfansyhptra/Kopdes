@@ -5,6 +5,11 @@ import '../../../core/network/dio_client.dart';
 
 /// Metode Midtrans yang ditawarkan (`PAYMENT_METHODS` di backend).
 enum OnlineMethod {
+  snap(
+    'MIDTRANS',
+    'Midtrans Snap',
+    'Pilih metode pembayaran di halaman aman Midtrans Sandbox',
+  ),
   qris('QRIS', 'QRIS', 'Scan dengan aplikasi bank atau e-wallet apa pun'),
   gopay('GOPAY', 'GoPay', 'Dibuka di aplikasi Gojek'),
   shopeepay('SHOPEEPAY', 'ShopeePay', 'Dibuka di aplikasi Shopee'),
@@ -21,11 +26,11 @@ enum OnlineMethod {
 
   static OnlineMethod parse(Object? v) => OnlineMethod.values.firstWhere(
     (m) => m.wire == v,
-    orElse: () => OnlineMethod.qris,
+    orElse: () => OnlineMethod.snap,
   );
 
   /// Metode yang boleh dipakai isi ulang saldo (`TOPUP_METHODS`).
-  static const topUp = [qris, gopay, shopeepay];
+  static const topUp = [snap];
 }
 
 /// Status tagihan, disatukan dari pembayaran pesanan dan isi ulang.
@@ -50,6 +55,7 @@ class PaymentInstructions {
   final String? billKey;
   final String? billerCode;
   final DateTime? expiresAt;
+  final String? snapRedirectUrl;
 
   const PaymentInstructions({
     required this.status,
@@ -62,6 +68,7 @@ class PaymentInstructions {
     this.billKey,
     this.billerCode,
     this.expiresAt,
+    this.snapRedirectUrl,
   });
 
   /// `PaymentSnapshot` dari `/payments/*`.
@@ -77,6 +84,7 @@ class PaymentInstructions {
         billKey: j['billKey'] as String?,
         billerCode: j['billerCode'] as String?,
         expiresAt: DateTime.tryParse('${j['expiryTime']}')?.toLocal(),
+        snapRedirectUrl: j['snapRedirectUrl'] as String?,
       );
 
   /// `WalletTopUp` dari `/wallet/topup*`.
@@ -93,6 +101,8 @@ class PaymentInstructions {
       billKey: a['billKey'] as String?,
       billerCode: a['billerCode'] as String?,
       expiresAt: DateTime.tryParse('${j['expiresAt']}')?.toLocal(),
+      snapRedirectUrl:
+          j['snapRedirectUrl'] as String? ?? a['snapRedirectUrl'] as String?,
     );
   }
 }
@@ -107,14 +117,9 @@ class PaymentRepository {
       (r.data as Map<String, dynamic>)['data'] as Map<String, dynamic>;
 
   /// Idempoten di server: tagihan yang masih berlaku dipakai ulang.
-  Future<PaymentInstructions> payOrder(String orderId, OnlineMethod m) async =>
+  Future<PaymentInstructions> payOrder(String orderId, OnlineMethod _) async =>
       PaymentInstructions.fromOrder(
-        _data(
-          await dio.post(
-            '/payments/create',
-            data: {'orderId': orderId, 'paymentMethod': m.wire},
-          ),
-        ),
+        _data(await dio.post('/payments/create', data: {'orderId': orderId})),
       );
 
   /// Menanyakan status terbaru ke Midtrans lewat server.
@@ -128,12 +133,7 @@ class PaymentRepository {
     int amount,
     OnlineMethod m,
   ) async {
-    final d = _data(
-      await dio.post(
-        '/wallet/topup',
-        data: {'amount': amount, 'paymentMethod': m.wire},
-      ),
-    );
+    final d = _data(await dio.post('/wallet/topup', data: {'amount': amount}));
     return (id: d['id'] as String, pay: PaymentInstructions.fromTopUp(d));
   }
 

@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/error/failures.dart';
 import '../../../../core/theme/theme.dart';
-import '../../../../localization/app_localizations.dart';
 import '../providers/auth_provider.dart';
 import '../../../../shared/widgets/apple_feedback.dart';
 
@@ -58,11 +57,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     // Router memindahkan halaman begitu sesi terbentuk. Overlay tinggal di
     // navigator akar, jadi kabar berhasilnya tetap terbaca di atas halaman
     // baru alih-alih ikut hilang bersama layar daftar.
-    await runWithFeedback(
+    String? pendingEmail;
+    final completed = await runWithFeedback(
       context,
       waiting: 'Sedang mendaftarkan akunmu…',
       action: () async {
-        await ref
+        final challenge = await ref
             .read(authProvider.notifier)
             .register(
               name: _nameController.text.trim(),
@@ -75,13 +75,22 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         // aksinya berjalan.
         final error = ref.read(authProvider).errorMessage;
         if (error != null) throw AuthFailure(error);
+        pendingEmail = challenge?.email;
+        if (pendingEmail == null || pendingEmail!.isEmpty) {
+          throw const AuthFailure('Server tidak mengirim tujuan verifikasi.');
+        }
         return true;
       },
-      successTitle: 'Pendaftaran berhasil',
+      successTitle: 'Kode verifikasi dikirim',
       successMessage:
-          'Selamat datang di KMP Mitra, ${_nameController.text.trim()}.',
+          'Periksa email ${_emailController.text.trim()} untuk melanjutkan.',
       failureTitle: 'Pendaftaran gagal',
     );
+    if (completed && mounted && pendingEmail != null) {
+      context.go(
+        '/verify-email?email=${Uri.encodeQueryComponent(pendingEmail!)}',
+      );
+    }
   }
 
   void _showComingSoon(String method) {
